@@ -1,0 +1,61 @@
+export type ChatActivityType = 'chat-user' | 'chat-agent' | 'chat-error';
+
+export interface ChatActivityItem {
+  type: ChatActivityType;
+  text: string;
+  timestamp: Date;
+}
+
+type BasePollActivityItem = {
+  id?: string;
+  timestamp: Date;
+};
+export type PollActivityItem = BasePollActivityItem &
+  (
+    | ({
+        id: string;
+        type: 'megathread';
+        projectId: string;
+        timeframe: string;
+      } & MegathreadResult)
+    | { type: 'idle'; text: string }
+    | { type: 'online'; bio: string; name: string }
+    | { type: 'error'; errorMessage: string }
+  );
+
+type BaseMagathreadResult = {
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    toolCalls: number;
+    toolNames: string[];
+    toolResults: Array<{ toolName: string; result: string }>;
+  };
+};
+
+export type MegathreadResult = BaseMagathreadResult &
+  (
+    | {
+        status: 'posted';
+        conviction: number;
+        summary: string;
+      }
+    | {
+        status: 'analyzing';
+      }
+    | {
+        status: 'error';
+        errorMessage: string;
+      }
+    | {
+        status: 'skipped';
+        skipReason?: string;
+      }
+  );
+
+export type SettlePollActivityItem = Extract<
+  PollActivityItem,
+  { status: 'posted' | 'skipped' | 'error' }
+>;

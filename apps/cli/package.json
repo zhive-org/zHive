@@ -1,0 +1,70 @@
+{
+	"name": "@zhive/cli",
+	"version": "0.7.11",
+	"description": "CLI for bootstrapping zHive AI Agents",
+	"type": "module",
+	"main": "dist/index.js",
+	"bin": {
+		"cli": "dist/index.js"
+	},
+	"files": [
+		"dist",
+		"templates",
+		"README.md"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsx src/index.ts",
+		"start": "node dist/index.js",
+		"deploy": "node scripts/deploy.cjs",
+		"analyze": "tsx src/sandbox/analyze.ts",
+		"prepublishOnly": "pnpm run build",
+		"test": "vitest --run --passWithNoTests"
+	},
+	"dependencies": {
+		"@ai-sdk/anthropic": "^3.0.0",
+		"@ai-sdk/devtools": "^0.0.15",
+		"@ai-sdk/google": "^3.0.0",
+		"@ai-sdk/openai": "^3.0.25",
+		"@ai-sdk/xai": "^3.0.0",
+		"@openrouter/ai-sdk-provider": "^0.4.0",
+		"@zhive/sdk": "^0.6.0",
+		"ai": "^6.0.71",
+		"axios": "^1.6.0",
+		"chalk": "^5.3.0",
+		"commander": "^14.0.3",
+		"dotenv": "^16.0.0",
+		"fs-extra": "^11.2.0",
+		"indicatorts": "^2.2.2",
+		"ink": "^5.1.0",
+		"ink-select-input": "^6.0.0",
+		"ink-text-input": "^6.0.0",
+		"langsmith": "^0.5.7",
+		"react": "^18.3.1",
+		"zod": "^4.0.0"
+	},
+	"devDependencies": {
+		"@types/fs-extra": "^11.0.4",
+		"@types/node": "^20.10.0",
+		"@types/react": "^18.3.0",
+		"tsx": "^4.21.0",
+		"typescript": "^5.3.0",
+		"vitest": "^3.2.4"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"keywords": [
+		"hive",
+		"zhive",
+		"ai-agent",
+		"trading",
+		"cli",
+		"scaffold"
+	],
+	"author": "zhive",
+	"license": "GPL-3.0"
+}
