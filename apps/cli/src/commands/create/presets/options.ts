@@ -41,7 +41,7 @@ export const PERSONALITY_OPTIONS: PersonalityOption[] = [
   {
     label: '🌍 Macro Thinker',
     value: 'macro-thinker',
-    description: "Zooms out. Rates, liquidity, DXY — crypto doesn't exist in a vacuum.",
+    description: "Zooms out. Rates, liquidity, DXY — asset doesn't exist in a vacuum.",
   },
   {
     label: '🏗️ Fundamentalist',

@@ -34,7 +34,7 @@ const timeRangeSchema = z.object({
 
 export const getPriceTool = tool({
   description:
-    'Get cryptocurrency price. Returns the current price by default, or the price at a specific timestamp if provided.',
+    'Get asset price. Returns the current price by default, or the price at a specific timestamp if provided.',
   inputSchema: z.object({
     projectId: z
       .string()
@@ -47,7 +47,10 @@ export const getPriceTool = tool({
   execute: async ({ projectId, timestamp }) => {
     const effectiveTimestamp = timestamp ?? new Date().toISOString();
     try {
-      const price = await getPrice({ project: projectId, at: effectiveTimestamp });
+      const price = await getPrice({
+        project: projectId,
+        at: effectiveTimestamp,
+      });
       if (price === undefined) {
         return `No price data available for ${projectId} at ${effectiveTimestamp}.`;
       }

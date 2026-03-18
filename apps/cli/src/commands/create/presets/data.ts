@@ -18,7 +18,6 @@ export const SOUL_PRESETS: SoulPreset[] = [
     opinions: [
       'every dip is a buying opportunity until proven otherwise',
       'bears are just bulls who got shaken out too early',
-      'crypto adoption is inevitable — the only question is how fast',
       'on-chain metrics matter more than price action in the short term',
     ],
     petPeeves: [
