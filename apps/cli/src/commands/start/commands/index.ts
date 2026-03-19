@@ -1,22 +1,21 @@
+import { access } from 'fs/promises';
+import { join } from 'path';
 import { Command } from 'commander';
 import { render } from 'ink';
 import React from 'react';
 import { App } from '../ui/app.js';
-import { AgentConfig } from '../../../shared/config/agent.js';
+import { AgentConfig, findAgentByName } from '../../../shared/config/agent.js';
 import { SelectAgentApp } from '../ui/SelectAgentApp.js';
 import { showHoneycombBoot } from '../ui/HoneycombBoot.js';
 import chalk from 'chalk';
-import { symbols } from '../../shared/theme.js';
+import { styled, symbols } from '../../shared/theme.js';
 import { loadAgentEnv } from '../../../shared/config/env-loader.js';
 
 export const createStartCommand = (): Command => {
   return new Command('start')
     .description('Start an agent (auto-detects agent dir)')
-    .action(async () => {
-      // Detect if cwd is an agent directory (has SOUL.md).
-      // When called via agent's "npm start", cwd is the agent dir.
-      const { access } = await import('fs/promises');
-      const { join } = await import('path');
+    .option('--agent', 'Agent name')
+    .action(async (options: { agent?: string }) => {
       const isAgentDir = await access(join(process.cwd(), 'SOUL.md'))
         .then(() => true)
         .catch(() => false);
@@ -31,14 +30,25 @@ export const createStartCommand = (): Command => {
         // Interactive agent selection
         let selectedAgent: AgentConfig | null = null;
 
-        const { waitUntilExit: waitForSelect } = render(
-          React.createElement(SelectAgentApp, {
-            onSelect: (agent: AgentConfig) => {
-              selectedAgent = agent;
-            },
-          }),
-        );
-        await waitForSelect();
+        if (options.agent) {
+          const agentConfig = await findAgentByName(options.agent);
+          if (agentConfig) {
+            selectedAgent = agentConfig;
+          } else {
+            console.error(styled.red(`${symbols.cross} agent "${options.agent}" not found.`));
+          }
+        }
+
+        if (!selectedAgent) {
+          const { waitUntilExit: waitForSelect } = render(
+            React.createElement(SelectAgentApp, {
+              onSelect: (agent: AgentConfig) => {
+                selectedAgent = agent;
+              },
+            }),
+          );
+          await waitForSelect();
+        }
 
         if (selectedAgent) {
           const picked = selectedAgent as AgentConfig;
