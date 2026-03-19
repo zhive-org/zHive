@@ -1,5 +1,9 @@
 import chalk from 'chalk';
+import { createRequire } from 'module';
 import { animation, colors } from '../../shared/theme.js';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../../../../package.json') as { version: string };
 
 const BOOT_TOTAL_FRAMES = 58;
 const BOOT_FRAME_MS = 80;
@@ -80,7 +84,10 @@ export function showHoneycombBoot(agentName: string): Promise<void> {
     const centerR = Math.floor(gridRows / 2) - 2;
     const centerC = Math.floor(cols / 2);
     const nameText = `\u2B21  ${agentName} agent  \u2B21`;
+    const versionText = `v${version}`;
     const nameStart = Math.max(0, centerC - Math.floor(nameText.length / 2));
+    const versionCol = Math.max(0, centerC - Math.floor(versionText.length / 2));
+    const versionRow = centerR + 2;
     const msgStartRow = centerR + 4;
 
     // Quiet zone around text: no animation renders here
@@ -92,8 +99,10 @@ export function showHoneycombBoot(agentName: string): Promise<void> {
     );
     const msgLeftEdge = Math.floor((cols - longestMsg) / 2);
     const msgRightEdge = msgLeftEdge + longestMsg;
-    const quietLeft = Math.min(nameStart, msgLeftEdge) - PADDING_H;
-    const quietRight = Math.max(nameStart + nameText.length, msgRightEdge) + PADDING_H;
+    const quietLeft = Math.min(nameStart, versionCol, msgLeftEdge) - PADDING_H;
+    const quietRight =
+      Math.max(nameStart + nameText.length, versionCol + versionText.length, msgRightEdge) +
+      PADDING_H;
     const quietTop = centerR - 1 - PADDING_V;
     const quietBottom = msgStartRow + BOOT_MESSAGES.length + PADDING_V;
 
@@ -271,6 +280,26 @@ export function showHoneycombBoot(agentName: string): Promise<void> {
             const scrambleIdx = Math.floor(Math.random() * SCRAMBLE_CHARS.length);
             charGrid[centerR][c] = SCRAMBLE_CHARS[scrambleIdx];
             colorGrid[centerR][c] = colors.gray;
+          }
+        }
+      }
+
+      // Overlay version with scramble→reveal (starts after name)
+      const VER_START_FRAME = 26;
+      const VER_REVEAL_FRAMES = 6;
+      if (frame >= VER_START_FRAME && versionRow >= 0 && versionRow < gridRows) {
+        const scrambleProgress = Math.min(1, (frame - VER_START_FRAME) / VER_REVEAL_FRAMES);
+        for (let i = 0; i < versionText.length; i++) {
+          const vc = versionCol + i;
+          if (vc < 0 || vc >= cols) continue;
+          const charThreshold = i / versionText.length;
+          if (charThreshold <= scrambleProgress) {
+            charGrid[versionRow][vc] = versionText[i];
+            colorGrid[versionRow][vc] = colors.grayDim;
+          } else {
+            const scrambleIdx = Math.floor(Math.random() * SCRAMBLE_CHARS.length);
+            charGrid[versionRow][vc] = SCRAMBLE_CHARS[scrambleIdx];
+            colorGrid[versionRow][vc] = colors.grayDim;
           }
         }
       }

@@ -1,4 +1,8 @@
 import chalk from 'chalk';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../../../package.json') as { version: string };
 
 const HEX_W = 8;
 const HEX_H = 4;
@@ -78,14 +82,14 @@ export function showWelcome(): Promise<void> {
 
     // Title positioning
     const title = '\u2B21 zHIVE';
-    const subtitle = 'Agent Creation Studio';
+    const versionText = `v${version}`;
     const titleRow = Math.floor(gridRows / 2) - 1;
-    const subtitleRow = titleRow + 1;
+    const versionRow = titleRow + 1;
     const titleCol = Math.floor((cols - title.length) / 2);
-    const subtitleCol = Math.floor((cols - subtitle.length) / 2);
+    const versionCol = Math.floor((cols - versionText.length) / 2);
 
     // Boot message row positions
-    const msgStartRow = subtitleRow + 2;
+    const msgStartRow = versionRow + 2;
 
     // Quiet zone around title + boot messages: no animation renders here
     const PADDING_H = 3;
@@ -96,9 +100,9 @@ export function showWelcome(): Promise<void> {
     );
     const msgLeftEdge = Math.floor((cols - longestMsg) / 2);
     const msgRightEdge = msgLeftEdge + longestMsg;
-    const quietLeft = Math.min(titleCol, subtitleCol, msgLeftEdge) - PADDING_H;
+    const quietLeft = Math.min(titleCol, versionCol, msgLeftEdge) - PADDING_H;
     const quietRight =
-      Math.max(titleCol + title.length, subtitleCol + subtitle.length, msgRightEdge) + PADDING_H;
+      Math.max(titleCol + title.length, versionCol + versionText.length, msgRightEdge) + PADDING_H;
     const quietTop = titleRow - PADDING_V;
     const quietBottom = msgStartRow + BOOT_MESSAGES.length + PADDING_V;
 
@@ -264,22 +268,22 @@ export function showWelcome(): Promise<void> {
         }
       }
 
-      // Overlay subtitle with scramble→reveal (starts a few frames after title)
-      const SUB_START_FRAME = 10;
-      const SUB_REVEAL_FRAMES = 8;
-      if (frame >= SUB_START_FRAME && subtitleRow >= 0 && subtitleRow < gridRows) {
-        const scrambleProgress = Math.min(1, (frame - SUB_START_FRAME) / SUB_REVEAL_FRAMES);
-        for (let i = 0; i < subtitle.length; i++) {
-          const sc = subtitleCol + i;
-          if (sc < 0 || sc >= cols) continue;
-          const charThreshold = i / subtitle.length;
+      // Overlay version with scramble→reveal (starts after title)
+      const VER_START_FRAME = 10;
+      const VER_REVEAL_FRAMES = 6;
+      if (frame >= VER_START_FRAME && versionRow >= 0 && versionRow < gridRows) {
+        const scrambleProgress = Math.min(1, (frame - VER_START_FRAME) / VER_REVEAL_FRAMES);
+        for (let i = 0; i < versionText.length; i++) {
+          const vc = versionCol + i;
+          if (vc < 0 || vc >= cols) continue;
+          const charThreshold = i / versionText.length;
           if (charThreshold <= scrambleProgress) {
-            charGrid[subtitleRow][sc] = subtitle[i];
-            colorGrid[subtitleRow][sc] = DIM;
+            charGrid[versionRow][vc] = versionText[i];
+            colorGrid[versionRow][vc] = DIM;
           } else {
             const scrambleIdx = Math.floor(Math.random() * SCRAMBLE_CHARS.length);
-            charGrid[subtitleRow][sc] = SCRAMBLE_CHARS[scrambleIdx];
-            colorGrid[subtitleRow][sc] = DIM;
+            charGrid[versionRow][vc] = SCRAMBLE_CHARS[scrambleIdx];
+            colorGrid[versionRow][vc] = DIM;
           }
         }
       }
