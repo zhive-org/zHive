@@ -86,7 +86,7 @@ export const AI_PROVIDERS: AIProvider[] = [
     package: '@ai-sdk/xai',
     envVar: 'XAI_API_KEY',
     models: {
-      validation: 'grok-2',
+      validation: 'grok-4-1-fast-non-reasoning',
       generation: 'grok-4-1-fast-reasoning',
       runtime: 'grok-4-1-fast-reasoning',
     },
