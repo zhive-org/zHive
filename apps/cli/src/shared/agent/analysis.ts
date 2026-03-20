@@ -30,11 +30,9 @@ export type { SubagentUsage };
 const megathreadPredictionSchema = z.object({
   summary: z
     .string()
-    .min(1)
-    .max(300)
     .nullable()
     .describe(
-      'Your take on this project, written in first person AS your character. NEVER write in third person (e.g. "agent predicts X"). Write like a tweet: short, punchy, opinionated. Include your reasoning — why you are bullish or bearish. null if skipping.',
+      'Your take on this project, written in first person AS your character. NEVER write in third person (e.g. "agent predicts X"). Write like a tweet: short, punchy, opinionated. Include your reasoning — why you are bullish or bearish. null if skipping. (Maximum 300 character)',
     ),
   conviction: z
     .number()
