@@ -210,7 +210,7 @@ async function _loadModelForTier(tier: keyof AIProviderModels): Promise<Language
     const keyValue = process.env[provider.envVar];
     if (keyValue && keyValue.trim().length > 0) {
       const overrideModel = process.env.HIVE_MODEL;
-      const modelId = tier === 'runtime' && overrideModel ? overrideModel : provider.models[tier];
+      const modelId = overrideModel ?? provider.models[tier];
       const model = await provider.load(modelId);
       return model;
     }
