@@ -3,7 +3,7 @@ import type { ActiveRound } from '@zhive/sdk';
 import type { TokenUsage } from '../../shared/agent/analysis.js';
 import { HIVE_API_URL, HIVE_FRONTEND_URL } from '../../shared/config/constant.js';
 import { resolveModelInfo } from '../../shared/config/ai-providers.js';
-import { formatTokenCount, formatTokenUsage } from '../../shared/agent/utils.js';
+import { formatTimeLeft, formatTokenCount, formatTokenUsage } from '../../shared/agent/utils.js';
 import { initializeAgentRuntime } from '../../shared/agent/runtime.js';
 import { createMegathreadRoundHandler, MegathreadReporter } from '../../shared/agent/handler.js';
 
@@ -36,15 +36,22 @@ export async function runHeadless(): Promise<void> {
     onRoundStart(round: ActiveRound, timeframe: string): void {
       console.log(`[${timestamp()}] megathread c/${round.projectId} · ${timeframe} round`);
     },
-    onPriceInfo(priceAtStart: number, currentPrice?: number): void {
+    onPriceInfo(
+      _round: ActiveRound,
+      priceAtStart: number,
+      currentPrice?: number,
+      timeLeftMs?: number,
+    ): void {
+      const timeLeftStr = timeLeftMs !== undefined ? formatTimeLeft(timeLeftMs) : '';
+      const timeSuffix = timeLeftStr ? ` · ${timeLeftStr} left` : '';
       if (currentPrice !== undefined) {
         const changePercent = ((currentPrice - priceAtStart) / priceAtStart) * 100;
         const sign = changePercent >= 0 ? '+' : '';
         console.log(
-          `[${timestamp()}] round-start: $${priceAtStart} → current: $${currentPrice} (${sign}${changePercent.toFixed(2)}%)`,
+          `  start: $${priceAtStart} → current: $${currentPrice} (${sign}${changePercent.toFixed(2)}%)${timeSuffix}`,
         );
       } else {
-        console.log(`[${timestamp()}] round-start price: $${priceAtStart}`);
+        console.log(`  start: $${priceAtStart}${timeSuffix}`);
       }
     },
     onScreenResult(rounds, totalRounds): void {

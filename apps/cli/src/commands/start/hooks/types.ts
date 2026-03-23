@@ -24,6 +24,9 @@ export type PollActivityItem = BasePollActivityItem &
   );
 
 type BaseMagathreadResult = {
+  priceAtStart?: number;
+  currentPrice?: number;
+  timeLeftMs?: number;
   tokenUsage?: {
     inputTokens: number;
     outputTokens: number;

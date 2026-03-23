@@ -42,6 +42,19 @@ export const usePollActivity = () => {
     [setPollActivityQueues],
   );
 
+  const updateMegathreadActivity = useCallback(
+    (roundId: string, updates: Partial<MegathreadResult>) => {
+      setPollActivityQueues(({ active, settled }) => {
+        const idx = active.findIndex((item) => item.type === 'megathread' && item.id === roundId);
+        if (idx === -1) return { active, settled };
+        const updated = { ...active[idx], ...updates } as PollActivityItem;
+        const updatedActive = [...active.slice(0, idx), updated, ...active.slice(idx + 1)];
+        return { active: updatedActive, settled };
+      });
+    },
+    [setPollActivityQueues],
+  );
+
   const finalizeMegathreadActivity = useCallback(
     (roundId: string, updates: MegathreadResult) => {
       setPollActivityQueues(({ active, settled }) => {
@@ -65,6 +78,7 @@ export const usePollActivity = () => {
     settledPollActivities: pollActivityQueues.settled,
     addLog,
     addMegathreadActivity,
+    updateMegathreadActivity,
     finalizeMegathreadActivity,
   };
 };

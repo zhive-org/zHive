@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { PollActivityItem } from './types.js';
 import { colors, symbols } from '../../shared/theme.js';
-import { formatTime, formatTokenUsage } from '../../../shared/agent/utils.js';
+import { formatTime, formatTimeLeft, formatTokenUsage } from '../../../shared/agent/utils.js';
 import { HIVE_FRONTEND_URL } from '../../../shared/config/constant.js';
 
 interface PollActivityFormatter<T extends PollActivityItem = PollActivityItem> {
@@ -105,6 +105,21 @@ const megathreadActivityFormatter: PollActivityFormatter<
   format(item) {
     const mainLine = ` ${time(item)}${chalk.hex(colors.controversial)(symbols.hive)} ${chalk.hex(colors.controversial)(this.getText(item))}`;
     const lines: string[] = [mainLine];
+    const pad = ' '.repeat(15);
+
+    // Price info & time left
+    if (item.priceAtStart !== undefined) {
+      let priceLine = `start: $${item.priceAtStart}`;
+      if (item.currentPrice !== undefined) {
+        const changePercent = ((item.currentPrice - item.priceAtStart) / item.priceAtStart) * 100;
+        const sign = changePercent >= 0 ? '+' : '';
+        priceLine = `start: $${item.priceAtStart} \u2192 current: $${item.currentPrice} (${sign}${changePercent.toFixed(2)}%)`;
+      }
+      if (item.timeLeftMs !== undefined) {
+        priceLine += ` \u00b7 ${formatTimeLeft(item.timeLeftMs)} left`;
+      }
+      lines.push(`${pad}${chalk.white(priceLine)}`);
+    }
 
     switch (item.status) {
       case 'skipped': {
@@ -125,10 +140,10 @@ const megathreadActivityFormatter: PollActivityFormatter<
 
     if (item.tokenUsage) {
       const { input, output, tools } = formatTokenUsage(item.tokenUsage);
-      lines.push(`${' '.repeat(15)}${chalk.gray.dim(`${input} \u00b7 ${output}`)}`);
+      lines.push(`${pad}${chalk.gray.dim(`${input} \u00b7 ${output}`)}`);
       if (tools !== null) {
         const toolCountInfo = `${tools} (${item.tokenUsage.toolCalls} calls)`;
-        lines.push(`${' '.repeat(15)}${chalk.gray.dim(toolCountInfo)}`);
+        lines.push(`${pad}${chalk.gray.dim(toolCountInfo)}`);
       }
     }
 

@@ -54,6 +54,7 @@ export function useAgent(): UseAgentState {
     settledPollActivities,
     addLog,
     addMegathreadActivity,
+    updateMegathreadActivity,
     finalizeMegathreadActivity,
   } = usePollActivity();
 
@@ -112,8 +113,17 @@ export function useAgent(): UseAgentState {
             status: 'analyzing',
           });
         },
-        onPriceInfo(): void {
-          // TUI does not display price info inline
+        onPriceInfo(
+          round: ActiveRound,
+          priceAtStart: number,
+          currentPrice?: number,
+          timeLeftMs?: number,
+        ): void {
+          updateMegathreadActivity(round.roundId, {
+            priceAtStart,
+            currentPrice,
+            timeLeftMs,
+          });
         },
         onResearching(): void {
           // TUI status is already 'analyzing' from onRoundStart

@@ -15,7 +15,12 @@ import { extractErrorMessage } from './utils.js';
 
 export interface MegathreadReporter {
   onRoundStart(round: ActiveRound, timeframe: string): void;
-  onPriceInfo(priceAtStart: number, currentPrice?: number): void;
+  onPriceInfo(
+    round: ActiveRound,
+    priceAtStart: number,
+    currentPrice?: number,
+    timeLeftMs?: number,
+  ): void;
   onScreenStart?(): void;
   onScreenResult?(engagingRounds: ActiveRound[], totalRound: number): void;
   onResearching(projectId: string): void;
@@ -82,7 +87,9 @@ async function run({
     roundStartTimestamp,
   );
   if (priceAtStart !== undefined) {
-    reporter.onPriceInfo(priceAtStart, currentPrice);
+    const roundEndMs = round.snapTimeMs + round.durationMs;
+    const timeLeftMs = Math.max(0, roundEndMs - Date.now());
+    reporter.onPriceInfo(round, priceAtStart, currentPrice, timeLeftMs);
   }
 
   reporter.onResearching(round.projectId);

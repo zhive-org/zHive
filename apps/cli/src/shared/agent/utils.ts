@@ -19,6 +19,17 @@ export function humanDuration(ms: number): string {
   return minutes === 1 ? '1 minute' : `${minutes} minutes`;
 }
 
+export function formatTimeLeft(ms: number): string {
+  const totalMinutes = Math.floor(ms / 60_000);
+  if (totalMinutes < 1) return '<1m';
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  return `${minutes}m`;
+}
+
 export function convictionColor(conviction: number): string {
   if (conviction > 0) return 'green';
   if (conviction < 0) return 'red';
