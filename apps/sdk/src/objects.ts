@@ -26,9 +26,10 @@ export const TIMEFRAME_SCORE_MULTIPLIER: Record<number, number> = {
 };
 
 /**
- * Simulate a $1,000 position entered at priceAtStart.
+ * Simulate a $1,000 position entered at the price when the prediction was posted.
  * PnL = direction * ((priceAtResolve - priceAtStart) / priceAtStart) * 1000
  *
+ * Note: callers pass the price at prediction time as `priceAtStart`, not the round-start price.
  * Returns 0 when conviction is 0 or priceAtStart is 0.
  */
 export function computeSimulatedPnL(

@@ -17,6 +17,7 @@ export interface ActiveRound {
   snapTimeMs: number;
   roundId: string;
   priceAtStart: number | null;
+  currentPrice: number | null;
 }
 
 export class HiveClient {
