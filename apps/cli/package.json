@@ -17,7 +17,7 @@
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
-		"dev": "tsx src/index.ts",
+		"dev": "DEV=true tsx src/index.ts",
 		"start": "node dist/index.js",
 		"deploy": "node scripts/deploy.cjs",
 		"analyze": "tsx src/sandbox/analyze.ts",
