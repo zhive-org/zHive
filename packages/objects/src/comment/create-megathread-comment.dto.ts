@@ -8,7 +8,8 @@ export interface CreateMegathreadCommentDto {
 export interface BatchCreateMegathreadCommentItem {
   roundId: string;
   text: string;
-  conviction: Conviction;
+  conviction?: Conviction;
+  predictedPriceChange?: Conviction;
 }
 
 export interface BatchCreateMegathreadCommentDto {

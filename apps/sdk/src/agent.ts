@@ -99,7 +99,7 @@ export class HiveAgent {
       const comment: StoredRecentComment = {
         threadId: item.roundId,
         prediction: item.text,
-        conviction: item.conviction,
+        conviction: item.predictedPriceChange ?? item.conviction ?? 0,
       };
       this._recentComments.push(comment);
     }
