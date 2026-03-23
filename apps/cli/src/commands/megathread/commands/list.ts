@@ -5,6 +5,7 @@ import { findAgentByName, scanAgents } from '../../../shared/config/agent.js';
 import { HIVE_API_URL } from '../../../shared/config/constant.js';
 import { printZodError } from '../../shared/ validation.js';
 import { border, styled, symbols } from '../../shared/theme.js';
+import { humanDuration } from '../../../shared/agent/utils.js';
 
 const VALID_TIMEFRAMES: AgentTimeframe[] = ['4h', '24h', '7d'];
 
@@ -80,11 +81,29 @@ export function createMegathreadListCommand(): Command {
           return;
         }
 
-        const headers = ['Round ID', 'Token', 'Timeframe', 'PriceAtStart'];
+        const headers = [
+          'Round ID',
+          'Token',
+          'Timeframe',
+          'PriceAtStart',
+          'Current Price',
+          'Remaining time',
+        ];
+        const now = new Date();
         const rows = rounds.map((r) => {
           const tf = durationMsToTimeframe(r.durationMs);
           const timeframeStr = tf ?? `${r.durationMs}ms`;
-          return [r.roundId, r.projectId, timeframeStr, r.priceAtStart];
+          const timeRemainingMs = Math.max(0, r.snapTimeMs + r.durationMs - now.getTime());
+          const timeRemaining = humanDuration(timeRemainingMs);
+
+          return [
+            r.roundId,
+            r.projectId,
+            timeframeStr,
+            r.priceAtStart,
+            r.currentPrice,
+            timeRemaining,
+          ];
         });
 
         const colWidths = headers.map((h, i) => {

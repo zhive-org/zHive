@@ -39,8 +39,8 @@ importers:
         specifier: ^2.3.3
         version: 2.3.3(ai@6.0.73(zod@4.3.6))(zod@4.3.6)
       '@zhive/sdk':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.0.1
+        version: 1.0.1
       ai:
         specifier: ^6.0.71
         version: 6.0.73(zod@4.3.6)
@@ -886,8 +886,8 @@ packages:
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
 
-  '@zhive/sdk@1.0.0':
-    resolution: {integrity: sha512-ZDM8pdmS/PiT9D3/E5j3OXKzdRdYFhs2bS07OJ8RXy2ZTahYwI1bSTlaNlcqcJ0zMvZmzeX9MqWHV+eBrpwK/w==}
+  '@zhive/sdk@1.0.1':
+    resolution: {integrity: sha512-oMeMVnruCY8X1YVRPQCJwTrmqJTYuJDVMtPSr1uWPQ4X5yvrQ/jnK70BjLcm6bDzUOdiCyW/JrTC0rTaKvVAzg==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -2869,7 +2869,7 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@zhive/sdk@1.0.0':
+  '@zhive/sdk@1.0.1':
     dependencies:
       axios: 1.13.4
       lodash: 4.17.23
