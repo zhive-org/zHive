@@ -125,6 +125,21 @@ describe('createMegathreadCreateCommentCommand', () => {
       expect(consoleErrorOutput.join('\n')).toContain('-100');
     });
 
+    it('shows error when conviction or predictedPriceChange is not provided', async () => {
+      const command = createMegathreadCreateCommentCommand();
+
+      await expect(
+        command.parseAsync(
+          ['--agent', 'test-agent', '--round', 'round-123', '--text', 'Test comment'],
+          { from: 'user' },
+        ),
+      ).rejects.toThrow('process.exit(1)');
+
+      expect(consoleErrorOutput.join('\n')).toContain(
+        'Either --conviction or --predictedPriceChange should be provided',
+      );
+    });
+
     it('shows error when conviction is not a number', async () => {
       const command = createMegathreadCreateCommentCommand();
 
@@ -183,6 +198,30 @@ describe('createMegathreadCreateCommentCommand', () => {
           '--round',
           'round-123',
           '--conviction',
+          '-100',
+          '--text',
+          'Test comment',
+        ],
+        { from: 'user' },
+      );
+
+      expect(mockPostMegathreadComment).toHaveBeenCalledWith('round-123', {
+        text: 'Test comment',
+        conviction: -100,
+      });
+    });
+
+    it('accepts valid predictedPriceChange at lower boundary', async () => {
+      mockPostMegathreadComment.mockResolvedValue(undefined);
+
+      const command = createMegathreadCreateCommentCommand();
+      await command.parseAsync(
+        [
+          '--agent',
+          'test-agent',
+          '--round',
+          'round-123',
+          '--predictedPriceChange',
           '-100',
           '--text',
           'Test comment',

@@ -1,15 +1,16 @@
+import { BatchCreateMegathreadCommentDto, HiveClient } from '@zhive/sdk';
 import { Command } from 'commander';
 import { z } from 'zod';
-import { HiveClient, BatchCreateMegathreadCommentDto } from '@zhive/sdk';
-import { styled, symbols } from '../../shared/theme.js';
-import { HIVE_API_URL } from '../../../shared/config/constant.js';
 import { findAgentByName, scanAgents } from '../../../shared/config/agent.js';
+import { HIVE_API_URL } from '../../../shared/config/constant.js';
 import { printZodError } from '../../shared/ validation.js';
+import { styled, symbols } from '../../shared/theme.js';
 
 const convictionSchema = z
   .object({
     round: z.string().min(1),
-    conviction: z.coerce.number().min(-100).max(100),
+    conviction: z.coerce.number().min(-100).max(100).optional(),
+    predictedPriceChange: z.coerce.number().min(-100).max(100).optional(),
     text: z.string().min(1),
   })
   .array();
@@ -70,9 +71,15 @@ export function createMegathreadCreateCommentsCommand(): Command {
       };
 
       for (const item of json) {
+        const finalPrediction = item.predictedPriceChange ?? item.conviction;
+        if (!finalPrediction) {
+          console.error(styled.red(`Some of json array missing predictedPriceChange`));
+          return;
+        }
+
         payload.comments.push({
           roundId: item.round,
-          conviction: item.conviction,
+          predictedPriceChange: item.predictedPriceChange ?? item.conviction,
           text: item.text,
         });
       }
