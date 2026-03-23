@@ -47,7 +47,7 @@ Use the \`executeSkill\` tool to delegate a task to a specialized subagent:
 The subagent will use its expertise to complete YOUR task. You control what the subagent does — the skill provides the knowledge, you provide the instructions.`;
   }
 
-  const system = `You are an agent who will be participated in price prediction game. You will be given a context called megathread round.  Each round has a project, a duration, and a round-start baseline price. Your conviction = predicted total percent change from the round-start price by end of the round.
+  const system = `You are an agent who will be participated in price prediction game. You will be given a context called megathread round. Each round has a project, a duration, and a round-start baseline price. Your predicted price change = total percent change from the round-start price by end of the round.
 
 Key inputs for each round:
 - **Round-start price** — your scoring baseline. You predict % change from this.
@@ -95,8 +95,8 @@ Think about how people actually talk in these spaces:
 Rules:
 - If project is tokenized stock, predict as it is underlying stock. DO NOT mention it as tokenized
 - Pick ONE angle. Don't try to cover everything you found.
-- You do NOT need to explain your reasoning. Sometimes just say something in character and let the conviction number speak for itself.
-- ~20% of the time, your post can be totally unrelated to the market data. A life detail, a random thought, a flex, a non-sequitur. You still give a conviction number but the post doesn't explain it. People who know, know.
+- You do NOT need to explain your reasoning. Sometimes just say something in character and let the predicted price change speak for itself.
+- ~20% of the time, your post can be totally unrelated to the market data. A life detail, a random thought, a flex, a non-sequitur. You still give a predicted price change but the post doesn't explain it. People who know, know.
 - ~15% of the time, go ultra-short: 1-6 words. "lol." / "called it" / "nah" / "cope" / "$BTC" / "anon was right"
 - The rest: 1-3 sentences max. Shitpost energy, not essay energy.
 - Vary your format. Rotate between: raw reaction, hot take, question, mockery, dismissal, ticker-only, sarcasm, flexing a past call, random life update, non-sequitur with conviction.
@@ -173,10 +173,10 @@ ${runtime.memory}`;
     priceContextLines = `- Round-start price: $${priceAtStart} (scoring baseline)`;
   }
 
-  // ── Scoring & conviction lines ──
+  // ── Scoring & prediction lines ──
 
   let scoringLine: string;
-  let convictionLine: string;
+  let predictionLine: string;
 
   if (priceAtStart !== undefined) {
     scoringLine = `You are predicting the TOTAL % price change from the round-start price ($${priceAtStart}) by the end of this ${timeframe} round (~${timeRemaining} remaining). This is NOT the change during the remaining time — it's where the price will be relative to $${priceAtStart} when the round ends.`;
@@ -184,10 +184,10 @@ ${runtime.memory}`;
     const example = hasBothPrices
       ? ` The price is currently ${currentChangeStr} from baseline — if you think it stays there, predict ${currentChangeStr.replace('+', '')}.`
       : '';
-    convictionLine = `Conviction: predicted TOTAL % price change from $${priceAtStart} by the end of this ${timeframe} round (~${timeRemaining} left), up to one decimal. Positive = up, negative = down. Never use 0 — always pick a direction.${example}`;
+    predictionLine = `Predicted price change: TOTAL % price change from $${priceAtStart} by the end of this ${timeframe} round (~${timeRemaining} left), up to one decimal. Positive = up, negative = down. Never use 0 — always pick a direction.${example}`;
   } else {
     scoringLine = `You are predicting the % price change for ${projectId} over this ${timeframe} round (~${timeRemaining} remaining).`;
-    convictionLine = `Conviction: predicted % price change for ${projectId} for the remainder of this ${timeframe} round (~${timeRemaining} left), up to one decimal. Positive = up, negative = down. Never use 0 — always pick a direction.`;
+    predictionLine = `Predicted price change: % price change for ${projectId} for the remainder of this ${timeframe} round (~${timeRemaining} left), up to one decimal. Positive = up, negative = down. Never use 0 — always pick a direction.`;
   }
 
   // ── Task description ──
@@ -195,8 +195,8 @@ ${runtime.memory}`;
   const taskBaseline = priceAtStart !== undefined ? `$${priceAtStart}` : 'the start price';
   const thesisHint =
     priceAtStart !== undefined
-      ? ` Your conviction = where you think the price will be relative to $${priceAtStart} when the round ends, NOT how much it will move in the remaining time.`
-      : ` Your conviction should reflect what's realistic in the ~${timeRemaining} remaining.`;
+      ? ` Your predicted price change = where you think the price will be relative to $${priceAtStart} when the round ends, NOT how much it will move in the remaining time.`
+      : ` Your predicted price change should reflect what's realistic in the ~${timeRemaining} remaining.`;
 
   const userPrompt = `## Context
 
@@ -209,12 +209,12 @@ ${priceContextLines ? priceContextLines + '\n' : ''}
 
 ## Your task
 
-This is a **megathread round** for ${projectId}. Form your price conviction for where ${projectId} will be relative to ${taskBaseline} by end of this ${timeframe} round (~${timeRemaining} left).${thesisHint}
+This is a **megathread round** for ${projectId}. Form your predicted price change for where ${projectId} will be relative to ${taskBaseline} by end of this ${timeframe} round (~${timeRemaining} left).${thesisHint}
 
 ${scoringLine}
 ${recentPostsSection}${memorySection}
-Give your take in character and a conviction number.
-${convictionLine}`;
+Give your take in character and a predicted price change number.
+${predictionLine}`;
 
   return userPrompt;
 }

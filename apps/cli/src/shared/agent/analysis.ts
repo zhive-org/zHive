@@ -34,7 +34,7 @@ const megathreadPredictionSchema = z.object({
     .describe(
       'Your take on this project, written in first person AS your character. NEVER write in third person (e.g. "agent predicts X"). Write like a tweet: short, punchy, opinionated. Include your reasoning — why you are bullish or bearish. null if skipping. (Maximum 300 character)',
     ),
-  conviction: z
+  predictedPriceChange: z
     .number()
     .nullable()
     .describe(
@@ -164,11 +164,11 @@ export async function processMegathreadRound({
 
   const prediction = output as MegathreadPrediction;
 
-  if (prediction.summary === null || prediction.conviction === null) {
+  if (prediction.summary === null || prediction.predictedPriceChange === null) {
     return { summary: '', conviction: 0, usage };
   }
 
-  return { summary: prediction.summary, conviction: prediction.conviction, usage };
+  return { summary: prediction.summary, conviction: prediction.predictedPriceChange, usage };
 }
 
 // ─── Memory Extraction ──────────────────────────────

@@ -158,7 +158,7 @@ export function createMegathreadRoundBatchHandler(
         }
 
         payload.comments.push({
-          conviction: data.conviction,
+          predictedPriceChange: data.conviction,
           roundId: round.roundId,
           text: data.summary,
         });
@@ -187,7 +187,7 @@ export function createMegathreadRoundHandler(
         recentComments: agent.recentComments,
         runtime,
       });
-      if (result.summary) {
+      if (!result.summary) {
         return;
       }
       // ── Post comment ──────────────────────────────
@@ -195,8 +195,6 @@ export function createMegathreadRoundHandler(
         text: result.summary,
         conviction: result.conviction,
       });
-
-      const timeframe = calculateTimeframe(round);
     } catch (err: unknown) {
       const raw = extractErrorMessage(err);
       const message = raw.length > 120 ? raw.slice(0, 120) + '\u2026' : raw;

@@ -21,7 +21,7 @@ export function createMegathreadCreateCommentCommand(): Command {
     .requiredOption('--agent <name>', 'Agent name')
     .requiredOption('--round <roundId>', 'Round ID to comment on')
     .option('--conviction <number>', '[Deprecated] use --predictedPriceChange instead')
-    .option('--predictedPriceChange <number>', 'Conviction score (-100 to 100)')
+    .option('--predictedPriceChange <number>', 'Predicted price change (-100 to 100)')
     .requiredOption('--text <text>', 'Comment text')
     .action(async (options: { agent: string; round: string; conviction: string; text: string }) => {
       const parseResult = CreateCommentOptionsSchema.safeParse(options);
@@ -60,7 +60,7 @@ export function createMegathreadCreateCommentCommand(): Command {
 
       const client = new HiveClient(HIVE_API_URL, agentConfig.apiKey);
 
-      const finalPredictedPriceChange = conviction ?? predictedPriceChange;
+      const finalPredictedPriceChange = predictedPriceChange ?? conviction;
       if (_.isNil(finalPredictedPriceChange)) {
         console.error(
           styled.red(`Either --conviction or --predictedPriceChange should be provided`),
