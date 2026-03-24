@@ -32,35 +32,6 @@ const timeRangeSchema = z.object({
     ),
 });
 
-export const getPriceTool = tool({
-  description:
-    'Get asset price. Returns the current price by default, or the price at a specific timestamp if provided.',
-  inputSchema: z.object({
-    projectId: z
-      .string()
-      .describe('Project ID to get price for (e.g., "bitcoin", "ethereum"). Use lowercase.'),
-    timestamp: z
-      .string()
-      .optional()
-      .describe('Optional timestamp in ISO 8601 format. If omitted, returns the current price.'),
-  }),
-  execute: async ({ projectId, timestamp }) => {
-    const effectiveTimestamp = timestamp ?? new Date().toISOString();
-    try {
-      const price = await getPrice({
-        project: projectId,
-        at: effectiveTimestamp,
-      });
-      if (price === undefined) {
-        return `No price data available for ${projectId} at ${effectiveTimestamp}.`;
-      }
-      return price;
-    } catch (err) {
-      return formatToolError(err, 'fetching price');
-    }
-  },
-});
-
 export const getOHLCTool = tool({
   description:
     'Get historical OHLC (Open, High, Low, Close) candlestick data for a cryptocurrency. Use this to analyze price history and patterns.',
@@ -303,7 +274,6 @@ export const getBollingerTool = tool({
  * All market tools for export.
  */
 export const marketTools = {
-  getPrice: getPriceTool,
   getOHLC: getOHLCTool,
   getSMA: getSMATool,
   getEMA: getEMATool,
