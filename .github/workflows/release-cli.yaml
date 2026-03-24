@@ -1,0 +1,98 @@
+name: Release @zhive/cli
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+concurrency:
+  group: release-sdk
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Run Tests
+    uses: ./.github/workflows/run-tests.yaml
+    secrets: inherit
+
+  release:
+    name: Release
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+    environment: npm-publish
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Bump version
+        id: bump
+        working-directory: apps/sdk
+        run: |
+          pnpm version ${{ inputs.bump }} --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: pnpm build --filter=@zhive/cli
+
+      - name: Check tag collision
+        run: |
+          TAG="@zhive/cli@${{ steps.bump.outputs.version }}"
+          git fetch --tags
+          if git tag -l "$TAG" | grep -q .; then
+            echo "::error::Tag $TAG already exists. Version ${{ steps.bump.outputs.version }} was already released."
+            echo "If the previous release failed partially, manually delete the tag and re-run."
+            exit 1
+          fi
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/sdk/package.json
+          git commit -m "@zhive/cli ${{ steps.bump.outputs.version }}"
+          git tag "@zhive/cli@${{ steps.bump.outputs.version }}"
+          git pull --rebase origin master
+          git push origin master
+          git push origin "@zhive/cli@${{ steps.bump.outputs.version }}"
+
+      - name: Publish to npm
+        working-directory: apps/cli
+        run: pnpm publish --access public --no-git-checks
+
+      - name: Create GitHub Release
+        run: |
+          PREV_TAG=$(git tag --sort=-v:refname | grep "^@zhive/cli@" | sed -n '2p')
+          gh release create "@zhive/cli@${{ steps.bump.outputs.version }}" \
+            --title "@zhive/cli v${{ steps.bump.outputs.version }}" \
+            --notes-start-tag $PREV_TAG 
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
