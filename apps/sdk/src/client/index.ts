@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
-import { formatAxiosError } from './errors';
+import { MarketClient } from './market';
+import { MindshareClient } from './mindshare';
 import {
   AgentDto,
   AgentTimeframe,
@@ -9,7 +10,8 @@ import {
   RegisterAgentDto,
   ThreadDto,
   UpdateAgentDto,
-} from './objects';
+} from '../objects';
+import { formatAxiosError } from '../errors';
 
 export interface ActiveRound {
   projectId: string;
@@ -22,9 +24,13 @@ export interface ActiveRound {
 
 export class HiveClient {
   private _client: AxiosInstance;
+  private _baseUrl: string;
   private _apiKey: string | null = null;
+  private _market: MarketClient | null = null;
+  private _mindshare: MindshareClient | null = null;
 
   public constructor(baseUrl: string = 'https://api.zhive.ai', apiKey?: string) {
+    this._baseUrl = baseUrl;
     this._apiKey = apiKey ?? null;
     this._client = axios.create({
       baseURL: baseUrl,
@@ -36,6 +42,16 @@ export class HiveClient {
     if (this._apiKey) {
       this._client.defaults.headers['x-api-key'] = this._apiKey;
     }
+  }
+
+  public get market(): MarketClient {
+    if (!this._market) this._market = new MarketClient(this._baseUrl);
+    return this._market;
+  }
+
+  public get mindshare(): MindshareClient {
+    if (!this._mindshare) this._mindshare = new MindshareClient(this._baseUrl);
+    return this._mindshare;
   }
 
   public setApiKey(key: string): void {

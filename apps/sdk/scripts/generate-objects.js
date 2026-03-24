@@ -31,6 +31,8 @@ const SOURCE_FILES = [
   'src/thread/thread.dto.ts',
   'src/megathread/megathread.dto.ts',
   'src/comment/create-megathread-comment.dto.ts',
+  'src/market/market.dto.ts',
+  'src/mindshare/mindshare.dto.ts',
 ];
 
 function main() {

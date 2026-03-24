@@ -11,6 +11,7 @@ export * from './comment/megathread-tile.dto';
 export * from './events';
 export * from './leaderboard/leaderboard.dto';
 export * from './market/market.dto';
+export * from './mindshare/mindshare.dto';
 export * from './megathread/megathread-feed';
 export * from './megathread/megathread.dto';
 export * from './response';
