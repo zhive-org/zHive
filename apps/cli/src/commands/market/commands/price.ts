@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { getMarketClient } from '../../../shared/agent/tools/market/client.js';
+import { getHiveClient } from '../../../shared/config/hive-client.js';
 import { styled } from '../../shared/theme.js';
 
 export const createPriceCommand = (): Command => {
@@ -15,7 +15,7 @@ export const createPriceCommand = (): Command => {
       }
 
       try {
-        const client = getMarketClient();
+        const client = getHiveClient().market;
         const prices = await client.getCurrentPrices(projectIds);
         console.log(styled.white(JSON.stringify(prices)));
       } catch (e) {

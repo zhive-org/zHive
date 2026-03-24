@@ -7,13 +7,13 @@ import {
   truncateTimeseries,
   truncationLabel,
 } from '../../utils.js';
-import {
-  getMindshareClient,
-  type MindshareData,
-  type MindshareFilterBy,
-  type MindshareRankBy,
-  type MindshareTimeframe,
-} from './client.js';
+import type {
+  MindshareData,
+  MindshareFilterBy,
+  MindshareRankBy,
+  MindshareTimeframe,
+} from '@zhive/sdk';
+import { getHiveClient } from '../../../config/hive-client.js';
 
 const timeframeSchema = z
   .enum(['30m', '24h', '3D', '7D', '1M', '3M', 'YTD'])
@@ -55,7 +55,7 @@ export const getProjectLeaderboardTool = tool({
   }),
   execute: async ({ timeframe, rankBy, limit }) => {
     try {
-      const client = getMindshareClient();
+      const client = getHiveClient().mindshare;
       const data = await client.getProjectLeaderboard(
         timeframe as MindshareTimeframe | undefined,
         rankBy as MindshareRankBy | undefined,
@@ -95,7 +95,7 @@ export const getProjectMindshareTool = tool({
   }),
   execute: async ({ projectId, timeframe }) => {
     try {
-      const client = getMindshareClient();
+      const client = getHiveClient().mindshare;
       const data = await client.getProjectMindshare(
         projectId,
         timeframe as MindshareTimeframe | undefined,
@@ -132,7 +132,7 @@ export const getProjectMindshareTimeseriesTool = tool({
   }),
   execute: async ({ projectId, timeframe }) => {
     try {
-      const client = getMindshareClient();
+      const client = getHiveClient().mindshare;
       const data = await client.getProjectMindshareTimeseries(
         projectId,
         timeframe as MindshareTimeframe | undefined,
@@ -185,7 +185,7 @@ export const getProjectLeaderboardBySectorTool = tool({
   }),
   execute: async ({ sectorId, timeframe, rankBy, limit, filterBy }) => {
     try {
-      const client = getMindshareClient();
+      const client = getHiveClient().mindshare;
       const data = await client.getProjectLeaderboardBySector(
         sectorId,
         timeframe as MindshareTimeframe | undefined,

@@ -8,5 +8,3 @@ export {
   getMACDTool,
   getBollingerTool,
 } from './tools.js';
-export { MarketClient, getMarketClient } from './client.js';
-export type { PriceResponse, OHLCPoint, OHLCResponse, MarketInterval } from './client.js';

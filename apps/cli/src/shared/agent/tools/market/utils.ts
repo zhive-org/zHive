@@ -1,6 +1,6 @@
 import type { BollingerBandsValue, IndicatorValue, MACDValue } from '../../../ta/service.js';
 import { truncateTimeseries, truncationLabel } from '../../utils.js';
-import { OHLCPoint } from './client.js';
+import type { OHLCPoint } from '@zhive/sdk';
 
 export function formatOhlcData(data: OHLCPoint[]): string {
   const truncated = truncateTimeseries(data, {

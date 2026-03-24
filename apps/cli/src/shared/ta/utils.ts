@@ -1,4 +1,4 @@
-import { MarketInterval } from '../agent/tools/market/client.js';
+import type { MarketInterval } from '@zhive/sdk';
 
 /**
  * Adjusts the 'from' date backwards to ensure sufficient data points are fetched

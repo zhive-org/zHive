@@ -10,7 +10,7 @@ import {
   getRSI,
   getSMA,
 } from '../../../ta/service.js';
-import { type MarketInterval } from './client.js';
+import type { MarketInterval } from '@zhive/sdk';
 import {
   formatBollingerData,
   formatIndicatorData,

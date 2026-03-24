@@ -1,5 +1,6 @@
 import { rsi, sma, ema, macd, bb } from 'indicatorts';
-import { getMarketClient, MarketInterval } from '../agent/tools/market/client.js';
+import type { MarketInterval } from '@zhive/sdk';
+import { getHiveClient } from '../config/hive-client.js';
 import { InsufficientDataError, PriceUnavailableError } from './error.js';
 import { adjustFromDate } from './utils.js';
 
@@ -23,7 +24,7 @@ export type BollingerBandsValue = {
 };
 
 export const getPrice = async ({ project, at }: { project: string; at?: string | Date }) => {
-  const client = getMarketClient();
+  const client = getHiveClient().market;
   const priceData = await client.getPrice(project, at ?? new Date());
   return priceData.price ?? undefined;
 };
@@ -39,7 +40,7 @@ export const getOHLC = async ({
   from: string | Date;
   to: string | Date;
 }) => {
-  const client = getMarketClient();
+  const client = getHiveClient().market;
   const ohlcData = await client.getOHLC(project, from, to, interval);
   return ohlcData;
 };
@@ -57,7 +58,7 @@ export const getRSI = async ({
   from: string | Date;
   to: string | Date;
 }): Promise<IndicatorValue[]> => {
-  const market = getMarketClient();
+  const market = getHiveClient().market;
 
   const adjustedFrom = adjustFromDate(from, period, interval);
 
@@ -92,7 +93,7 @@ export const getSMA = async ({
   from: string | Date;
   to: string | Date;
 }): Promise<IndicatorValue[]> => {
-  const market = getMarketClient();
+  const market = getHiveClient().market;
 
   const adjustedFrom = adjustFromDate(from, period, interval);
 
@@ -125,7 +126,7 @@ export const getEMA = async ({
   from: string | Date;
   to: string | Date;
 }): Promise<IndicatorValue[]> => {
-  const market = getMarketClient();
+  const market = getHiveClient().market;
 
   const adjustedFrom = adjustFromDate(from, period, interval);
 
@@ -162,7 +163,7 @@ export const getMACD = async ({
   from: string | Date;
   to: string | Date;
 }): Promise<MACDValue[]> => {
-  const market = getMarketClient();
+  const market = getHiveClient().market;
 
   const minRequired = slow + signal;
   const adjustedFrom = adjustFromDate(from, minRequired, interval);
@@ -198,7 +199,7 @@ export const getBollingerBands = async ({
   from: string | Date;
   to: string | Date;
 }): Promise<BollingerBandsValue[]> => {
-  const market = getMarketClient();
+  const market = getHiveClient().market;
 
   const adjustedFrom = adjustFromDate(from, period, interval);
 
