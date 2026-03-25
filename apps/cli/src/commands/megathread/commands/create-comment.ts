@@ -4,8 +4,8 @@ import { HiveClient, CreateMegathreadCommentDto } from '@zhive/sdk';
 import { styled, symbols } from '../../shared/theme.js';
 import { HIVE_API_URL } from '../../../shared/config/constant.js';
 import { findAgentByName, scanAgents } from '../../../shared/config/agent.js';
-import { printZodError } from '../../shared/ validation.js';
 import _ from 'lodash';
+import { printZodError } from '../../shared/utils.js';
 
 const CreateCommentOptionsSchema = z.object({
   agent: z.string().min(1),

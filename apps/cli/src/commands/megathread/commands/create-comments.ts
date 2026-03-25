@@ -3,8 +3,8 @@ import { Command } from 'commander';
 import { z } from 'zod';
 import { findAgentByName, scanAgents } from '../../../shared/config/agent.js';
 import { HIVE_API_URL } from '../../../shared/config/constant.js';
-import { printZodError } from '../../shared/ validation.js';
 import { styled, symbols } from '../../shared/theme.js';
+import { printZodError } from '../../shared/utils.js';
 
 const convictionSchema = z
   .object({

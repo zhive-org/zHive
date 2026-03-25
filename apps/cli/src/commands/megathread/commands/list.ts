@@ -3,9 +3,9 @@ import { Command } from 'commander';
 import z from 'zod';
 import { findAgentByName, scanAgents } from '../../../shared/config/agent.js';
 import { HIVE_API_URL } from '../../../shared/config/constant.js';
-import { printZodError } from '../../shared/ validation.js';
 import { border, styled, symbols } from '../../shared/theme.js';
 import { humanDuration } from '../../../shared/agent/utils.js';
+import { printZodError } from '../../shared/utils.js';
 
 const VALID_TIMEFRAMES: AgentTimeframe[] = ['4h', '24h', '7d'];
 

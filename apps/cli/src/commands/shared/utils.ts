@@ -1,3 +1,4 @@
+import z from 'zod';
 import { scanAgents } from '../../shared/config/agent.js';
 import { styled, symbols } from './theme.js';
 
@@ -15,4 +16,9 @@ export const printAgentNotFoundHelper = async (agentName: string) => {
       ),
     );
   }
+};
+
+export const printZodError = (result: z.ZodSafeParseError<any>) => {
+  const errors = result.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+  console.error(styled.red(`${symbols.cross} Validation error: ${errors}`));
 };
