@@ -95,7 +95,7 @@ describe('ta execute command', () => {
       const { output } = mockedConsole;
 
       const parsed = JSON.parse(output.join('')) as { [key: string]: any[] };
-      const plotKeys = Object.keys(output);
+      const plotKeys = Object.keys(parsed);
       expect(plotKeys.length).toBeGreaterThanOrEqual(1);
       // Each plot should have exactly 5 values (returnCandleCount)
       for (const values of Object.values(parsed)) {
