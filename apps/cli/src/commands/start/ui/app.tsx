@@ -37,8 +37,7 @@ export function App(): React.ReactElement {
     statsUpdatedAt,
   } = useAgent();
 
-  const { input, chatActivity, chatBuffer, chatStreaming, handleChatSubmit, setInput } =
-    useChat(agentName);
+  const { input, chatActivity, chatBuffer, chatStreaming, handleChatSubmit, setInput } = useChat();
 
   // When stdin is not a TTY (piped by hive-cli start), skip interactive input
   const isInteractive = process.stdin.isTTY === true;

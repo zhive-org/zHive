@@ -1,5 +1,6 @@
-import { ToolLoopAgent, type SystemModelMessage, type Tool } from 'ai';
-import { useCallback, useRef, useState } from 'react';
+import * as ai from 'ai';
+import { type SystemModelMessage, type Tool } from 'ai';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { extractAndSaveMemory } from '../../../shared/agent/analysis.js';
 import { buildChatPrompt, type ChatMessage } from '../../../shared/agent/prompts/chat-prompt.js';
 import { editSectionTool } from '../../../shared/agent/tools/edit-section.js';
@@ -11,6 +12,10 @@ import { predictionSlashCommand } from '../commands/prediction.js';
 import { skillsSlashCommand } from '../commands/skills.js';
 import { SLASH_COMMANDS } from '../services/command-registry.js';
 import { ChatActivityItem } from './types.js';
+import { wrapAISDK } from 'langsmith/experimental/vercel';
+import { useAgentRuntime } from './useAgentRuntime.js';
+
+const { ToolLoopAgent } = wrapAISDK(ai);
 
 export interface UseChatState {
   chatActivity: ChatActivityItem[];
@@ -24,7 +29,8 @@ export interface UseChatActions {
   handleChatSubmit: (message: string) => Promise<void>;
 }
 
-export function useChat(agentName: string): UseChatState & UseChatActions {
+export function useChat(): UseChatState & UseChatActions {
+  const { runtime, reloadRuntime } = useAgentRuntime();
   const [chatActivity, setChatActivity] = useState<ChatActivityItem[]>([]);
   const [input, setInput] = useState('');
   const [chatStreaming, setChatStreaming] = useState(false);
@@ -35,13 +41,8 @@ export function useChat(agentName: string): UseChatState & UseChatActions {
   const chatCountSinceExtractRef = useRef(0);
   const extractingRef = useRef(false);
   const recentPredictionsRef = useRef<string[]>([]);
-  const soulContentRef = useRef<string>('');
-  const strategyContentRef = useRef<string>('');
-  const skillToolsRef = useRef<Record<string, Tool>>({});
-  const skillMetadataRef = useRef<string>('');
 
   // ─── Activity helpers ───────────────────────────────
-
   const addChatActivity = useCallback((item: Omit<ChatActivityItem, 'timestamp'>) => {
     setChatActivity((prev) => {
       const updated = [...prev, { ...item, timestamp: new Date() }];
@@ -57,6 +58,10 @@ export function useChat(agentName: string): UseChatState & UseChatActions {
 
   const handleChatSubmit = useCallback(
     async (message: string) => {
+      if (!runtime) {
+        return;
+      }
+
       if (!message.trim() || chatStreaming) {
         return;
       }
@@ -66,11 +71,10 @@ export function useChat(agentName: string): UseChatState & UseChatActions {
         const trimmedMessage = message.trim().toLowerCase();
         const parts = trimmedMessage.split(/\s+/);
         const baseCommand = parts[0];
-        const commandArg = parts[1];
 
         const commandHandlers: Record<string, () => void | Promise<void>> = {
           '/skills': async () => {
-            await skillsSlashCommand(agentName, {
+            await skillsSlashCommand(runtime.config.name, {
               onSuccess: (output: string) => {
                 addChatActivity({ type: 'chat-agent', text: output });
               },
@@ -97,7 +101,7 @@ export function useChat(agentName: string): UseChatState & UseChatActions {
             addChatActivity({ type: 'chat-agent', text: memoryOutput });
           },
           '/prediction': async () => {
-            await predictionSlashCommand(agentName, {
+            await predictionSlashCommand(runtime.config.name, {
               onFetchStart: () => {
                 addChatActivity({
                   type: 'chat-agent',
@@ -153,8 +157,8 @@ export function useChat(agentName: string): UseChatState & UseChatActions {
 
       try {
         const { system, prompt } = buildChatPrompt(
-          soulContentRef.current,
-          strategyContentRef.current,
+          runtime.config.soulContent,
+          runtime.config.strategyContent,
           {
             recentPredictions: recentPredictionsRef.current,
             sessionMessages: sessionMessagesRef.current.slice(-20),
@@ -177,7 +181,7 @@ export function useChat(agentName: string): UseChatState & UseChatActions {
           tools: {
             editSection: editSectionTool,
             fetchRules: fetchRulesTool,
-            ...skillToolsRef.current,
+            ...runtime.tools,
           },
           maxOutputTokens: 4096,
         });
@@ -189,9 +193,7 @@ export function useChat(agentName: string): UseChatState & UseChatActions {
                 const output = String(toolResult.output);
                 // Only reload if update was successful
                 if (output.startsWith('Updated')) {
-                  const config = await loadAgentConfig();
-                  soulContentRef.current = config.soulContent;
-                  strategyContentRef.current = config.strategyContent;
+                  await reloadRuntime();
                 }
               }
             }
@@ -252,7 +254,15 @@ export function useChat(agentName: string): UseChatState & UseChatActions {
         setChatStreaming(false);
       }
     },
-    [chatStreaming, addChatActivity, agentName],
+    [
+      chatStreaming,
+      addChatActivity,
+      reloadRuntime,
+      runtime?.config.name,
+      runtime?.tools,
+      runtime?.config.soulContent,
+      runtime?.config.strategyContent,
+    ],
   );
 
   return {
