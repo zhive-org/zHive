@@ -7,6 +7,7 @@ import { colors, symbols } from '../../../shared/theme.js';
 import { HIVE_API_URL } from '../../../../shared/config/constant.js';
 import { agentName as validateAgentName, required, compose, maxLength } from '../../validation.js';
 import { BIO_EXAMPLES } from '../../presets/index.js';
+import { useWizard } from '../wizard-context.js';
 
 const ADJECTIVES = [
   'royal',
@@ -119,27 +120,16 @@ function generateRandomName(): string {
   return `${adjective}-${noun}-${number}`;
 }
 
-export interface AgentIdentityResult {
-  name: string;
-  bio: string;
-  avatarUrl: string;
-}
-
-interface AgentIdentityStepProps {
-  initialValues?: Partial<AgentIdentityResult>;
-  onComplete: (result: AgentIdentityResult) => void;
-}
-
 type SubStep = 'name' | 'bio' | 'avatar';
 
-export function AgentIdentityStep({
-  initialValues,
-  onComplete,
-}: AgentIdentityStepProps): React.ReactElement {
-  const [subStep, setSubStep] = useState<SubStep>(initialValues?.name ? 'bio' : 'name');
-  const [name, setName] = useState(initialValues?.name ?? '');
-  const [bio, setBio] = useState(initialValues?.bio ?? '');
-  const [avatarUrl, setAvatarUrl] = useState(initialValues?.avatarUrl ?? '');
+export function AgentIdentityStep(): React.ReactElement {
+  const { state, dispatch } = useWizard();
+  const { identity } = state;
+
+  const [subStep, setSubStep] = useState<SubStep>(identity.name ? 'bio' : 'name');
+  const [name, setName] = useState(identity.name);
+  const [bio, setBio] = useState(identity.bio);
+  const [avatarUrl, setAvatarUrl] = useState(identity.avatarUrl);
   const [checking, setChecking] = useState(false);
   const [nameError, setNameError] = useState('');
   const placeholder = useMemo(() => generateRandomName(), []);
@@ -178,9 +168,9 @@ export function AgentIdentityStep({
       const defaultUrl = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(name)}`;
       const finalUrl = value || defaultUrl;
       setAvatarUrl(finalUrl);
-      onComplete({ name, bio, avatarUrl: finalUrl });
+      dispatch({ type: 'SET_IDENTITY', payload: { name, bio, avatarUrl: finalUrl } });
     },
-    [name, bio, onComplete],
+    [name, bio, dispatch],
   );
 
   const handleSubStepBack = useCallback(() => {

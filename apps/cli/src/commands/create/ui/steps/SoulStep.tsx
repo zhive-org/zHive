@@ -1,45 +1,36 @@
 import React, { useCallback } from 'react';
-import type { AIProviderId } from '../../../../shared/config/ai-providers.js';
 import { StreamingGenerationStep } from './StreamingGenerationStep.js';
-import { streamSoul } from '../../generate-soul.js';
+import { generateSoul } from '../../generate-soul.js';
+import { useWizard } from '../wizard-context.js';
 
-interface SoulStepProps {
-  providerId: AIProviderId;
-  apiKey: string;
-  agentName: string;
-  bio: string;
-  initialContent?: string;
-  initialPrompt?: string;
-  onBack?: (draft?: string, prompt?: string) => void;
-  onComplete: (soulContent: string) => void;
-}
+export function SoulStep(): React.ReactElement {
+  const { state, dispatch } = useWizard();
+  const { apiConfig, identity, soul } = state;
 
-export function SoulStep({
-  providerId,
-  apiKey,
-  agentName,
-  bio,
-  initialContent,
-  initialPrompt,
-  onBack,
-  onComplete,
-}: SoulStepProps): React.ReactElement {
   const createStream = useCallback(
     (prompt: string, feedback?: string) =>
-      streamSoul(providerId, apiKey, agentName, bio, prompt, feedback),
-    [providerId, apiKey, agentName, bio],
+      generateSoul({
+        providerId: apiConfig.providerId!,
+        agent: { agentName: identity.name, bio: identity.bio },
+        apiKey: apiConfig.apiKey,
+        feedback,
+        initialPrompt: prompt,
+      }),
+    [apiConfig.providerId, apiConfig.apiKey, identity.name, identity.bio],
   );
 
   return (
     <StreamingGenerationStep
       title="SOUL.md"
-      initialContent={initialContent}
-      initialPrompt={initialPrompt}
+      initialContent={soul.content || soul.draft || undefined}
+      initialPrompt={soul.prompt || undefined}
       promptLabel="Describe your agent's personality, voice, and conviction style"
       promptPlaceholder="e.g. stoic realist with dry wit, speaks in short punchy sentences, high conviction trader"
       createStream={createStream}
-      onBack={onBack}
-      onComplete={onComplete}
+      onBack={(draft, prompt) =>
+        dispatch({ type: 'SAVE_SOUL_DRAFT', payload: { draft, prompt } })
+      }
+      onComplete={(content) => dispatch({ type: 'SET_SOUL', content })}
     />
   );
 }

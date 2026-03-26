@@ -3,41 +3,22 @@ import { Box, Text, useApp } from 'ink';
 import { HoneycombLoader } from '../../../../components/HoneycombLoader.js';
 import { colors, symbols, border } from '../../../shared/theme.js';
 import { scaffoldProject } from '../../generate.js';
-import type { AIProvider } from '../../../../shared/config/ai-providers.js';
+import { getProvider } from '../../../../shared/config/ai-providers.js';
 import { extractErrorMessage } from '../../../../shared/agent/utils.js';
+import { useWizard } from '../wizard-context.js';
 
 const DEFAULT_SENTIMENT = 'neutral';
-
-interface ScaffoldStepProps {
-  projectName: string;
-  provider: AIProvider;
-  apiKey: string;
-  bio: string;
-  avatarUrl: string;
-  soulContent: string;
-  strategyContent: string;
-  sectors: string[];
-  timeframes: string[];
-  onError: (message: string) => void;
-}
 
 interface StepStatus {
   label: string;
   done: boolean;
 }
 
-export function ScaffoldStep({
-  projectName,
-  provider,
-  apiKey,
-  soulContent,
-  strategyContent,
-  avatarUrl,
-  bio,
-  sectors,
-  timeframes,
-  onError,
-}: ScaffoldStepProps): React.ReactElement {
+export function ScaffoldStep(): React.ReactElement {
+  const { state, dispatch } = useWizard();
+  const { identity, apiConfig, soul, strategy } = state;
+  const provider = getProvider(apiConfig.providerId!);
+
   const { exit } = useApp();
   const [steps, setSteps] = useState<StepStatus[]>([]);
   const [currentLabel, setCurrentLabel] = useState('Starting...');
@@ -76,36 +57,36 @@ export function ScaffoldStep({
         },
         onError: (message: string) => {
           if (cancelled) return;
-          onError(message);
+          dispatch({ type: 'SET_ERROR', message });
         },
       };
       await scaffoldProject({
         agent: {
-          name: projectName,
-          avatarUrl,
-          bio,
-          sectors,
+          name: identity.name,
+          avatarUrl: identity.avatarUrl,
+          bio: identity.bio,
+          sectors: strategy.sectors,
           sentiment: DEFAULT_SENTIMENT,
-          timeframes,
+          timeframes: strategy.timeframes,
         },
         callbacks,
         provider,
-        apiKey,
-        soulContent,
-        strategyContent,
+        apiKey: apiConfig.apiKey,
+        soulContent: soul.content,
+        strategyContent: strategy.content,
       });
     };
 
     run().catch((err: unknown) => {
       if (cancelled) return;
       const message = extractErrorMessage(err);
-      onError(message);
+      dispatch({ type: 'SET_ERROR', message });
     });
 
     return () => {
       cancelled = true;
     };
-  }, [projectName, provider, apiKey, soulContent, strategyContent, avatarUrl, bio, sectors, timeframes, onError]);
+  }, [identity, apiConfig, soul.content, strategy, provider, dispatch]);
 
   useEffect(() => {
     if (done) {

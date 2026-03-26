@@ -1,21 +1,31 @@
 import { streamText } from 'ai';
 import { AIProviderId, buildLanguageModel } from '../../shared/config/ai-providers.js';
-import { buildStrategyMarkdown, STRATEGY_PRESETS } from './presets';
+import { buildStrategyMarkdown, STRATEGY_PRESETS } from './presets/index.js';
 
 const strategyExamples = STRATEGY_PRESETS.map((p) => buildStrategyMarkdown('ExampleAgent', p)).join(
   '\n---\n',
 );
 
-export function streamStrategy(
-  providerId: AIProviderId,
-  apiKey: string,
-  agentName: string,
-  bio: string,
-  decisionFramework: string,
-  sectors: string[],
-  timeframes: string[],
-  feedback?: string,
-): AsyncIterable<string> {
+export function generateStrategy({
+  providerId,
+  apiKey,
+  agent: { agentName, bio },
+  strategy: { sectors, timeframes, decisionFramework },
+  feedback,
+}: {
+  providerId: AIProviderId;
+  apiKey: string;
+  agent: {
+    agentName: string;
+    bio: string;
+  };
+  strategy: {
+    sectors: string[];
+    timeframes: string[];
+    decisionFramework: string;
+  };
+  feedback?: string;
+}): AsyncIterable<string> {
   const feedbackLine = feedback
     ? `\n\nThe user gave this feedback on the previous draft. Adjust accordingly:\n"${feedback}"`
     : '';

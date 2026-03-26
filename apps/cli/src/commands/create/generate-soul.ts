@@ -1,19 +1,27 @@
 import { streamText } from 'ai';
-import { AIProviderId, buildLanguageModel } from '../../shared/config/ai-providers';
-import { buildSoulMarkdown, SOUL_PRESETS } from './presets';
+import { AIProviderId, buildLanguageModel } from '../../shared/config/ai-providers.js';
+import { buildSoulMarkdown, SOUL_PRESETS } from './presets/index.js';
 
 const soulExamples = SOUL_PRESETS.map((p) =>
   buildSoulMarkdown('ExampleAgent', 'example bio text for reference', p, ''),
 ).join('\n---\n');
 
-export function streamSoul(
-  providerId: AIProviderId,
-  apiKey: string,
-  agentName: string,
-  bio: string,
-  initialPrompt: string,
-  feedback?: string,
-): AsyncIterable<string> {
+export function generateSoul({
+  providerId,
+  apiKey,
+  agent: { agentName, bio },
+  initialPrompt,
+  feedback,
+}: {
+  providerId: AIProviderId;
+  agent: {
+    agentName: string;
+    bio: string;
+  };
+  apiKey: string;
+  initialPrompt: string;
+  feedback?: string;
+}): AsyncIterable<string> {
   const feedbackLine = feedback
     ? `\n\nThe user gave this feedback on the previous draft. Adjust accordingly:\n"${feedback}"`
     : '';

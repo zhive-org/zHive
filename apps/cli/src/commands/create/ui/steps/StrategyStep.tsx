@@ -1,12 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Text } from 'ink';
-import type { AIProviderId } from '../../../../shared/config/ai-providers.js';
 import type { MultiSelectItem } from '../../../../components/MultiSelectPrompt.js';
 import { MultiSelectPrompt } from '../../../../components/MultiSelectPrompt.js';
 import { StreamingGenerationStep } from './StreamingGenerationStep.js';
-import { streamStrategy } from '../../generate-strategy.js';
+import { generateStrategy } from '../../generate-strategy.js';
 import { SECTOR_OPTIONS, TIMEFRAME_OPTIONS, DEFAULT_SECTOR_VALUES } from '../../presets/options.js';
 import { colors, symbols } from '../../../shared/theme.js';
+import { useWizard } from '../wizard-context.js';
 
 export interface StrategyStepResult {
   strategyContent: string;
@@ -14,98 +14,97 @@ export interface StrategyStepResult {
   timeframes: string[];
 }
 
-interface StrategyStepProps {
-  providerId: AIProviderId;
-  apiKey: string;
-  agentName: string;
-  bio: string;
-  initialContent?: string;
-  initialPrompt?: string;
-  initialSectors?: string[];
-  initialTimeframes?: string[];
-  onBack?: (draft?: string, prompt?: string) => void;
-  onComplete: (result: StrategyStepResult) => void;
-}
-
 type SubStep = 'sectors' | 'timeframes' | 'generate';
 
 const ALL_TIMEFRAME_VALUES = new Set(TIMEFRAME_OPTIONS.map((t) => t.value));
 
-export function StrategyStep({
-  providerId,
-  apiKey,
-  agentName,
-  bio,
-  initialContent,
-  initialPrompt,
-  initialSectors,
-  initialTimeframes,
-  onBack,
-  onComplete,
-}: StrategyStepProps): React.ReactElement {
-  const [subStep, setSubStep] = useState<SubStep>('sectors');
-  const [sectors, setSectors] = useState<string[]>(initialSectors ?? []);
-  const [timeframes, setTimeframes] = useState<string[]>(initialTimeframes ?? []);
+export function StrategyStep(): React.ReactElement {
+  const { state, dispatch } = useWizard();
+  const { apiConfig, identity, strategy } = state;
 
-  const handleSectorsSubmit = useCallback((selected: MultiSelectItem[]) => {
-    setSectors(selected.map((s) => s.value));
-    setSubStep('timeframes');
-  }, []);
+  const hasSectors = strategy.sectors.length > 0;
+  const hasTimeframes = strategy.timeframes.length > 0;
 
-  const handleTimeframesSubmit = useCallback((selected: MultiSelectItem[]) => {
-    setTimeframes(selected.map((t) => t.value));
-    setSubStep('generate');
-  }, []);
+  const [subStep, setSubStep] = useState<SubStep>(
+    hasSectors && hasTimeframes ? 'generate' : hasSectors ? 'timeframes' : 'sectors',
+  );
+
+  const handleSectorsSubmit = useCallback(
+    (selected: MultiSelectItem[]) => {
+      dispatch({ type: 'UPDATE_STRATEGY', payload: { sectors: selected.map((s) => s.value) } });
+      setSubStep('timeframes');
+    },
+    [dispatch],
+  );
+
+  const handleTimeframesSubmit = useCallback(
+    (selected: MultiSelectItem[]) => {
+      dispatch({ type: 'UPDATE_STRATEGY', payload: { timeframes: selected.map((t) => t.value) } });
+      setSubStep('generate');
+    },
+    [dispatch],
+  );
+
+  const handleComplete = useCallback(
+    (strategyContent: string) => {
+      dispatch({
+        type: 'SET_STRATEGY',
+        payload: {
+          content: strategyContent,
+          draft: '',
+          prompt: '',
+          sectors: strategy.sectors,
+          timeframes: strategy.timeframes,
+        },
+      });
+    },
+    [dispatch, strategy.sectors, strategy.timeframes],
+  );
 
   const handleGenerateBack = useCallback(
     (draft?: string, prompt?: string) => {
-      if (draft && initialContent === undefined) {
-        // preserve draft only if we didn't already have content
-      }
-      if (prompt && initialPrompt === undefined) {
-        // same for prompt
-      }
+      if (draft) dispatch({ type: 'UPDATE_STRATEGY', payload: { draft } });
+      if (prompt) dispatch({ type: 'UPDATE_STRATEGY', payload: { prompt } });
       setSubStep('timeframes');
     },
-    [initialContent, initialPrompt],
-  );
-
-  const handleGenerateComplete = useCallback(
-    (strategyContent: string) => {
-      onComplete({ strategyContent, sectors, timeframes });
-    },
-    [onComplete, sectors, timeframes],
+    [dispatch],
   );
 
   const createStream = useCallback(
     (prompt: string, feedback?: string) =>
-      streamStrategy(providerId, apiKey, agentName, bio, prompt, sectors, timeframes, feedback),
-    [providerId, apiKey, agentName, bio, sectors, timeframes],
+      generateStrategy({
+        providerId: apiConfig.providerId!,
+        agent: {
+          agentName: identity.name,
+          bio: identity.bio,
+        },
+        apiKey: apiConfig.apiKey,
+        strategy: {
+          sectors: strategy.sectors,
+          timeframes: strategy.timeframes,
+          decisionFramework: prompt,
+        },
+        feedback,
+      }),
+    [apiConfig.providerId, apiConfig.apiKey, identity.name, identity.bio, strategy.sectors, strategy.timeframes],
   );
 
-  const defaultSectors = initialSectors
-    ? new Set(initialSectors)
-    : DEFAULT_SECTOR_VALUES;
-
-  const defaultTimeframes = initialTimeframes
-    ? new Set(initialTimeframes)
-    : ALL_TIMEFRAME_VALUES;
+  const defaultSectors = strategy.sectors.length > 0 ? new Set(strategy.sectors) : DEFAULT_SECTOR_VALUES;
+  const defaultTimeframes = strategy.timeframes.length > 0 ? new Set(strategy.timeframes) : ALL_TIMEFRAME_VALUES;
 
   return (
     <Box flexDirection="column">
       {/* Summary card */}
-      {(sectors.length > 0 || timeframes.length > 0) && (
+      {(strategy.sectors.length > 0 || strategy.timeframes.length > 0) && (
         <Box flexDirection="column" marginLeft={2} marginBottom={1}>
-          {sectors.length > 0 && (
+          {strategy.sectors.length > 0 && (
             <Text color={colors.gray}>
-              {symbols.check} Sectors:{' '}
-              <Text color={colors.honey}>{sectors.join(', ')}</Text>
+              {symbols.check} Sectors: <Text color={colors.honey}>{strategy.sectors.join(', ')}</Text>
             </Text>
           )}
-          {timeframes.length > 0 && (
+          {strategy.timeframes.length > 0 && (
             <Text color={colors.gray}>
-              {symbols.check} Timeframes:{' '}
-              <Text color={colors.honey}>{timeframes.join(', ')}</Text>
+              {symbols.check} Timeframes: <Text color={colors.honey}>{strategy.timeframes.join(', ')}</Text>
             </Text>
           )}
         </Box>
@@ -117,7 +116,12 @@ export function StrategyStep({
           items={SECTOR_OPTIONS}
           defaultSelected={defaultSectors}
           onSubmit={handleSectorsSubmit}
-          onBack={onBack ? () => onBack() : undefined}
+          onBack={() =>
+            dispatch({
+              type: 'SAVE_STRATEGY_DRAFT',
+              payload: { draft: strategy.draft, prompt: strategy.prompt },
+            })
+          }
         />
       )}
 
@@ -134,13 +138,13 @@ export function StrategyStep({
       {subStep === 'generate' && (
         <StreamingGenerationStep
           title="STRATEGY.md"
-          initialContent={initialContent}
-          initialPrompt={initialPrompt}
+          initialContent={strategy.content || strategy.draft || undefined}
+          initialPrompt={strategy.prompt || undefined}
           promptLabel="Describe your agent's decision framework and trading approach"
           promptPlaceholder="e.g. technical analysis focused, uses RSI and MACD, conservative with short timeframes"
           createStream={createStream}
           onBack={handleGenerateBack}
-          onComplete={handleGenerateComplete}
+          onComplete={handleComplete}
         />
       )}
     </Box>

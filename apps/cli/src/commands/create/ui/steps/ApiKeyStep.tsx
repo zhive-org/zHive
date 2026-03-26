@@ -8,17 +8,7 @@ import { AI_PROVIDERS, type AIProviderId } from '../../../../shared/config/ai-pr
 import { validateApiKey } from '../../validate-api-key.js';
 import { HiveConfig, readConfig, writeConfig } from '../../../../shared/config/config.js';
 import { apiKey as validateApiKeyFormat } from '../../validation.js';
-
-export interface ApiKeyResult {
-  providerId: AIProviderId;
-  apiKey: string;
-}
-
-interface ApiKeyStepProps {
-  initialResult?: ApiKeyResult;
-  onBack?: () => void;
-  onComplete: (result: ApiKeyResult) => void;
-}
+import { useWizard } from '../wizard-context.js';
 
 type Phase =
   | 'check-saved'
@@ -37,17 +27,20 @@ function maskKey(key: string): string {
   return visible;
 }
 
-export function ApiKeyStep({
-  initialResult,
-  onBack,
-  onComplete,
-}: ApiKeyStepProps): React.ReactElement {
-  const [phase, setPhase] = useState<Phase>(initialResult ? 'use-current' : 'check-saved');
+export function ApiKeyStep(): React.ReactElement {
+  const { state, dispatch } = useWizard();
+  const { apiConfig } = state;
+  const hasExistingKey = apiConfig.providerId !== null && apiConfig.apiKey !== '';
+
+  const [phase, setPhase] = useState<Phase>(hasExistingKey ? 'use-current' : 'check-saved');
   const [savedConfig, setSavedConfig] = useState<HiveConfig | null>(null);
   const [providerId, setProviderId] = useState<AIProviderId | null>(null);
   const [error, setError] = useState('');
 
+  const goBack = () => dispatch({ type: 'GO_BACK' });
+
   useEffect(() => {
+    if (phase !== 'check-saved') return;
     const loadConfig = async (): Promise<void> => {
       const config = await readConfig();
       if (config) {
@@ -58,7 +51,7 @@ export function ApiKeyStep({
       }
     };
     void loadConfig();
-  }, []);
+  }, [phase]);
 
   const providerDescriptions: Record<string, string> = {
     'openrouter-free':
@@ -91,7 +84,7 @@ export function ApiKeyStep({
 
     if (result === true) {
       await writeConfig({ providerId: selectedProviderId, apiKey: key });
-      onComplete({ providerId: selectedProviderId, apiKey: key });
+      dispatch({ type: 'SET_API_CONFIG', payload: { providerId: selectedProviderId, apiKey: key } });
     } else {
       setError(result);
       setPhase('error');
@@ -103,7 +96,10 @@ export function ApiKeyStep({
       setPhase('validating');
       const result = await validateApiKey(savedConfig.providerId, savedConfig.apiKey);
       if (result === true) {
-        onComplete({ providerId: savedConfig.providerId, apiKey: savedConfig.apiKey });
+        dispatch({
+          type: 'SET_API_CONFIG',
+          payload: { providerId: savedConfig.providerId, apiKey: savedConfig.apiKey },
+        });
       } else {
         setError(`Saved key is no longer valid: ${result}`);
         setPhase('select-provider');
@@ -123,16 +119,16 @@ export function ApiKeyStep({
     <Box flexDirection="column">
       {phase === 'check-saved' && <Spinner label="Checking for saved API key..." />}
 
-      {phase === 'use-current' && initialResult && (
+      {phase === 'use-current' && hasExistingKey && (
         <Box flexDirection="column">
           <Box marginBottom={1} marginLeft={2}>
             <Text color={colors.gray}>
               {symbols.diamond} Current key:{' '}
               <Text color={colors.honey}>
-                {AI_PROVIDERS.find((p) => p.id === initialResult.providerId)?.label ??
-                  initialResult.providerId}
+                {AI_PROVIDERS.find((p) => p.id === apiConfig.providerId)?.label ??
+                  apiConfig.providerId}
               </Text>{' '}
-              <Text color={colors.grayDim}>({maskKey(initialResult.apiKey)})</Text>
+              <Text color={colors.grayDim}>({maskKey(apiConfig.apiKey)})</Text>
             </Text>
           </Box>
           <SelectPrompt
@@ -143,12 +139,15 @@ export function ApiKeyStep({
             ]}
             onSelect={(item) => {
               if (item.value === 'yes') {
-                onComplete(initialResult);
+                dispatch({
+                  type: 'SET_API_CONFIG',
+                  payload: { providerId: apiConfig.providerId!, apiKey: apiConfig.apiKey },
+                });
               } else {
                 setPhase('select-provider');
               }
             }}
-            onBack={onBack}
+            onBack={goBack}
           />
         </Box>
       )}
@@ -170,7 +169,7 @@ export function ApiKeyStep({
             onSelect={(item) => {
               void handleUseSaved(item);
             }}
-            onBack={onBack}
+            onBack={goBack}
           />
         </Box>
       )}
@@ -188,7 +187,7 @@ export function ApiKeyStep({
             label="Select your AI provider"
             items={providerItems}
             onSelect={handleProviderSelect}
-            onBack={onBack}
+            onBack={goBack}
           />
         </Box>
       )}
