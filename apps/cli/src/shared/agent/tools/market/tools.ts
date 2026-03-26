@@ -274,9 +274,9 @@ export const getBollingerTool = tool({
 
 export const getPineScriptExecuteTool = tool({
   description:
-    'Execute a TradingView Pine Script against OHLC market data for a project and return indicator values',
+    'Execute a TradingView Pine Script v5/v6 against OHLC market data for a project and return indicator values',
   inputSchema: z.object({
-    script: z.string().describe(`Inline script source code`),
+    script: z.string().describe(`Inline pinescript v5 or v6 source code`),
     project: z.string().describe('Project slug for market data i.e. bitcoin '),
     timeframe: z.enum(['1h', '24h']).describe('Candle interval: 1h (hourly) or 24h (daily)'),
     fetchCandleCount: z
