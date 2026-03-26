@@ -58,6 +58,7 @@ export function ScaffoldStep(): React.ReactElement {
         onError: (message: string) => {
           if (cancelled) return;
           dispatch({ type: 'SET_ERROR', message });
+          exit();
         },
       };
       await scaffoldProject({
@@ -81,6 +82,7 @@ export function ScaffoldStep(): React.ReactElement {
       if (cancelled) return;
       const message = extractErrorMessage(err);
       dispatch({ type: 'SET_ERROR', message });
+      exit();
     });
 
     return () => {
