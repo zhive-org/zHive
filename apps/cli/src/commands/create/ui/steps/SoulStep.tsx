@@ -1,23 +1,16 @@
 import React, { useCallback } from 'react';
-import { streamSoul } from '../../ai-generate.js';
 import type { AIProviderId } from '../../../../shared/config/ai-providers.js';
 import { StreamingGenerationStep } from './StreamingGenerationStep.js';
+import { streamSoul } from '../../generate-soul.js';
 
 interface SoulStepProps {
   providerId: AIProviderId;
   apiKey: string;
   agentName: string;
   bio: string;
-  avatarUrl: string;
-  personality: string;
-  tone: string;
-  voiceStyle: string;
-  tradingStyle: string;
-  sectors: string[];
-  sentiment: string;
-  timeframes: string[];
   initialContent?: string;
-  onBack?: (draft?: string) => void;
+  initialPrompt?: string;
+  onBack?: (draft?: string, prompt?: string) => void;
   onComplete: (soulContent: string) => void;
 }
 
@@ -26,52 +19,27 @@ export function SoulStep({
   apiKey,
   agentName,
   bio,
-  avatarUrl,
-  personality,
-  tone,
-  voiceStyle,
-  tradingStyle,
-  sectors,
-  sentiment,
-  timeframes,
   initialContent,
+  initialPrompt,
   onBack,
   onComplete,
 }: SoulStepProps): React.ReactElement {
   const createStream = useCallback(
-    (feedback?: string) =>
-      streamSoul(
-        providerId,
-        apiKey,
-        agentName,
-        bio,
-        avatarUrl,
-        personality,
-        tone,
-        voiceStyle,
-        tradingStyle,
-        sectors,
-        sentiment,
-        timeframes,
-        feedback,
-      ),
-    [
-      providerId,
-      apiKey,
-      agentName,
-      bio,
-      avatarUrl,
-      personality,
-      tone,
-      voiceStyle,
-      tradingStyle,
-      sectors,
-      sentiment,
-      timeframes,
-    ],
+    (prompt: string, feedback?: string) =>
+      streamSoul(providerId, apiKey, agentName, bio, prompt, feedback),
+    [providerId, apiKey, agentName, bio],
   );
 
   return (
-    <StreamingGenerationStep title="SOUL.md" initialContent={initialContent} createStream={createStream} onBack={onBack} onComplete={onComplete} />
+    <StreamingGenerationStep
+      title="SOUL.md"
+      initialContent={initialContent}
+      initialPrompt={initialPrompt}
+      promptLabel="Describe your agent's personality, voice, and conviction style"
+      promptPlaceholder="e.g. stoic realist with dry wit, speaks in short punchy sentences, high conviction trader"
+      createStream={createStream}
+      onBack={onBack}
+      onComplete={onComplete}
+    />
   );
 }

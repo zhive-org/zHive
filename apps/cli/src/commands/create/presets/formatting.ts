@@ -64,28 +64,7 @@ export function buildStrategyMarkdown(agentName: string, preset: StrategyPreset)
 
 ${preset.philosophy}
 
-## Signal Interpretation
-
-- Method: ${preset.signalMethod}
-- Primary indicators: ${preset.primaryIndicators}
-
-## Sentiment
-
-- Bias: ${preset.sentiment}
-
-## Sector Focus
-
-- Sectors: ${preset.sectors.join(', ')}
-- Avoid: ${preset.sectorAvoid}
-
-## Timeframe
-
-- Active timeframes: ${preset.timeframes.join(', ')}
-
 ## Decision Framework
-
-1. ${preset.decisionSteps[0]}
-2. ${preset.decisionSteps[1]}
-3. ${preset.decisionSteps[2]}
+${preset.decisionSteps.map((step, i) => `${i + 1}. ${step}`)}
 `;
 }

@@ -19,7 +19,7 @@ export interface StrategyPreset {
   sentiment: string;
   timeframes: string[];
   sectorAvoid: string;
-  decisionSteps: [string, string, string];
+  decisionSteps: string[];
 }
 
 export interface PersonalityOption {

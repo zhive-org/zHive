@@ -1,40 +1,25 @@
 import React, { useState, useCallback } from 'react';
-import { Box, Text, useApp } from 'ink';
+import { Box, Text } from 'ink';
 import { Header } from '../../../components/Header.js';
 import { StepIndicator } from '../../../components/StepIndicator.js';
 import { ApiKeyStep, type ApiKeyResult } from './steps/ApiKeyStep.js';
-import { NameStep } from './steps/NameStep.js';
-import { IdentityStep, type IdentityResult } from './steps/IdentityStep.js';
-import { AvatarStep } from './steps/AvatarStep.js';
+import { AgentIdentityStep, type AgentIdentityResult } from './steps/AgentIdentityStep.js';
 import { SoulStep } from './steps/SoulStep.js';
-import { StrategyStep } from './steps/StrategyStep.js';
+import { StrategyStep, type StrategyStepResult } from './steps/StrategyStep.js';
 import { ScaffoldStep } from './steps/ScaffoldStep.js';
-import { DoneStep } from './steps/DoneStep.js';
 import { colors, symbols } from '../../shared/theme.js';
 import { getProvider, type AIProvider } from '../../../shared/config/ai-providers.js';
 import type { AIProviderId } from '../../../shared/config/ai-providers.js';
 
-type Step = 'api-key' | 'name' | 'identity' | 'avatar' | 'soul' | 'strategy' | 'scaffold' | 'done';
+type Step = 'identity' | 'api-key' | 'soul' | 'strategy' | 'scaffold';
 
-const STEP_ORDER: Step[] = [
-  'name',
-  'identity',
-  'avatar',
-  'api-key',
-  'soul',
-  'strategy',
-  'scaffold',
-  'done',
-];
+const STEP_ORDER: Step[] = ['identity', 'api-key', 'soul', 'strategy', 'scaffold'];
 const STEP_LABELS: Record<Step, string> = {
-  'api-key': 'API Key',
-  name: 'Name',
   identity: 'Identity',
-  avatar: 'Avatar',
+  'api-key': 'API Key',
   soul: 'Soul',
   strategy: 'Strategy',
-  scaffold: 'Scaffold',
-  done: 'Done',
+  scaffold: 'Create',
 };
 
 const STEP_DEFS = STEP_ORDER.map((s) => ({ key: s, label: STEP_LABELS[s] }));
@@ -44,25 +29,20 @@ interface CreateAppProps {
 }
 
 export function CreateApp({ initialName }: CreateAppProps): React.ReactElement {
-  const { exit } = useApp();
-  const [step, setStep] = useState<Step>('name');
+  const [step, setStep] = useState<Step>('identity');
   const [providerId, setProviderId] = useState<AIProviderId | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [agentName, setAgentName] = useState(initialName ?? '');
   const [bio, setBio] = useState('');
-  const [personality, setPersonality] = useState('');
-  const [tone, setTone] = useState('');
-  const [voiceStyle, setVoiceStyle] = useState('');
-  const [tradingStyle, setTradingStyle] = useState('');
-  const [sectors, setSectors] = useState<string[]>([]);
-  const [sentiment, setSentiment] = useState('');
-  const [timeframes, setTimeframes] = useState<string[]>([]);
   const [avatarUrl, setAvatarUrl] = useState('');
   const [soulContent, setSoulContent] = useState('');
   const [soulDraft, setSoulDraft] = useState('');
+  const [soulPrompt, setSoulPrompt] = useState('');
   const [strategyContent, setStrategyContent] = useState('');
   const [strategyDraft, setStrategyDraft] = useState('');
-  const [resolvedProjectDir, setResolvedProjectDir] = useState('');
+  const [strategyPrompt, setStrategyPrompt] = useState('');
+  const [sectors, setSectors] = useState<string[]>([]);
+  const [timeframes, setTimeframes] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   const stepIndex = STEP_ORDER.indexOf(step);
@@ -76,45 +56,32 @@ export function CreateApp({ initialName }: CreateAppProps): React.ReactElement {
     }
   }, [step]);
 
+  const handleIdentity = useCallback((result: AgentIdentityResult) => {
+    setAgentName(result.name);
+    setBio(result.bio);
+    setAvatarUrl(result.avatarUrl);
+    setStep('api-key');
+  }, []);
+
   const handleApiKey = useCallback((result: ApiKeyResult) => {
     setProviderId(result.providerId);
     setApiKey(result.apiKey);
     setStep('soul');
   }, []);
 
-  const handleName = useCallback((name: string) => {
-    setAgentName(name);
-    setStep('identity');
-  }, []);
-
-  const handleIdentity = useCallback((result: IdentityResult) => {
-    setPersonality(result.personality);
-    setTone(result.tone);
-    setVoiceStyle(result.voiceStyle);
-    setTradingStyle(result.tradingStyle);
-    setSectors(result.sectors);
-    setSentiment(result.sentiment);
-    setTimeframes(result.timeframes);
-    setBio(result.bio);
-    setStep('avatar');
-  }, []);
-
-  const handleAvatar = useCallback((value: string) => {
-    setAvatarUrl(value);
-    setStep('api-key');
-  }, []);
-
   const goBackFromSoul = useCallback(
-    (draft?: string) => {
+    (draft?: string, prompt?: string) => {
       if (draft) setSoulDraft(draft);
+      if (prompt) setSoulPrompt(prompt);
       goBack();
     },
     [goBack],
   );
 
   const goBackFromStrategy = useCallback(
-    (draft?: string) => {
+    (draft?: string, prompt?: string) => {
       if (draft) setStrategyDraft(draft);
+      if (prompt) setStrategyPrompt(prompt);
       goBack();
     },
     [goBack],
@@ -126,29 +93,29 @@ export function CreateApp({ initialName }: CreateAppProps): React.ReactElement {
     setStep('strategy');
   }, []);
 
-  const handleStrategy = useCallback((content: string) => {
-    setStrategyContent(content);
+  const handleStrategy = useCallback((result: StrategyStepResult) => {
+    setStrategyContent(result.strategyContent);
+    setSectors(result.sectors);
+    setTimeframes(result.timeframes);
     setStrategyDraft('');
     setStep('scaffold');
   }, []);
 
-  const handleScaffoldComplete = useCallback((projectDir: string) => {
-    setResolvedProjectDir(projectDir);
-    setStep('done');
+  const handleScaffoldError = useCallback((message: string) => {
+    setError(message);
   }, []);
-
-  const handleScaffoldError = useCallback(
-    (message: string) => {
-      setError(message);
-      exit();
-    },
-    [exit],
-  );
 
   return (
     <Box flexDirection="column">
       <Header />
       <StepIndicator steps={STEP_DEFS} currentIndex={stepIndex} />
+
+      {step === 'identity' && (
+        <AgentIdentityStep
+          initialValues={agentName ? { name: agentName, bio, avatarUrl } : undefined}
+          onComplete={handleIdentity}
+        />
+      )}
 
       {step === 'api-key' && (
         <ApiKeyStep
@@ -158,45 +125,14 @@ export function CreateApp({ initialName }: CreateAppProps): React.ReactElement {
         />
       )}
 
-      {step === 'name' && <NameStep defaultValue={agentName} onComplete={handleName} />}
-
-      {step === 'identity' && (
-        <IdentityStep
-          agentName={agentName}
-          onBack={goBack}
-          initialValues={
-            bio
-              ? { personality, tone, voiceStyle, tradingStyle, sectors, sentiment, timeframes, bio }
-              : undefined
-          }
-          onComplete={handleIdentity}
-        />
-      )}
-
-      {step === 'avatar' && (
-        <AvatarStep
-          agentName={agentName}
-          defaultValue={avatarUrl}
-          onBack={goBack}
-          onComplete={handleAvatar}
-        />
-      )}
-
       {step === 'soul' && providerId && (
         <SoulStep
           providerId={providerId}
           apiKey={apiKey}
           agentName={agentName}
           bio={bio}
-          avatarUrl={avatarUrl}
-          personality={personality}
-          tone={tone}
-          voiceStyle={voiceStyle}
-          tradingStyle={tradingStyle}
-          sectors={sectors}
-          sentiment={sentiment}
-          timeframes={timeframes}
           initialContent={soulContent || soulDraft || undefined}
+          initialPrompt={soulPrompt || undefined}
           onBack={goBackFromSoul}
           onComplete={handleSoul}
         />
@@ -208,14 +144,10 @@ export function CreateApp({ initialName }: CreateAppProps): React.ReactElement {
           apiKey={apiKey}
           agentName={agentName}
           bio={bio}
-          personality={personality}
-          tone={tone}
-          voiceStyle={voiceStyle}
-          tradingStyle={tradingStyle}
-          sectors={sectors}
-          sentiment={sentiment}
-          timeframes={timeframes}
           initialContent={strategyContent || strategyDraft || undefined}
+          initialPrompt={strategyPrompt || undefined}
+          initialSectors={sectors.length > 0 ? sectors : undefined}
+          initialTimeframes={timeframes.length > 0 ? timeframes : undefined}
           onBack={goBackFromStrategy}
           onComplete={handleStrategy}
         />
@@ -227,18 +159,14 @@ export function CreateApp({ initialName }: CreateAppProps): React.ReactElement {
           provider={provider}
           apiKey={apiKey}
           bio={bio}
-          sectors={sectors}
-          timeframes={timeframes}
           avatarUrl={avatarUrl}
-          sentiment={sentiment}
           soulContent={soulContent}
           strategyContent={strategyContent}
-          onComplete={handleScaffoldComplete}
+          sectors={sectors}
+          timeframes={timeframes}
           onError={handleScaffoldError}
         />
       )}
-
-      {step === 'done' && <DoneStep projectDir={resolvedProjectDir} />}
 
       {error !== '' && (
         <Box marginTop={1} marginLeft={2}>

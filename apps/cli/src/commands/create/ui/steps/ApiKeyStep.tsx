@@ -7,7 +7,7 @@ import { colors, symbols } from '../../../shared/theme.js';
 import { AI_PROVIDERS, type AIProviderId } from '../../../../shared/config/ai-providers.js';
 import { validateApiKey } from '../../validate-api-key.js';
 import { HiveConfig, readConfig, writeConfig } from '../../../../shared/config/config.js';
-import { apiKey as validateApiKeyFormat } from '../validation.js';
+import { apiKey as validateApiKeyFormat } from '../../validation.js';
 
 export interface ApiKeyResult {
   providerId: AIProviderId;
@@ -20,7 +20,14 @@ interface ApiKeyStepProps {
   onComplete: (result: ApiKeyResult) => void;
 }
 
-type Phase = 'check-saved' | 'use-current' | 'use-saved' | 'select-provider' | 'enter-key' | 'validating' | 'error';
+type Phase =
+  | 'check-saved'
+  | 'use-current'
+  | 'use-saved'
+  | 'select-provider'
+  | 'enter-key'
+  | 'validating'
+  | 'error';
 
 function maskKey(key: string): string {
   if (key.length <= 8) {
@@ -30,7 +37,11 @@ function maskKey(key: string): string {
   return visible;
 }
 
-export function ApiKeyStep({ initialResult, onBack, onComplete }: ApiKeyStepProps): React.ReactElement {
+export function ApiKeyStep({
+  initialResult,
+  onBack,
+  onComplete,
+}: ApiKeyStepProps): React.ReactElement {
   const [phase, setPhase] = useState<Phase>(initialResult ? 'use-current' : 'check-saved');
   const [savedConfig, setSavedConfig] = useState<HiveConfig | null>(null);
   const [providerId, setProviderId] = useState<AIProviderId | null>(null);
@@ -118,7 +129,8 @@ export function ApiKeyStep({ initialResult, onBack, onComplete }: ApiKeyStepProp
             <Text color={colors.gray}>
               {symbols.diamond} Current key:{' '}
               <Text color={colors.honey}>
-                {AI_PROVIDERS.find((p) => p.id === initialResult.providerId)?.label ?? initialResult.providerId}
+                {AI_PROVIDERS.find((p) => p.id === initialResult.providerId)?.label ??
+                  initialResult.providerId}
               </Text>{' '}
               <Text color={colors.grayDim}>({maskKey(initialResult.apiKey)})</Text>
             </Text>

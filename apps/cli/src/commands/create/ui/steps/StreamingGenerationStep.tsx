@@ -5,30 +5,45 @@ import { TextPrompt } from '../../../../components/TextPrompt.js';
 import { CodeBlock } from '../../../../components/CodeBlock.js';
 import { Spinner } from '../../../../components/Spinner.js';
 import { colors, symbols } from '../../../shared/theme.js';
+import { required } from '../../validation.js';
 
 interface StreamingGenerationStepProps {
   title: string;
   initialContent?: string;
-  createStream: (feedback?: string) => AsyncIterable<string>;
-  onBack?: (draft?: string) => void;
+  initialPrompt?: string;
+  promptLabel: string;
+  promptPlaceholder: string;
+  createStream: (initialPrompt: string, feedback?: string) => AsyncIterable<string>;
+  onBack?: (draft?: string, prompt?: string) => void;
   onComplete: (content: string) => void;
 }
 
-type Phase = 'streaming' | 'review' | 'error';
+type Phase = 'prompt-input' | 'streaming' | 'review' | 'error';
 
 export function StreamingGenerationStep({
   title,
   initialContent,
+  initialPrompt: savedPrompt,
+  promptLabel,
+  promptPlaceholder,
   createStream,
   onBack,
   onComplete,
 }: StreamingGenerationStepProps): React.ReactElement {
-  const [phase, setPhase] = useState<Phase>(initialContent ? 'review' : 'streaming');
+  const [phase, setPhase] = useState<Phase>(initialContent ? 'review' : 'prompt-input');
+  const [prompt, setPrompt] = useState(savedPrompt ?? '');
   const [draft, setDraft] = useState(initialContent ?? '');
   const [errorMessage, setErrorMessage] = useState('');
   const [feedbackCount, setFeedbackCount] = useState(0);
-  const [currentStream, setCurrentStream] = useState<AsyncIterable<string> | null>(() =>
-    initialContent ? null : createStream(),
+  const [currentStream, setCurrentStream] = useState<AsyncIterable<string> | null>(null);
+
+  const handlePromptSubmit = useCallback(
+    (value: string) => {
+      setPrompt(value);
+      setPhase('streaming');
+      setCurrentStream(createStream(value));
+    },
+    [createStream],
   );
 
   const handleStreamComplete = useCallback((fullText: string) => {
@@ -56,9 +71,9 @@ export function StreamingGenerationStep({
     setPhase('streaming');
     setDraft('');
     setErrorMessage('');
-    const newStream = createStream();
+    const newStream = createStream(prompt);
     setCurrentStream(newStream);
-  }, [createStream]);
+  }, [createStream, prompt]);
 
   const handleFeedback = useCallback(
     (feedback: string) => {
@@ -66,14 +81,27 @@ export function StreamingGenerationStep({
       setPhase('streaming');
       setDraft('');
       setErrorMessage('');
-      const newStream = createStream(feedback);
+      const newStream = createStream(prompt, feedback);
       setCurrentStream(newStream);
     },
-    [createStream],
+    [createStream, prompt],
   );
 
   return (
     <Box flexDirection="column">
+      {phase === 'prompt-input' && (
+        <Box flexDirection="column">
+          <TextPrompt
+            label={promptLabel}
+            placeholder={promptPlaceholder}
+            defaultValue={prompt || undefined}
+            onBack={() => onBack?.(draft, prompt)}
+            onSubmit={handlePromptSubmit}
+            validate={required(title)}
+          />
+        </Box>
+      )}
+
       {phase === 'streaming' && currentStream && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
@@ -109,7 +137,12 @@ export function StreamingGenerationStep({
             </Text>
           </Box>
           <Box marginTop={1}>
-            <TextPrompt label="" placeholder="Enter to retry..." onSubmit={() => handleRetry()} onBack={onBack} />
+            <TextPrompt
+              label=""
+              placeholder="Enter to retry..."
+              onSubmit={() => handleRetry()}
+              onBack={() => onBack?.(draft, prompt)}
+            />
           </Box>
         </Box>
       )}
@@ -134,7 +167,7 @@ export function StreamingGenerationStep({
             <TextPrompt
               label=""
               placeholder="Enter to accept, or type feedback..."
-              onBack={() => onBack?.(draft)}
+              onBack={() => onBack?.(draft, prompt)}
               onSubmit={(val) => {
                 if (!val) {
                   handleAccept();
