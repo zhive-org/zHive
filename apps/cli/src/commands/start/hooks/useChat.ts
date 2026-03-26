@@ -223,6 +223,23 @@ export function useChat(): UseChatState & UseChatActions {
               response = '';
               break;
             }
+            case 'tool-result': {
+              let outputStr = '';
+              if (typeof part.output === 'string') {
+                outputStr = part.output;
+              } else if (typeof part.output === 'object') {
+                outputStr = JSON.stringify(part.output);
+              }
+
+              outputStr = outputStr.length > 50 ? `${outputStr.slice(0, 50)}...` : outputStr;
+              if (outputStr.length > 0) {
+                addChatActivity({
+                  type: 'tool-call',
+                  text: `Call ${part.toolName}: ${outputStr}`,
+                });
+              }
+              break;
+            }
             case 'error': {
               const errMsg = typeof part.error === 'string' ? part.error : String(part.error);
               addChatActivity({ type: 'chat-error', text: errMsg });

@@ -1,4 +1,9 @@
-export type ChatActivityType = 'chat-user' | 'chat-agent' | 'chat-error' | 'tool-summary';
+export type ChatActivityType =
+  | 'chat-user'
+  | 'chat-agent'
+  | 'chat-error'
+  | 'tool-summary'
+  | 'tool-call';
 
 export interface ChatActivityItem {
   type: ChatActivityType;

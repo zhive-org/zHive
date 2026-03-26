@@ -44,8 +44,8 @@ export function App(): React.ReactElement {
 
   const boxWidth = termWidth;
 
-  const agentPrefix = `${agentName} agent: `;
-  const visibleChatActivity = chatActivity.slice(-5);
+  const agentPrefix = `${agentName}:`;
+  const visibleChatActivity = chatActivity.slice(-15);
 
   const statsText =
     predictionCount > 0 ? ` ${border.horizontal.repeat(3)} ${predictionCount} predicted` : '';
@@ -216,11 +216,9 @@ export function App(): React.ReactElement {
                       </Text>
                     </Box>
                   )}
-                  {item.type === 'tool-summary' && (
-                    <Box marginLeft={agentPrefix.length}>
-                      <Text>
-                        {symbols.circle} {item.text}
-                      </Text>
+                  {(item.type === 'tool-summary' || item.type === 'tool-call') && (
+                    <Box>
+                      <Text>{item.text}</Text>
                     </Box>
                   )}
                 </Box>
