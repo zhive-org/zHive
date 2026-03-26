@@ -620,3 +620,13 @@ export interface MindshareSMAZScoreSignalsResponse {
   signals: MindshareSMAZScoreSignal[];
   next_cursor?: string;
 }
+
+export interface RewardDto {
+  id: string;
+  eventName: string;
+  name: string;
+  description?: string;
+  claimCode: string;
+  claimInstructions?: string;
+  expiresAt?: string | null;
+}
