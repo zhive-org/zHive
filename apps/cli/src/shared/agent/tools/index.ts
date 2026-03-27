@@ -1,9 +1,9 @@
 import * as path from 'node:path';
 import type { Tool, LanguageModel } from 'ai';
-import type { SkillDefinition } from '../skills/types.js';
-import { discoverSkills } from '../skills/skill-parser.js';
-import { marketTools } from './market/index.js';
-import { mindshareTools } from './mindshare/index.js';
+import type { SkillDefinition } from '../skills/types';
+import { discoverSkills } from '../skills/skill-parser';
+import { marketTools } from './market/index';
+import { mindshareTools } from './mindshare/index';
 import {
   createExecuteSkillTool,
   clearSubagentUsage,
@@ -11,10 +11,10 @@ import {
   type SubagentUsage,
   type SubagentConfig,
   type ExecuteSkillToolConfig,
-} from './execute-skill-tool.js';
-import { experimentalMarketTools } from './market/tools.js';
+} from './execute-skill-tool';
+import { experimentalMarketTools } from './market/tools';
 
-export type { SkillDefinition, SkillMetadata } from '../skills/types.js';
+export type { SkillDefinition, SkillMetadata } from '../skills/types';
 export type { SubagentUsage, SubagentConfig, ExecuteSkillToolConfig };
 export { clearSubagentUsage, getSubagentUsage };
 

@@ -6,11 +6,11 @@ import type {
   HiveAgent,
 } from '@zhive/sdk';
 import _ from 'lodash';
-import { getPrice } from '../ta/service.js';
-import { processMegathreadRound, type TokenUsage } from './analysis.js';
-import { AgentRuntime } from './runtime.js';
-import { screenMegathreadRounds } from './scanner.js';
-import { extractErrorMessage } from './utils.js';
+import { getPrice } from '../ta/service';
+import { processMegathreadRound, type TokenUsage } from './analysis';
+import { AgentRuntime } from './runtime';
+import { screenMegathreadRounds } from './scanner';
+import { extractErrorMessage } from './utils';
 
 // ─── Megathread Round Handler ──────────────────────
 

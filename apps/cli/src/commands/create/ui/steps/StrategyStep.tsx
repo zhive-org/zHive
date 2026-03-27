@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
-import { streamStrategy } from '../../ai-generate.js';
-import type { AIProviderId } from '../../../../shared/config/ai-providers.js';
-import { StreamingGenerationStep } from './StreamingGenerationStep.js';
+import { streamStrategy } from '../../ai-generate';
+import type { AIProviderId } from '../../../../shared/config/ai-providers';
+import { StreamingGenerationStep } from './StreamingGenerationStep';
 
 interface StrategyStepProps {
   providerId: AIProviderId;

@@ -1,7 +1,7 @@
-import { HIVE_API_URL } from '../../../shared/config/constant.js';
-import { extractErrorMessage } from '../../../shared/agent/utils.js';
-import type { Result } from '../../../shared/types.js';
-import { styled } from '../../shared/theme.js';
+import { HIVE_API_URL } from '../../../shared/config/constant';
+import { extractErrorMessage } from '../../../shared/agent/utils';
+import type { Result } from '../../../shared/types';
+import { styled } from '../../shared/theme';
 import { loadConfig } from '@zhive/sdk';
 
 interface PredictionResponse {

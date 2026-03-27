@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { colors, animation } from '../commands/shared/theme.js';
+import { colors, animation } from '../commands/shared/theme';
 
 interface AsciiTickerProps {
   rows?: 1 | 2;

@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
-import { AgentRuntime, initializeAgentRuntime } from '../../../shared/agent/runtime.js';
+import { AgentRuntime, initializeAgentRuntime } from '../../../shared/agent/runtime';
 
 export const useAgentRuntime = () => {
   const [runtime, setAgentRuntime] = useState<AgentRuntime | undefined>();

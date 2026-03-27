@@ -1,9 +1,7 @@
 import chalk from 'chalk';
-import { createRequire } from 'module';
-import { animation, colors } from '../../shared/theme.js';
+import { animation, colors } from '../../shared/theme';
 
-const require = createRequire(import.meta.url);
-const { version } = require('../../../../package.json') as { version: string };
+const version = process.env.__CLI_VERSION__ ?? 'dev';
 
 const BOOT_TOTAL_FRAMES = 58;
 const BOOT_FRAME_MS = 80;

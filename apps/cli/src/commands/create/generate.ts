@@ -1,12 +1,8 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { fileURLToPath } from 'node:url';
-import type { AIProvider } from '../../shared/config/ai-providers.js';
-import { getHiveDir } from '../../shared/config/constant.js';
+import type { AIProvider } from '../../shared/config/ai-providers';
+import { getHiveDir } from '../../shared/config/constant';
 import { RegisterAgentDto, Sentiment, Timeframe, registerAgent } from '@zhive/sdk';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export interface ScaffoldCallbacks {
   onStep: (label: string) => void;

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp } from 'ink';
-import { colors, symbols, border } from '../../shared/theme.js';
+import { colors, symbols, border } from '../../shared/theme';
 import {
   scanAgents,
   fetchBulkStats,
   sortByHoney,
   type AgentConfig,
   type AgentStats,
-} from '../../../shared/config/agent.js';
+} from '../../../shared/config/agent';
 
 interface AgentRow {
   info: AgentConfig;
@@ -112,7 +112,21 @@ export function ListApp(): React.ReactElement {
 
   const sep = border.horizontal;
   const totalWidth =
-    nameW + 1 + honeyW + 1 + waxW + 1 + winRateW + 1 + confidenceW + 1 + simPnlW + 1 + providerW + 1 + createdW;
+    nameW +
+    1 +
+    honeyW +
+    1 +
+    waxW +
+    1 +
+    winRateW +
+    1 +
+    confidenceW +
+    1 +
+    simPnlW +
+    1 +
+    providerW +
+    1 +
+    createdW;
 
   const topBorder = `${border.topLeft}${sep.repeat(totalWidth)}${border.topRight}`;
   const midBorder = `${border.teeLeft}${sep.repeat(totalWidth)}${border.teeRight}`;

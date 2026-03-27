@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { AI_PROVIDER_ENV_VARS } from './ai-providers.js';
+import { AI_PROVIDER_ENV_VARS } from './ai-providers';
 
 let _agentProviderKeys: Set<string> = new Set();
 

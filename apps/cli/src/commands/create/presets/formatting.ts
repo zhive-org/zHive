@@ -1,4 +1,4 @@
-import type { SoulPreset, StrategyPreset } from './types.js';
+import type { SoulPreset, StrategyPreset } from './types';
 
 function formatBulletList(items: string[]): string {
   const lines = items.map((item) => `- ${item}`).join('\n');

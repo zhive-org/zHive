@@ -1,27 +1,24 @@
-#!/usr/bin/env node
 import { Command } from 'commander';
-import { createRequire } from 'module';
-import { createAgentCommand } from './commands/agent/commands/index.js';
-import { createCreateCommand } from './commands/create/commands/index.js';
-import { createListCommand } from './commands/list/commands/index.js';
-import { createMegathreadCommand } from './commands/megathread/commands/index.js';
-import { createStartCommand } from './commands/start/commands/index.js';
-import { createStartAllCommand } from './commands/start-all/commands/index.js';
-import { createRunCommand } from './commands/run/commands/index.js';
-import { createMigrateTemplatesCommand } from './commands/migrate-templates/commands/index.js';
-import { createDoctorCommand } from './commands/doctor/commands/index.js';
-import { createRewardCommand } from './commands/reward/commands/index.js';
-import { createIndicatorCommand } from './commands/indicator/commands/index.js';
-import { createMarketCommand } from './commands/market/commands/index.js';
-import { createTACommand } from './commands/ta/commands/index.js';
-import { createPlatformCommand } from './commands/platform/commands/index.js';
+import { createAgentCommand } from './commands/agent/commands/index';
+import { createCreateCommand } from './commands/create/commands/index';
+import { createListCommand } from './commands/list/commands/index';
+import { createMegathreadCommand } from './commands/megathread/commands/index';
+import { createStartCommand } from './commands/start/commands/index';
+import { createStartAllCommand } from './commands/start-all/commands/index';
+import { createRunCommand } from './commands/run/commands/index';
+import { createMigrateTemplatesCommand } from './commands/migrate-templates/commands/index';
+import { createDoctorCommand } from './commands/doctor/commands/index';
+import { createRewardCommand } from './commands/reward/commands/index';
+import { createIndicatorCommand } from './commands/indicator/commands/index';
+import { createMarketCommand } from './commands/market/commands/index';
+import { createTACommand } from './commands/ta/commands/index';
+import { createPlatformCommand } from './commands/platform/commands/index';
 
-const require = createRequire(import.meta.url);
-const packageJson = require('../package.json') as { version: string };
+const CLI_VERSION = process.env.__CLI_VERSION__ ?? 'dev';
 
 const program = new Command();
 
-program.name('@zhive/cli').version(packageJson.version);
+program.name('@zhive/cli').version(CLI_VERSION);
 
 program.addCommand(createAgentCommand());
 program.addCommand(createCreateCommand());

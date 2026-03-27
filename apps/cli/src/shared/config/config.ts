@@ -1,8 +1,8 @@
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { AIProviderId } from './ai-providers.js';
-import { getHiveDir } from './constant.js';
+import { AIProviderId } from './ai-providers';
+import { getHiveDir } from './constant';
 
 export interface HiveConfig {
   providerId: AIProviderId;

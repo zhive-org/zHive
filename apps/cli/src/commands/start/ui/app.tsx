@@ -1,14 +1,14 @@
 import React from 'react';
 import { Box, Static, Text } from 'ink';
-import { useAgent } from '../hooks/useAgent.js';
-import { PollText, Spinner } from './Spinner.js';
-import { CommandInput } from './CommandInput.js';
-import { border, colors, symbols } from '../../shared/theme.js';
-import { HIVE_FRONTEND_URL } from '../../../shared/config/constant.js';
-import { formatTime } from '../../../shared/agent/utils.js';
-import { useChat } from '../hooks/useChat.js';
-import { activityFormatter } from '../hooks/utils.js';
-import { ColoredStats } from '../../../components/ColoredStats.js';
+import { useAgent } from '../hooks/useAgent';
+import { PollText, Spinner } from './Spinner';
+import { CommandInput } from './CommandInput';
+import { border, colors, symbols } from '../../shared/theme';
+import { HIVE_FRONTEND_URL } from '../../../shared/config/constant';
+import { formatTime } from '../../../shared/agent/utils';
+import { useChat } from '../hooks/useChat';
+import { activityFormatter } from '../hooks/utils';
+import { ColoredStats } from '../../../components/ColoredStats';
 
 const TIMEFRAME_COLOR: Record<string, string> = {
   '4h': colors.sprint,

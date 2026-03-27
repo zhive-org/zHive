@@ -1,8 +1,8 @@
 import { rsi, sma, ema, macd, bb } from 'indicatorts';
 import type { MarketInterval } from '@zhive/sdk';
-import { getHiveClient } from '../config/hive-client.js';
-import { InsufficientDataError, PriceUnavailableError } from './error.js';
-import { adjustFromDate } from './utils.js';
+import { getHiveClient } from '../config/hive-client';
+import { InsufficientDataError, PriceUnavailableError } from './error';
+import { adjustFromDate } from './utils';
 
 export type IndicatorValue = {
   timestamp: string;

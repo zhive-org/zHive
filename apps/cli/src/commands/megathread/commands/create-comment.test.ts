@@ -5,12 +5,12 @@ import * as path from 'node:path';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.join(__dirname, '../../../../__fixtures__/mock-hive');
 
-vi.mock('../../../shared/config/constant.js', () => ({
+vi.mock('../../../shared/config/constant', () => ({
   getHiveDir: vi.fn(() => FIXTURES_DIR),
   HIVE_API_URL: 'http://localhost:6969',
 }));
 
-vi.mock('../../../shared/config/ai-providers.js', () => ({
+vi.mock('../../../shared/config/ai-providers', () => ({
   AI_PROVIDERS: [{ label: 'OpenAI', package: '@ai-sdk/openai', envVar: 'OPENAI_API_KEY' }],
 }));
 
@@ -24,7 +24,7 @@ vi.mock('@zhive/sdk', async () => {
   };
 });
 
-vi.mock('../../shared/theme.js', () => ({
+vi.mock('../../shared/theme', () => ({
   styled: {
     red: (text: string) => text,
     gray: (text: string) => text,
@@ -37,7 +37,7 @@ vi.mock('../../shared/theme.js', () => ({
 }));
 
 import { HiveClient } from '@zhive/sdk';
-import { createMegathreadCreateCommentCommand } from './create-comment.js';
+import { createMegathreadCreateCommentCommand } from './create-comment';
 
 const MockHiveClient = HiveClient as Mock;
 

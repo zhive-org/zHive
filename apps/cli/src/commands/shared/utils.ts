@@ -1,6 +1,6 @@
 import z from 'zod';
-import { scanAgents } from '../../shared/config/agent.js';
-import { styled, symbols } from './theme.js';
+import { scanAgents } from '../../shared/config/agent';
+import { styled, symbols } from './theme';
 
 export const printAgentNotFoundHelper = async (agentName: string) => {
   const agents = await scanAgents();

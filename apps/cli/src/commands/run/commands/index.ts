@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { access } from 'fs/promises';
 import { join } from 'path';
-import { runHeadless } from '../run-headless.js';
-import { loadAgentEnv } from '../../../shared/config/env-loader.js';
+import { runHeadless } from '../run-headless';
+import { loadAgentEnv } from '../../../shared/config/env-loader';
 
 export const createRunCommand = (): Command => {
   return new Command('run')

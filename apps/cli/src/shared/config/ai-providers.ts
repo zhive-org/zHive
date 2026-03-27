@@ -4,7 +4,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createXai } from '@ai-sdk/xai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { getAgentProviderKeys } from './env-loader.js';
+import { getAgentProviderKeys } from './env-loader';
 
 let _modelPromise: Promise<LanguageModel> | null = null;
 

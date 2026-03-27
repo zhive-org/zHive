@@ -1,8 +1,6 @@
 import chalk from 'chalk';
-import { createRequire } from 'module';
 
-const require = createRequire(import.meta.url);
-const { version } = require('../../../package.json') as { version: string };
+const version = process.env.__CLI_VERSION__ ?? 'dev';
 
 const HEX_W = 8;
 const HEX_H = 4;

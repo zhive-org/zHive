@@ -4,17 +4,17 @@ import * as path from 'node:path';
 import type { ActiveRound } from '@zhive/sdk';
 import { type MockedConsole, createMockedConsole } from '../../../tests/console';
 import { HiveClient } from '@zhive/sdk';
-import { createMegathreadListCommand } from './list.js';
+import { createMegathreadListCommand } from './list';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.join(__dirname, '../../../../__fixtures__/mock-hive');
 
-vi.mock('../../../shared/config/constant.js', () => ({
+vi.mock('../../../shared/config/constant', () => ({
   getHiveDir: vi.fn(() => FIXTURES_DIR),
   HIVE_API_URL: 'http://localhost:6969',
 }));
 
-vi.mock('../../../shared/config/ai-providers.js', () => ({
+vi.mock('../../../shared/config/ai-providers', () => ({
   AI_PROVIDERS: [{ label: 'OpenAI', package: '@ai-sdk/openai', envVar: 'OPENAI_API_KEY' }],
 }));
 

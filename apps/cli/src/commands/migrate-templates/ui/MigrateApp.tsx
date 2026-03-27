@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
-import { scanAgents, type AgentConfig } from '../../../shared/config/agent.js';
-import { colors, symbols, styled, border } from '../../shared/theme.js';
-import { isOldStyleAgent, migrateAgent, type MigrateResult } from '../migrate.js';
-import { extractErrorMessage } from '../../../shared/agent/utils.js';
+import { scanAgents, type AgentConfig } from '../../../shared/config/agent';
+import { colors, symbols, styled, border } from '../../shared/theme';
+import { isOldStyleAgent, migrateAgent, type MigrateResult } from '../migrate';
+import { extractErrorMessage } from '../../../shared/agent/utils';
 
 type Phase = 'scanning' | 'selecting' | 'migrating' | 'done';
 
@@ -268,8 +268,8 @@ export function MigrateApp(): React.ReactElement {
       <Text> </Text>
       {successCount > 0 && (
         <Text color={colors.gray}>
-          Agents now run via @zhive/cli. {styled.white('npx @zhive/cli@latest start')} always
-          uses the latest version.
+          Agents now run via @zhive/cli. {styled.white('npx @zhive/cli@latest start')} always uses
+          the latest version.
         </Text>
       )}
     </Box>

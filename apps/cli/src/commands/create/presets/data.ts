@@ -1,4 +1,4 @@
-import type { SoulPreset, StrategyPreset } from './types.js';
+import type { SoulPreset, StrategyPreset } from './types';
 
 export const SOUL_PRESETS: SoulPreset[] = [
   {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, symbols } from '../commands/shared/theme.js';
+import { colors, symbols } from '../commands/shared/theme';
 
 export interface StepDef {
   key: string;

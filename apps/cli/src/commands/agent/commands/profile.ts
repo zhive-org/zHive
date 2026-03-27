@@ -1,7 +1,7 @@
 import { Command } from 'commander';
-import { findAgentByName, scanAgents } from '../../../shared/config/agent.js';
-import { styled, symbols } from '../../shared/theme.js';
-import { printAgentNotFoundHelper } from '../../shared/utils.js';
+import { findAgentByName, scanAgents } from '../../../shared/config/agent';
+import { styled, symbols } from '../../shared/theme';
+import { printAgentNotFoundHelper } from '../../shared/utils';
 
 export const createAgentProfileCommand = (): Command => {
   return new Command('profile')

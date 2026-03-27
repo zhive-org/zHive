@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { colors, symbols } from '../commands/shared/theme.js';
+import { colors, symbols } from '../commands/shared/theme';
 
 export interface MultiSelectItem {
   label: string;
@@ -100,9 +100,13 @@ export function MultiSelectPrompt({
       )}
       <Box marginLeft={2} marginTop={1}>
         <Text color={colors.grayDim}>
-          <Text color={colors.honey}>spacebar</Text> press to toggle <Text color={colors.honey}>enter</Text>{' '}
-          confirm{onBack && (
-            <Text> <Text color={colors.honey}>esc</Text> back</Text>
+          <Text color={colors.honey}>spacebar</Text> press to toggle{' '}
+          <Text color={colors.honey}>enter</Text> confirm
+          {onBack && (
+            <Text>
+              {' '}
+              <Text color={colors.honey}>esc</Text> back
+            </Text>
           )}
         </Text>
       </Box>

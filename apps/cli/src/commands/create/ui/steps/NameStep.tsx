@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Box, Text } from 'ink';
 import axios from 'axios';
-import { TextPrompt } from '../../../../components/TextPrompt.js';
-import { Spinner } from '../../../../components/Spinner.js';
-import { colors, symbols } from '../../../shared/theme.js';
-import { HIVE_API_URL } from '../../../../shared/config/constant.js';
-import { agentName as validateAgentName } from '../validation.js';
+import { TextPrompt } from '../../../../components/TextPrompt';
+import { Spinner } from '../../../../components/Spinner';
+import { colors, symbols } from '../../../shared/theme';
+import { HIVE_API_URL } from '../../../../shared/config/constant';
+import { agentName as validateAgentName } from '../validation';
 
 const ADJECTIVES = [
   'royal',

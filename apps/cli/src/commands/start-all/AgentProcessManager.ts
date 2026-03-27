@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from 'child_process';
 import path from 'path';
-import { type AgentConfig } from '../../shared/config/agent.js';
-import { getHiveDir } from '../../shared/config/constant.js';
+import { type AgentConfig } from '../../shared/config/agent';
+import { getHiveDir } from '../../shared/config/constant';
 
 export type AgentStatus = 'spawning' | 'running' | 'exited' | 'errored';
 

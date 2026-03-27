@@ -6,14 +6,14 @@ import {
   signPrefix,
   truncateTimeseries,
   truncationLabel,
-} from '../../utils.js';
+} from '../../utils';
 import type {
   MindshareData,
   MindshareFilterBy,
   MindshareRankBy,
   MindshareTimeframe,
 } from '@zhive/sdk';
-import { getHiveClient } from '../../../config/hive-client.js';
+import { getHiveClient } from '../../../config/hive-client';
 
 const timeframeSchema = z
   .enum(['30m', '24h', '3D', '7D', '1M', '3M', 'YTD'])

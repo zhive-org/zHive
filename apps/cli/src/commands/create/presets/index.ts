@@ -7,9 +7,9 @@ export type {
   SectorOption as ProjectCategoryOption,
   SentimentOption,
   TimeframeOption,
-} from './types.js';
+} from './types';
 
-export { SOUL_PRESETS, STRATEGY_PRESETS } from './data.js';
+export { SOUL_PRESETS, STRATEGY_PRESETS } from './data';
 
 export {
   PERSONALITY_OPTIONS,
@@ -20,6 +20,6 @@ export {
   TIMEFRAME_OPTIONS,
   SECTOR_OPTIONS,
   DEFAULT_SECTOR_VALUES,
-} from './options.js';
+} from './options';
 
-export { buildSoulMarkdown, buildStrategyMarkdown } from './formatting.js';
+export { buildSoulMarkdown, buildStrategyMarkdown } from './formatting';

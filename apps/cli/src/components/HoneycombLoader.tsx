@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
-import { colors, animation } from '../commands/shared/theme.js';
+import { colors, animation } from '../commands/shared/theme';
 
 const ROWS = 3;
 const HEX_W = 8;

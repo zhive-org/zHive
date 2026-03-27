@@ -8,18 +8,18 @@ import {
 import * as ai from 'ai';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { z } from 'zod';
-import { getModel } from '../config/ai-providers.js';
-import { cacheableSystem } from './cache.js';
-import type { ChatMessage } from './prompts/chat-prompt.js';
+import { getModel } from '../config/ai-providers';
+import { cacheableSystem } from './cache';
+import type { ChatMessage } from './prompts/chat-prompt';
 import {
   buildMegathreadInputPrompt,
   BuildMegathreadPromptOptions,
   buildMegathreadSystemPrompt,
-} from './prompts/megathread.js';
-import { buildMemoryExtractionPrompt } from './prompts/memory-prompt.js';
-import { AgentRuntime } from './runtime.js';
-import { clearSubagentUsage, getSubagentUsage, type SubagentUsage } from './tools/index.js';
-import { extractErrorMessage, stripCodeFences } from './utils.js';
+} from './prompts/megathread';
+import { buildMemoryExtractionPrompt } from './prompts/memory-prompt';
+import { AgentRuntime } from './runtime';
+import { clearSubagentUsage, getSubagentUsage, type SubagentUsage } from './tools/index';
+import { extractErrorMessage, stripCodeFences } from './utils';
 
 const { ToolLoopAgent, generateText, Output } = wrapAISDK(ai);
 

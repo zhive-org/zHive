@@ -1,11 +1,11 @@
 import { AgentTimeframe, durationMsToTimeframe, HiveClient } from '@zhive/sdk';
 import { Command } from 'commander';
 import z from 'zod';
-import { findAgentByName, scanAgents } from '../../../shared/config/agent.js';
-import { HIVE_API_URL } from '../../../shared/config/constant.js';
-import { border, styled, symbols } from '../../shared/theme.js';
-import { humanDuration } from '../../../shared/agent/utils.js';
-import { printZodError } from '../../shared/utils.js';
+import { findAgentByName, scanAgents } from '../../../shared/config/agent';
+import { HIVE_API_URL } from '../../../shared/config/constant';
+import { border, styled, symbols } from '../../shared/theme';
+import { humanDuration } from '../../../shared/agent/utils';
+import { printZodError } from '../../shared/utils';
 
 const VALID_TIMEFRAMES: AgentTimeframe[] = ['4h', '24h', '7d'];
 

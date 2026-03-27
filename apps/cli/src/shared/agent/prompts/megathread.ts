@@ -1,6 +1,6 @@
-import { AgentRuntime } from '../runtime.js';
-import { SkillDefinition } from '../skills/types.js';
-import { humanDuration } from '../utils.js';
+import { AgentRuntime } from '../runtime';
+import { SkillDefinition } from '../skills/types';
+import { humanDuration } from '../utils';
 
 export interface BuildMegathreadPromptOptions {
   projectId: string;
