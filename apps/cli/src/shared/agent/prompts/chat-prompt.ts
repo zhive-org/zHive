@@ -1,4 +1,4 @@
-import type { SplitPrompt } from './prompt.js';
+import type { SplitPrompt } from './prompt';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';

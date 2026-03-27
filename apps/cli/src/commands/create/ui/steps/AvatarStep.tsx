@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { TextPrompt } from '../../../../components/TextPrompt.js';
-import { colors, symbols } from '../../../shared/theme.js';
+import { TextPrompt } from '../../../../components/TextPrompt';
+import { colors, symbols } from '../../../shared/theme';
 
 interface AvatarStepProps {
   agentName: string;
@@ -10,7 +10,12 @@ interface AvatarStepProps {
   onComplete: (avatarUrl: string) => void;
 }
 
-export function AvatarStep({ agentName, defaultValue, onBack, onComplete }: AvatarStepProps): React.ReactElement {
+export function AvatarStep({
+  agentName,
+  defaultValue,
+  onBack,
+  onComplete,
+}: AvatarStepProps): React.ReactElement {
   const defaultUrl = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(agentName)}`;
 
   return (

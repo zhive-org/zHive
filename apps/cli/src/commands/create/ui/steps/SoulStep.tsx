@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
-import { streamSoul } from '../../ai-generate.js';
-import type { AIProviderId } from '../../../../shared/config/ai-providers.js';
-import { StreamingGenerationStep } from './StreamingGenerationStep.js';
+import { streamSoul } from '../../ai-generate';
+import type { AIProviderId } from '../../../../shared/config/ai-providers';
+import { StreamingGenerationStep } from './StreamingGenerationStep';
 
 interface SoulStepProps {
   providerId: AIProviderId;
@@ -72,6 +72,12 @@ export function SoulStep({
   );
 
   return (
-    <StreamingGenerationStep title="SOUL.md" initialContent={initialContent} createStream={createStream} onBack={onBack} onComplete={onComplete} />
+    <StreamingGenerationStep
+      title="SOUL.md"
+      initialContent={initialContent}
+      createStream={createStream}
+      onBack={onBack}
+      onComplete={onComplete}
+    />
   );
 }

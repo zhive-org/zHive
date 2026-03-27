@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { HoneycombLoader } from '../../../../components/HoneycombLoader.js';
-import { colors, symbols } from '../../../shared/theme.js';
-import { scaffoldProject } from '../../generate.js';
-import type { AIProvider } from '../../../../shared/config/ai-providers.js';
-import { extractErrorMessage } from '../../../../shared/agent/utils.js';
+import { HoneycombLoader } from '../../../../components/HoneycombLoader';
+import { colors, symbols } from '../../../shared/theme';
+import { scaffoldProject } from '../../generate';
+import type { AIProvider } from '../../../../shared/config/ai-providers';
+import { extractErrorMessage } from '../../../../shared/agent/utils';
 
 interface ScaffoldStepProps {
   projectName: string;

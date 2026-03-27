@@ -1,7 +1,7 @@
 import { Command } from 'commander';
-import { InsufficientDataError } from '../../../shared/ta/error.js';
-import { getBollingerBands } from '../../../shared/ta/service.js';
-import { styled } from '../../shared/theme.js';
+import { InsufficientDataError } from '../../../shared/ta/error';
+import { getBollingerBands } from '../../../shared/ta/service';
+import { styled } from '../../shared/theme';
 
 export const createBollingerCommand = (): Command => {
   return new Command('bollinger')

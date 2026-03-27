@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import * as path from 'node:path';
-import { parseFrontmatter, discoverSkills, loadSkill } from './skill-parser.js';
+import { parseFrontmatter, discoverSkills, loadSkill } from './skill-parser';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = path.join(__dirname, '../../../../__fixtures__/mock-hive');

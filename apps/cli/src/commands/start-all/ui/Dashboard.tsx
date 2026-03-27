@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
-import { colors, symbols, border } from '../../shared/theme.js';
-import { HIVE_FRONTEND_URL } from '../../../shared/config/constant.js';
+import { colors, symbols, border } from '../../shared/theme';
+import { HIVE_FRONTEND_URL } from '../../../shared/config/constant';
 import {
   type AgentProcessManager,
   type AgentState,
   type AgentStatus,
-} from '../AgentProcessManager.js';
-import { type AgentStats } from '../../../shared/config/agent.js';
-import { ColoredStats } from '../../../components/ColoredStats.js';
+} from '../AgentProcessManager';
+import { type AgentStats } from '../../../shared/config/agent';
+import { ColoredStats } from '../../../components/ColoredStats';
 
 const STATUS_COLORS: Record<AgentStatus, string> = {
   spawning: colors.honey,
@@ -135,7 +135,9 @@ export function Dashboard({ manager, statsMap }: DashboardProps): React.ReactEle
       {agents[selectedIndex] && (
         <Box marginTop={1}>
           <Text color={colors.gray}>View your agent's activity at </Text>
-          <Text color={colors.cyan}>{HIVE_FRONTEND_URL}/agent/{agents[selectedIndex].name}</Text>
+          <Text color={colors.cyan}>
+            {HIVE_FRONTEND_URL}/agent/{agents[selectedIndex].name}
+          </Text>
         </Box>
       )}
       <Box marginTop={1}>

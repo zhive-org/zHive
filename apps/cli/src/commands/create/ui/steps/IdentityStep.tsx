@@ -1,12 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Text } from 'ink';
-import { SelectPrompt, type SelectItem } from '../../../../components/SelectPrompt.js';
-import {
-  MultiSelectPrompt,
-  type MultiSelectItem,
-} from '../../../../components/MultiSelectPrompt.js';
-import { TextPrompt } from '../../../../components/TextPrompt.js';
-import { CharacterSummaryCard } from '../../../../components/CharacterSummaryCard.js';
+import { SelectPrompt, type SelectItem } from '../../../../components/SelectPrompt';
+import { MultiSelectPrompt, type MultiSelectItem } from '../../../../components/MultiSelectPrompt';
+import { TextPrompt } from '../../../../components/TextPrompt';
+import { CharacterSummaryCard } from '../../../../components/CharacterSummaryCard';
 import {
   PERSONALITY_OPTIONS,
   VOICE_OPTIONS,
@@ -17,9 +14,9 @@ import {
   DEFAULT_SECTOR_VALUES,
   BIO_EXAMPLES,
   type VoiceOption,
-} from '../../presets/index.js';
-import { colors, symbols } from '../../../shared/theme.js';
-import { required, compose, maxLength } from '../validation.js';
+} from '../../presets/index';
+import { colors, symbols } from '../../../shared/theme';
+import { required, compose, maxLength } from '../validation';
 
 export interface IdentityResult {
   personality: string;

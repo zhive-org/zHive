@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text } from 'ink';
-import { colors } from '../../shared/theme.js';
+import { colors } from '../../shared/theme';
 
 const SPINNER_FRAMES = ['\u25D0', '\u25D3', '\u25D1', '\u25D2'];
 const SPINNER_INTERVAL_MS = 200;

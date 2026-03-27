@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
-import type { AIProvider } from '../../shared/config/ai-providers.js';
-import { getHiveDir } from '../../shared/config/constant.js';
+import type { AIProvider } from '../../shared/config/ai-providers';
+import { getHiveDir } from '../../shared/config/constant';
 import { RegisterAgentDto, Sentiment, Timeframe, registerAgent } from '@zhive/sdk';
 
 export interface ScaffoldCallbacks {

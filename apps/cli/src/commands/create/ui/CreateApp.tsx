@@ -1,18 +1,18 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Text, useApp } from 'ink';
-import { Header } from '../../../components/Header.js';
-import { StepIndicator } from '../../../components/StepIndicator.js';
-import { ApiKeyStep, type ApiKeyResult } from './steps/ApiKeyStep.js';
-import { NameStep } from './steps/NameStep.js';
-import { IdentityStep, type IdentityResult } from './steps/IdentityStep.js';
-import { AvatarStep } from './steps/AvatarStep.js';
-import { SoulStep } from './steps/SoulStep.js';
-import { StrategyStep } from './steps/StrategyStep.js';
-import { ScaffoldStep } from './steps/ScaffoldStep.js';
-import { DoneStep } from './steps/DoneStep.js';
-import { colors, symbols } from '../../shared/theme.js';
-import { getProvider, type AIProvider } from '../../../shared/config/ai-providers.js';
-import type { AIProviderId } from '../../../shared/config/ai-providers.js';
+import { Header } from '../../../components/Header';
+import { StepIndicator } from '../../../components/StepIndicator';
+import { ApiKeyStep, type ApiKeyResult } from './steps/ApiKeyStep';
+import { NameStep } from './steps/NameStep';
+import { IdentityStep, type IdentityResult } from './steps/IdentityStep';
+import { AvatarStep } from './steps/AvatarStep';
+import { SoulStep } from './steps/SoulStep';
+import { StrategyStep } from './steps/StrategyStep';
+import { ScaffoldStep } from './steps/ScaffoldStep';
+import { DoneStep } from './steps/DoneStep';
+import { colors, symbols } from '../../shared/theme';
+import { getProvider, type AIProvider } from '../../../shared/config/ai-providers';
+import type { AIProviderId } from '../../../shared/config/ai-providers';
 
 type Step = 'api-key' | 'name' | 'identity' | 'avatar' | 'soul' | 'strategy' | 'scaffold' | 'done';
 

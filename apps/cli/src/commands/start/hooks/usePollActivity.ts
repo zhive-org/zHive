@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { MegathreadResult, PollActivityItem } from './types.js';
+import { MegathreadResult, PollActivityItem } from './types';
 
 const MAX_ITEM = 50;
 

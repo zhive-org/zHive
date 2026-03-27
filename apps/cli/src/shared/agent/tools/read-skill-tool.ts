@@ -1,6 +1,6 @@
 import { tool, type Tool } from 'ai';
 import { z } from 'zod';
-import type { SkillDefinition } from '../skills/types.js';
+import type { SkillDefinition } from '../skills/types';
 
 /**
  * Create a tool that allows the agent to read skill knowledge.

@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { extractErrorMessage } from '../utils.js';
+import { extractErrorMessage } from '../utils';
 
 export function replaceSection(fileContent: string, heading: string, newContent: string): string {
   const lines = fileContent.split('\n');

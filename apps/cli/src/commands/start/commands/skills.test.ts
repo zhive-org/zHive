@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import * as path from 'node:path';
-import { fetchSkills, formatSkills, skillsSlashCommand } from './skills.js';
-import type { SkillDefinition } from '../../../shared/agent/skills/types.js';
+import { fetchSkills, formatSkills, skillsSlashCommand } from './skills';
+import type { SkillDefinition } from '../../../shared/agent/skills/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-vi.mock('../../../shared/config/constant.js', () => ({
+vi.mock('../../../shared/config/constant', () => ({
   getHiveDir: vi.fn(() => path.join(__dirname, '../../../../__fixtures__/mock-hive')),
 }));
 

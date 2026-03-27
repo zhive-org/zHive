@@ -1,11 +1,11 @@
 import { streamText } from 'ai';
-import { buildLanguageModel, type AIProviderId } from '../../shared/config/ai-providers.js';
+import { buildLanguageModel, type AIProviderId } from '../../shared/config/ai-providers';
 import {
   SOUL_PRESETS,
   STRATEGY_PRESETS,
   buildSoulMarkdown,
   buildStrategyMarkdown,
-} from './presets/index.js';
+} from './presets/index';
 
 function buildPresetExamples(): string {
   const soulExamples = SOUL_PRESETS.map((p) =>

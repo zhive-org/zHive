@@ -1,7 +1,7 @@
 import { ActiveRound, durationMsToTimeframe } from '@zhive/sdk';
 import z from 'zod';
-import { humanDuration } from './utils.js';
-import { AgentRuntime } from './runtime.js';
+import { humanDuration } from './utils';
+import { AgentRuntime } from './runtime';
 import _ from 'lodash';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import * as ai from 'ai';

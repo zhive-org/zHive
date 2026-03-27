@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
-import { colors, symbols } from '../commands/shared/theme.js';
+import { colors, symbols } from '../commands/shared/theme';
 
 export interface SelectItem {
   label: string;
@@ -17,9 +17,22 @@ interface SelectPromptProps {
   onBack?: () => void;
 }
 
-export function SelectPrompt({ label, items, defaultValue, onSelect, onBack }: SelectPromptProps): React.ReactElement {
-  const initialIndex = defaultValue ? Math.max(0, items.findIndex((i) => i.value === defaultValue)) : 0;
-  const [highlightedValue, setHighlightedValue] = useState<string>(defaultValue ?? items[0]?.value ?? '');
+export function SelectPrompt({
+  label,
+  items,
+  defaultValue,
+  onSelect,
+  onBack,
+}: SelectPromptProps): React.ReactElement {
+  const initialIndex = defaultValue
+    ? Math.max(
+        0,
+        items.findIndex((i) => i.value === defaultValue),
+      )
+    : 0;
+  const [highlightedValue, setHighlightedValue] = useState<string>(
+    defaultValue ?? items[0]?.value ?? '',
+  );
 
   useInput((_input, key) => {
     if (key.escape && onBack) {

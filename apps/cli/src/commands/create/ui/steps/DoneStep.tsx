@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Box, Text, useApp } from 'ink';
-import { colors, symbols, border } from '../../../shared/theme.js';
+import { colors, symbols, border } from '../../../shared/theme';
 
 interface DoneStepProps {
   projectDir: string;

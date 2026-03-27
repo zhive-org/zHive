@@ -2,9 +2,9 @@ import { Command } from 'commander';
 import path from 'path';
 import fsExtra from 'fs-extra';
 import { HiveClient } from '@zhive/sdk';
-import { styled, symbols } from '../../shared/theme.js';
-import { getHiveDir, HIVE_API_URL } from '../../../shared/config/constant.js';
-import { AgentConfig, loadAgentConfig } from '../../../shared/config/agent.js';
+import { styled, symbols } from '../../shared/theme';
+import { getHiveDir, HIVE_API_URL } from '../../../shared/config/constant';
+import { AgentConfig, loadAgentConfig } from '../../../shared/config/agent';
 
 interface AgentCheckResult {
   dirName: string;

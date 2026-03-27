@@ -1,5 +1,5 @@
 import { HiveClient } from '@zhive/sdk';
-import { HIVE_API_URL } from './constant.js';
+import { HIVE_API_URL } from './constant';
 
 let instance: HiveClient | null = null;
 

@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { HiveClient, RewardDto } from '@zhive/sdk';
-import { styled, symbols } from '../../shared/theme.js';
-import { scanAgents, AgentConfig } from '../../../shared/config/agent.js';
-import { HIVE_API_URL } from '../../../shared/config/constant.js';
+import { styled, symbols } from '../../shared/theme';
+import { scanAgents, AgentConfig } from '../../../shared/config/agent';
+import { HIVE_API_URL } from '../../../shared/config/constant';
 
 interface AgentRewardResult {
   agent: AgentConfig;

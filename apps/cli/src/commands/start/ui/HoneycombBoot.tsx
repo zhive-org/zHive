@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { animation, colors } from '../../shared/theme.js';
+import { animation, colors } from '../../shared/theme';
 
 const version = process.env.__CLI_VERSION__ ?? 'dev';
 

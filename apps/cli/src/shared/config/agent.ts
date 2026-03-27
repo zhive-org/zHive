@@ -3,8 +3,8 @@ import axios from 'axios';
 import fsExtra from 'fs-extra';
 import * as fs from 'fs/promises';
 import path, { join } from 'path';
-import { HIVE_API_URL, getHiveDir } from './constant.js';
-import { AI_PROVIDERS } from './ai-providers.js';
+import { HIVE_API_URL, getHiveDir } from './constant';
+import { AI_PROVIDERS } from './ai-providers';
 
 export interface AgentConfig {
   name: string;

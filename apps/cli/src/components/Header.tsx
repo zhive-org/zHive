@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, symbols, border } from '../commands/shared/theme.js';
+import { colors, symbols, border } from '../commands/shared/theme';
 
 export function Header(): React.ReactElement {
   const leftPart = ` ${symbols.hive} zHive `;

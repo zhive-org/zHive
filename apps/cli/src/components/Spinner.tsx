@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { colors, symbols } from '../commands/shared/theme.js';
+import { colors, symbols } from '../commands/shared/theme';
 
 interface SpinnerProps {
   label: string;

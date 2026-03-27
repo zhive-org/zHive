@@ -1,19 +1,19 @@
 import type { ActiveRound } from '@zhive/sdk';
 import { HiveAgent } from '@zhive/sdk';
 import { useEffect, useRef, useState } from 'react';
-import type { TokenUsage } from '../../../shared/agent/analysis.js';
-import { extractErrorMessage } from '../../../shared/agent/utils.js';
-import { ModelInfo, resolveModelInfo } from '../../../shared/config/ai-providers.js';
-import { type AgentStats, fetchBulkStats } from '../../../shared/config/agent.js';
-import { HIVE_API_URL } from '../../../shared/config/constant.js';
-import { PollActivityItem } from './types.js';
-import { usePollActivity } from './usePollActivity.js';
-import { initializeAgentRuntime } from '../../../shared/agent/runtime.js';
+import type { TokenUsage } from '../../../shared/agent/analysis';
+import { extractErrorMessage } from '../../../shared/agent/utils';
+import { ModelInfo, resolveModelInfo } from '../../../shared/config/ai-providers';
+import { type AgentStats, fetchBulkStats } from '../../../shared/config/agent';
+import { HIVE_API_URL } from '../../../shared/config/constant';
+import { PollActivityItem } from './types';
+import { usePollActivity } from './usePollActivity';
+import { initializeAgentRuntime } from '../../../shared/agent/runtime';
 import {
   createMegathreadRoundBatchHandler,
   createMegathreadRoundHandler,
   MegathreadReporter,
-} from '../../../shared/agent/handler.js';
+} from '../../../shared/agent/handler';
 
 const STATS_POLL_INTERVAL_MS = 5 * 60 * 1_000;
 

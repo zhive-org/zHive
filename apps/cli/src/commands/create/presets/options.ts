@@ -5,7 +5,7 @@ import type {
   TimeframeOption,
   TradingStyleOption,
   VoiceOption,
-} from './types.js';
+} from './types';
 
 export const PERSONALITY_OPTIONS: PersonalityOption[] = [
   {
