@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp } from 'ink';
-import { HoneycombLoader } from '../../../../components/HoneycombLoader.js';
-import { colors, symbols, border } from '../../../shared/theme.js';
-import { scaffoldProject } from '../../generate.js';
-import { getProvider } from '../../../../shared/config/ai-providers.js';
-import { extractErrorMessage } from '../../../../shared/agent/utils.js';
-import { useWizard } from '../wizard-context.js';
+import { HoneycombLoader } from '../../../../components/HoneycombLoader';
+import { colors, symbols, border } from '../../../shared/theme';
+import { scaffoldProject } from '../../generate';
+import { getProvider } from '../../../../shared/config/ai-providers';
+import { extractErrorMessage } from '../../../../shared/agent/utils';
+import { useWizard } from '../wizard-context';
 
 const DEFAULT_SENTIMENT = 'neutral';
 

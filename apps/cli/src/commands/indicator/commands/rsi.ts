@@ -1,7 +1,7 @@
 import { Command } from 'commander';
-import { InsufficientDataError } from '../../../shared/ta/error.js';
-import { getRSI } from '../../../shared/ta/service.js';
-import { styled } from '../../shared/theme.js';
+import { InsufficientDataError } from '../../../shared/ta/error';
+import { getRSI } from '../../../shared/ta/service';
+import { styled } from '../../shared/theme';
 
 export const createRsiCommand = (): Command => {
   return new Command('rsi')

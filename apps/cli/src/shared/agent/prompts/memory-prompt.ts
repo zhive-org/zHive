@@ -1,5 +1,5 @@
-import type { ChatMessage } from './chat-prompt.js';
-import type { SplitPrompt } from './prompt.js';
+import type { ChatMessage } from './chat-prompt';
+import type { SplitPrompt } from './prompt';
 
 export interface MemoryExtractionContext {
   currentMemory: string;

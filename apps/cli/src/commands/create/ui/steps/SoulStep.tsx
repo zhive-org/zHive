@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { StreamingGenerationStep } from './StreamingGenerationStep.js';
-import { generateSoul } from '../../generate-soul.js';
-import { useWizard } from '../wizard-context.js';
-import { SelectPrompt } from '../../../../components/SelectPrompt.js';
-import { SOUL_PRESETS } from '../../presets/data.js';
+import { StreamingGenerationStep } from './StreamingGenerationStep';
+import { generateSoul } from '../../generate-soul';
+import { useWizard } from '../wizard-context';
+import { SelectPrompt } from '../../../../components/SelectPrompt';
+import { SOUL_PRESETS } from '../../presets/data';
 
 type SubStep = 'select' | 'generate';
 

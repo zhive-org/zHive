@@ -3,13 +3,13 @@ import { join } from 'path';
 import { Command } from 'commander';
 import { render } from 'ink';
 import React from 'react';
-import { App } from '../ui/app.js';
-import { AgentConfig, findAgentByName } from '../../../shared/config/agent.js';
-import { SelectAgentApp } from '../ui/SelectAgentApp.js';
-import { showHoneycombBoot } from '../ui/HoneycombBoot.js';
+import { App } from '../ui/app';
+import { AgentConfig, findAgentByName } from '../../../shared/config/agent';
+import { SelectAgentApp } from '../ui/SelectAgentApp';
+import { showHoneycombBoot } from '../ui/HoneycombBoot';
 import chalk from 'chalk';
-import { styled, symbols } from '../../shared/theme.js';
-import { loadAgentEnv } from '../../../shared/config/env-loader.js';
+import { styled, symbols } from '../../shared/theme';
+import { loadAgentEnv } from '../../../shared/config/env-loader';
 
 export const createStartCommand = (): Command => {
   return new Command('start')

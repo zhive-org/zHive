@@ -3,18 +3,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Kline } from 'pinets';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMockedConsole, MockedConsole } from '../../../tests/console.js';
-import { createTaExecuteCommand } from './execute.js';
+import { createMockedConsole, MockedConsole } from '../../../tests/console';
+import { createTaExecuteCommand } from './execute';
 
 const mockGetOHLC = vi.fn();
 
-vi.mock('../../../shared/config/hive-client.js', () => ({
+vi.mock('../../../shared/config/hive-client', () => ({
   getHiveClient: () => ({
     market: { getOHLC: mockGetOHLC },
   }),
 }));
 
-vi.mock('../../../shared/ta/data-provider.js', async () => {
+vi.mock('../../../shared/ta/data-provider', async () => {
   return {
     HiveDataProvider: vi.fn().mockImplementation(() => {
       // Return a provider whose getMarketData returns controlled data

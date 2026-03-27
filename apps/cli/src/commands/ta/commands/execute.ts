@@ -1,10 +1,10 @@
 import { Command } from 'commander';
 import z from 'zod';
-import { getHiveClient } from '../../../shared/config/hive-client.js';
-import { formatPineResult } from '../../../shared/ta/utils.js';
-import { styled } from '../../shared/theme.js';
-import { printZodError } from '../../shared/utils.js';
-import { HiveDataProvider } from '../../../shared/ta/data-provider.js';
+import { getHiveClient } from '../../../shared/config/hive-client';
+import { formatPineResult } from '../../../shared/ta/utils';
+import { styled } from '../../shared/theme';
+import { printZodError } from '../../shared/utils';
+import { HiveDataProvider } from '../../../shared/ta/data-provider';
 import path from 'node:path';
 import { lstat, readFile } from 'node:fs/promises';
 

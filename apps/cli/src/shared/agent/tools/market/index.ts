@@ -1,4 +1,4 @@
-export { marketTools } from './tools.js';
+export { marketTools } from './tools';
 export {
   getOHLCTool,
   getSMATool,
@@ -6,4 +6,4 @@ export {
   getRSITool,
   getMACDTool,
   getBollingerTool,
-} from './tools.js';
+} from './tools';

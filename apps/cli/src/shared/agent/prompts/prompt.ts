@@ -1,6 +1,6 @@
 // ─── Shared Types ─────────────────────────────────
 
-import { AgentRuntime } from '../runtime.js';
+import { AgentRuntime } from '../runtime';
 
 export interface SplitPrompt {
   system: string;

@@ -1,2 +1,2 @@
-export * from './skill-parser.js';
-export * from './types.js';
+export * from './skill-parser';
+export * from './types';

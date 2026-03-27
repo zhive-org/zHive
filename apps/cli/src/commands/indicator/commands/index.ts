@@ -1,9 +1,9 @@
 import { Command } from 'commander';
-import { createBollingerCommand } from './bollinger.js';
-import { createEmaCommand } from './ema.js';
-import { createMacdCommand } from './macd.js';
-import { createRsiCommand } from './rsi.js';
-import { createSmaCommand } from './sma.js';
+import { createBollingerCommand } from './bollinger';
+import { createEmaCommand } from './ema';
+import { createMacdCommand } from './macd';
+import { createRsiCommand } from './rsi';
+import { createSmaCommand } from './sma';
 
 export const createIndicatorCommand = (): Command => {
   return new Command('indicator')

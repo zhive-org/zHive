@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { createTaExecuteCommand } from './execute.js';
+import { createTaExecuteCommand } from './execute';
 
 export const createTACommand = () => {
   return new Command('ta').addCommand(createTaExecuteCommand());

@@ -1,10 +1,10 @@
 import * as path from 'node:path';
-import { getHiveDir } from '../../../shared/config/constant.js';
-import { discoverSkills } from '../../../shared/agent/skills/skill-parser.js';
-import type { SkillDefinition } from '../../../shared/agent/skills/types.js';
-import { styled } from '../../shared/theme.js';
-import type { Result } from '../../../shared/types.js';
-import { extractErrorMessage } from '../../../shared/agent/utils.js';
+import { getHiveDir } from '../../../shared/config/constant';
+import { discoverSkills } from '../../../shared/agent/skills/skill-parser';
+import type { SkillDefinition } from '../../../shared/agent/skills/types';
+import { styled } from '../../shared/theme';
+import type { Result } from '../../../shared/types';
+import { extractErrorMessage } from '../../../shared/agent/utils';
 
 export async function fetchSkills(agentName: string): Promise<Result<SkillDefinition[]>> {
   try {
@@ -20,7 +20,7 @@ export async function fetchSkills(agentName: string): Promise<Result<SkillDefini
 
 export function formatSkills(skills: SkillDefinition[]): string {
   if (skills.length === 0) {
-    return 'No skills loaded. Add skills to your agent\'s skills/ directory.';
+    return "No skills loaded. Add skills to your agent's skills/ directory.";
   }
 
   const lines = [styled.honeyBold('Available Skills:'), ''];

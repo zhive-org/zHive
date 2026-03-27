@@ -11,14 +11,14 @@
 
 import { config as dotenvConfig } from 'dotenv';
 import path, { join } from 'path';
-import { getHiveDir } from '../shared/config/constant.js';
+import { getHiveDir } from '../shared/config/constant';
 import {
   fetchPrice,
   fetchRoundPrices,
   initializeAgentRuntime,
-} from '../shared/agent/agent-runtime.js';
-import { processMegathreadRound } from '../shared/agent/analysis.js';
-import { extractErrorMessage } from '../shared/agent/utils.js';
+} from '../shared/agent/agent-runtime';
+import { processMegathreadRound } from '../shared/agent/analysis';
+import { extractErrorMessage } from '../shared/agent/utils';
 
 interface AnalyzeOptions {
   text: string;

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
-import { colors, symbols } from '../../shared/theme.js';
+import { colors, symbols } from '../../shared/theme';
 import {
   scanAgents,
   fetchBulkStats,
   sortByHoney,
   type AgentConfig,
   type AgentStats,
-} from '../../../shared/config/agent.js';
-import { ColoredStats } from '../../../components/ColoredStats.js';
+} from '../../../shared/config/agent';
+import { ColoredStats } from '../../../components/ColoredStats';
 
 interface AgentRow {
   info: AgentConfig;

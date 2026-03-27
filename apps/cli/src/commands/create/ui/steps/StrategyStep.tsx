@@ -1,14 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Text } from 'ink';
-import type { MultiSelectItem } from '../../../../components/MultiSelectPrompt.js';
-import { MultiSelectPrompt } from '../../../../components/MultiSelectPrompt.js';
-import { StreamingGenerationStep } from './StreamingGenerationStep.js';
-import { generateStrategy } from '../../generate-strategy.js';
-import { SECTOR_OPTIONS, TIMEFRAME_OPTIONS, DEFAULT_SECTOR_VALUES } from '../../presets/options.js';
-import { colors, symbols } from '../../../shared/theme.js';
-import { useWizard } from '../wizard-context.js';
-import { SelectPrompt } from '../../../../components/SelectPrompt.js';
-import { STRATEGY_PRESETS } from '../../presets/data.js';
+import type { MultiSelectItem } from '../../../../components/MultiSelectPrompt';
+import { MultiSelectPrompt } from '../../../../components/MultiSelectPrompt';
+import { StreamingGenerationStep } from './StreamingGenerationStep';
+import { generateStrategy } from '../../generate-strategy';
+import { SECTOR_OPTIONS, TIMEFRAME_OPTIONS, DEFAULT_SECTOR_VALUES } from '../../presets/options';
+import { colors, symbols } from '../../../shared/theme';
+import { useWizard } from '../wizard-context';
+import { SelectPrompt } from '../../../../components/SelectPrompt';
+import { STRATEGY_PRESETS } from '../../presets/data';
 
 export interface StrategyStepResult {
   strategyContent: string;

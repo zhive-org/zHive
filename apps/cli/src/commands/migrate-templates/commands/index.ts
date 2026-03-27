@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { render } from 'ink';
 import React from 'react';
-import { showWelcome } from '../../shared/welcome.js';
-import { MigrateApp } from '../ui/MigrateApp.js';
+import { showWelcome } from '../../shared/welcome';
+import { MigrateApp } from '../ui/MigrateApp';
 
 export const createMigrateTemplatesCommand = (): Command => {
   return new Command('migrate-templates')

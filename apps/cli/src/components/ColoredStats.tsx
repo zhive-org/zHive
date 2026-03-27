@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text } from 'ink';
-import { type AgentStats } from '../shared/config/agent.js';
-import { colors } from '../commands/shared/theme.js';
+import { type AgentStats } from '../shared/config/agent';
+import { colors } from '../commands/shared/theme';
 
 function formatPnl(value: number): string {
   const abs = Math.abs(Math.round(value));

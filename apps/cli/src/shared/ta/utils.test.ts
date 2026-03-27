@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPineResult, adjustFromDate, type PineResult } from './utils.js';
+import { formatPineResult, adjustFromDate, type PineResult } from './utils';
 
 describe('formatPineResult', () => {
   const makeResult = (

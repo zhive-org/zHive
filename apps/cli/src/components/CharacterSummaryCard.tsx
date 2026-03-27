@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, border } from '../commands/shared/theme.js';
+import { colors, border } from '../commands/shared/theme';
 
 interface CharacterSummaryCardProps {
   name: string;

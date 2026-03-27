@@ -1,7 +1,7 @@
 import { Command } from 'commander';
-import { InsufficientDataError } from '../../../shared/ta/error.js';
-import { getEMA } from '../../../shared/ta/service.js';
-import { styled } from '../../shared/theme.js';
+import { InsufficientDataError } from '../../../shared/ta/error';
+import { getEMA } from '../../../shared/ta/service';
+import { styled } from '../../shared/theme';
 
 export const createEmaCommand = (): Command => {
   return new Command('ema')

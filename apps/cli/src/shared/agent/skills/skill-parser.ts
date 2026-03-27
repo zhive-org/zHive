@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import type { SkillDefinition, SkillMetadata } from './types.js';
-import { extractErrorMessage } from '../utils.js';
+import type { SkillDefinition, SkillMetadata } from './types';
+import { extractErrorMessage } from '../utils';
 
 /**
  * Parse YAML frontmatter from SKILL.md content.

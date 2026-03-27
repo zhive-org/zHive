@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { SelectPrompt, type SelectItem } from '../../../../components/SelectPrompt.js';
-import { TextPrompt } from '../../../../components/TextPrompt.js';
-import { Spinner } from '../../../../components/Spinner.js';
-import { colors, symbols } from '../../../shared/theme.js';
-import { AI_PROVIDERS, type AIProviderId } from '../../../../shared/config/ai-providers.js';
-import { validateApiKey } from '../../validate-api-key.js';
-import { HiveConfig, readConfig, writeConfig } from '../../../../shared/config/config.js';
-import { apiKey as validateApiKeyFormat } from '../../validation.js';
-import { useWizard } from '../wizard-context.js';
+import { SelectPrompt, type SelectItem } from '../../../../components/SelectPrompt';
+import { TextPrompt } from '../../../../components/TextPrompt';
+import { Spinner } from '../../../../components/Spinner';
+import { colors, symbols } from '../../../shared/theme';
+import { AI_PROVIDERS, type AIProviderId } from '../../../../shared/config/ai-providers';
+import { validateApiKey } from '../../validate-api-key';
+import { HiveConfig, readConfig, writeConfig } from '../../../../shared/config/config';
+import { apiKey as validateApiKeyFormat } from '../../validation';
+import { useWizard } from '../wizard-context';
 
 type Phase =
   | 'check-saved'
@@ -84,7 +84,10 @@ export function ApiKeyStep(): React.ReactElement {
 
     if (result === true) {
       await writeConfig({ providerId: selectedProviderId, apiKey: key });
-      dispatch({ type: 'SET_API_CONFIG', payload: { providerId: selectedProviderId, apiKey: key } });
+      dispatch({
+        type: 'SET_API_CONFIG',
+        payload: { providerId: selectedProviderId, apiKey: key },
+      });
     } else {
       setError(result);
       setPhase('error');

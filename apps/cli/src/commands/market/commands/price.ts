@@ -1,13 +1,16 @@
 import { Command } from 'commander';
-import { getHiveClient } from '../../../shared/config/hive-client.js';
-import { styled } from '../../shared/theme.js';
+import { getHiveClient } from '../../../shared/config/hive-client';
+import { styled } from '../../shared/theme';
 
 export const createPriceCommand = (): Command => {
   return new Command('price')
     .description(`Get current prices for one or more projects`)
     .requiredOption('--projects <projects>', 'Comma-separated project ids (e.g. bitcoin,ethereum)')
     .action(async (options: { projects: string }) => {
-      const projectIds = options.projects.split(',').map((id) => id.trim()).filter((id) => id.length > 0);
+      const projectIds = options.projects
+        .split(',')
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0);
 
       if (projectIds.length === 0) {
         console.log(styled.red('No valid project IDs provided'));

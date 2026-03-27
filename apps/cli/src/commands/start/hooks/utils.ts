@@ -1,8 +1,8 @@
 import chalk from 'chalk';
-import { PollActivityItem } from './types.js';
-import { colors, symbols } from '../../shared/theme.js';
-import { formatTime, formatTimeLeft, formatTokenUsage } from '../../../shared/agent/utils.js';
-import { HIVE_FRONTEND_URL } from '../../../shared/config/constant.js';
+import { PollActivityItem } from './types';
+import { colors, symbols } from '../../shared/theme';
+import { formatTime, formatTimeLeft, formatTokenUsage } from '../../../shared/agent/utils';
+import { HIVE_FRONTEND_URL } from '../../../shared/config/constant';
 
 interface PollActivityFormatter<T extends PollActivityItem = PollActivityItem> {
   getText: (item: T) => string;

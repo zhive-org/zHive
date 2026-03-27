@@ -1,11 +1,11 @@
 import { BatchCreateMegathreadCommentDto, HiveClient } from '@zhive/sdk';
 import { Command } from 'commander';
 import { z } from 'zod';
-import { findAgentByName, scanAgents } from '../../../shared/config/agent.js';
-import { HIVE_API_URL } from '../../../shared/config/constant.js';
-import { styled, symbols } from '../../shared/theme.js';
-import { printZodError } from '../../shared/utils.js';
-import { detectPlatform } from '../../../shared/platform.js';
+import { findAgentByName, scanAgents } from '../../../shared/config/agent';
+import { HIVE_API_URL } from '../../../shared/config/constant';
+import { styled, symbols } from '../../shared/theme';
+import { printZodError } from '../../shared/utils';
+import { detectPlatform } from '../../../shared/platform';
 
 const convictionSchema = z
   .object({

@@ -2,9 +2,9 @@ import { tool, type Tool, LanguageModel } from 'ai';
 import * as ai from 'ai';
 import { z } from 'zod';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
-import type { SkillDefinition } from '../skills/types.js';
-import { getAllTools } from './index.js';
-import { cacheableSystem } from '../cache.js';
+import type { SkillDefinition } from '../skills/types';
+import { getAllTools } from './index';
+import { cacheableSystem } from '../cache';
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 

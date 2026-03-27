@@ -1,25 +1,13 @@
 import type { MarketInterval } from '@zhive/sdk';
 import { tool } from 'ai';
 import { z } from 'zod';
-import { InsufficientDataError } from '../../../ta/error.js';
-import {
-  getBollingerBands,
-  getEMA,
-  getMACD,
-  getOHLC,
-  getRSI,
-  getSMA,
-} from '../../../ta/service.js';
-import { formatToolError } from '../../utils.js';
-import {
-  formatBollingerData,
-  formatIndicatorData,
-  formatMACDData,
-  formatOhlcData,
-} from './utils.js';
-import { getHiveClient } from '../../../config/hive-client.js';
-import { HiveDataProvider } from '../../../ta/data-provider.js';
-import { formatPineResult, PineResult } from '../../../ta/utils.js';
+import { InsufficientDataError } from '../../../ta/error';
+import { getBollingerBands, getEMA, getMACD, getOHLC, getRSI, getSMA } from '../../../ta/service';
+import { formatToolError } from '../../utils';
+import { formatBollingerData, formatIndicatorData, formatMACDData, formatOhlcData } from './utils';
+import { getHiveClient } from '../../../config/hive-client';
+import { HiveDataProvider } from '../../../ta/data-provider';
+import { formatPineResult, PineResult } from '../../../ta/utils';
 
 const timeRangeSchema = z.object({
   from: z

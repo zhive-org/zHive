@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Text } from 'ink';
-import { StreamingText } from '../../../../components/StreamingText.js';
-import { TextPrompt } from '../../../../components/TextPrompt.js';
-import { CodeBlock } from '../../../../components/CodeBlock.js';
-import { Spinner } from '../../../../components/Spinner.js';
-import { colors, symbols } from '../../../shared/theme.js';
+import { StreamingText } from '../../../../components/StreamingText';
+import { TextPrompt } from '../../../../components/TextPrompt';
+import { CodeBlock } from '../../../../components/CodeBlock';
+import { Spinner } from '../../../../components/Spinner';
+import { colors, symbols } from '../../../shared/theme';
 
 interface StreamingGenerationStepProps {
   title: string;

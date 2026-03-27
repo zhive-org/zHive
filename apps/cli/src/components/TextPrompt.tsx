@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
-import { colors, symbols } from '../commands/shared/theme.js';
+import { colors, symbols } from '../commands/shared/theme';
 
 interface TextPromptProps {
   label: string;

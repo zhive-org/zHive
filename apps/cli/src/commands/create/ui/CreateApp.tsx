@@ -1,14 +1,14 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { Header } from '../../../components/Header.js';
-import { StepIndicator } from '../../../components/StepIndicator.js';
-import { AgentIdentityStep } from './steps/AgentIdentityStep.js';
-import { ApiKeyStep } from './steps/ApiKeyStep.js';
-import { SoulStep } from './steps/SoulStep.js';
-import { StrategyStep } from './steps/StrategyStep.js';
-import { ScaffoldStep } from './steps/ScaffoldStep.js';
-import { colors, symbols } from '../../shared/theme.js';
-import { WizardProvider, useWizard, STEP_ORDER, STEP_LABELS } from './wizard-context.js';
+import { Header } from '../../../components/Header';
+import { StepIndicator } from '../../../components/StepIndicator';
+import { AgentIdentityStep } from './steps/AgentIdentityStep';
+import { ApiKeyStep } from './steps/ApiKeyStep';
+import { SoulStep } from './steps/SoulStep';
+import { StrategyStep } from './steps/StrategyStep';
+import { ScaffoldStep } from './steps/ScaffoldStep';
+import { colors, symbols } from '../../shared/theme';
+import { WizardProvider, useWizard, STEP_ORDER, STEP_LABELS } from './wizard-context';
 
 const STEP_DEFS = STEP_ORDER.map((s) => ({ key: s, label: STEP_LABELS[s] }));
 
