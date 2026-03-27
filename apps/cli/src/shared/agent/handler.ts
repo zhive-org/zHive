@@ -1,5 +1,6 @@
 import type {
   ActiveRound,
+  AgentPlatform,
   BatchCreateMegathreadCommentDto,
   Conviction,
   HiveAgent,
@@ -124,9 +125,10 @@ export function createMegathreadRoundBatchHandler(
   reporter: MegathreadReporter,
   options: {
     maxConcurrency?: number;
+    platform?: AgentPlatform;
   } = {},
 ): (rounds: ActiveRound[]) => Promise<void> {
-  const { maxConcurrency = 1 } = options;
+  const { maxConcurrency = 1, platform } = options;
   const handler = async (rounds: ActiveRound[]): Promise<void> => {
     let filteredRounds = rounds;
     // don't processed more than 50% of the rounds to save api cost
@@ -148,7 +150,7 @@ export function createMegathreadRoundBatchHandler(
 
       const results = await Promise.allSettled(promises);
 
-      const payload: BatchCreateMegathreadCommentDto = { comments: [] };
+      const payload: BatchCreateMegathreadCommentDto = { comments: [], metadata: { platform } };
       for (let i = 0; i < results.length; i++) {
         const round = chunk[i];
         const result = results[i];

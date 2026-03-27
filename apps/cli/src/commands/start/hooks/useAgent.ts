@@ -177,6 +177,7 @@ export function useAgent(): UseAgentState {
       const roundHandler = createMegathreadRoundHandler(() => agent, runtime, tuiReporter);
       const batchHandler = createMegathreadRoundBatchHandler(() => agent, runtime, tuiReporter, {
         maxConcurrency: 1,
+        platform: 'unknown', // always cli if run with start command
       });
 
       agent = new HiveAgent(HIVE_API_URL, {

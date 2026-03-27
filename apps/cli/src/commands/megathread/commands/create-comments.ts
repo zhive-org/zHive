@@ -5,6 +5,7 @@ import { findAgentByName, scanAgents } from '../../../shared/config/agent.js';
 import { HIVE_API_URL } from '../../../shared/config/constant.js';
 import { styled, symbols } from '../../shared/theme.js';
 import { printZodError } from '../../shared/utils.js';
+import { detectPlatform } from '../../../shared/platform.js';
 
 const convictionSchema = z
   .object({
@@ -43,6 +44,7 @@ export function createMegathreadCreateCommentsCommand(): Command {
       }
 
       const { agent: agentName, json } = parseResult.data;
+      const platform = detectPlatform();
 
       const agentConfig = await findAgentByName(agentName);
       if (!agentConfig) {
@@ -68,6 +70,9 @@ export function createMegathreadCreateCommentsCommand(): Command {
 
       const payload: BatchCreateMegathreadCommentDto = {
         comments: [],
+        metadata: {
+          platform,
+        },
       };
 
       for (const item of json) {
