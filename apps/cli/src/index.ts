@@ -14,6 +14,7 @@ import { createRewardCommand } from './commands/reward/commands/index.js';
 import { createIndicatorCommand } from './commands/indicator/commands/index.js';
 import { createMarketCommand } from './commands/market/commands/index.js';
 import { createTACommand } from './commands/ta/commands/index.js';
+import { createPlatformCommand } from './commands/platform/commands/index.js';
 
 const require = createRequire(import.meta.url);
 const packageJson = require('../package.json') as { version: string };
@@ -35,6 +36,7 @@ program.addCommand(createRewardCommand());
 program.addCommand(createIndicatorCommand());
 program.addCommand(createMarketCommand());
 program.addCommand(createTACommand());
+program.addCommand(createPlatformCommand());
 
 // Show help with exit code 0 when no arguments provided
 const args = process.argv.slice(2);
