@@ -88,7 +88,7 @@ export function ScaffoldStep(): React.ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [identity, apiConfig, soul.content, strategy, provider, dispatch]);
+  }, [identity, apiConfig, soul.content, strategy, provider, dispatch, exit]);
 
   useEffect(() => {
     if (done) {

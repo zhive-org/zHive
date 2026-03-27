@@ -7,6 +7,8 @@ import { generateStrategy } from '../../generate-strategy.js';
 import { SECTOR_OPTIONS, TIMEFRAME_OPTIONS, DEFAULT_SECTOR_VALUES } from '../../presets/options.js';
 import { colors, symbols } from '../../../shared/theme.js';
 import { useWizard } from '../wizard-context.js';
+import { SelectPrompt } from '../../../../components/SelectPrompt.js';
+import { STRATEGY_PRESETS } from '../../presets/data.js';
 
 export interface StrategyStepResult {
   strategyContent: string;
@@ -14,7 +16,7 @@ export interface StrategyStepResult {
   timeframes: string[];
 }
 
-type SubStep = 'sectors' | 'timeframes' | 'generate';
+type SubStep = 'sectors' | 'timeframes' | 'select' | 'generate';
 
 const ALL_TIMEFRAME_VALUES = new Set(TIMEFRAME_OPTIONS.map((t) => t.value));
 
@@ -26,8 +28,24 @@ export function StrategyStep(): React.ReactElement {
   const hasTimeframes = strategy.timeframes.length > 0;
 
   const [subStep, setSubStep] = useState<SubStep>(
-    hasSectors && hasTimeframes ? 'generate' : hasSectors ? 'timeframes' : 'sectors',
+    hasSectors && hasTimeframes
+      ? strategy.content || strategy.draft
+        ? 'generate'
+        : 'select'
+      : hasSectors
+        ? 'timeframes'
+        : 'sectors',
   );
+  const [autoGenerate, setAutoGenerate] = useState(false);
+
+  const selectItems = [
+    ...STRATEGY_PRESETS.map((p) => ({
+      label: p.name,
+      value: p.name,
+      description: p.philosophy,
+    })),
+    { label: 'Custom', value: '__custom__', description: 'Write your own prompt from scratch' },
+  ];
 
   const handleSectorsSubmit = useCallback(
     (selected: MultiSelectItem[]) => {
@@ -40,6 +58,24 @@ export function StrategyStep(): React.ReactElement {
   const handleTimeframesSubmit = useCallback(
     (selected: MultiSelectItem[]) => {
       dispatch({ type: 'UPDATE_STRATEGY', payload: { timeframes: selected.map((t) => t.value) } });
+      setSubStep('select');
+    },
+    [dispatch],
+  );
+
+  const handleSelect = useCallback(
+    (item: { value: string }) => {
+      if (item.value === '__custom__') {
+        dispatch({ type: 'UPDATE_STRATEGY', payload: { prompt: '', draft: '' } });
+        setAutoGenerate(false);
+        setSubStep('generate');
+        return;
+      }
+      const preset = STRATEGY_PRESETS.find((p) => p.name === item.value);
+      if (!preset) return;
+      const prompt = `${preset.philosophy} ${preset.decisionSteps.map((s, i) => `${i + 1}. ${s}`).join(' ')}`;
+      dispatch({ type: 'UPDATE_STRATEGY', payload: { prompt, draft: '' } });
+      setAutoGenerate(true);
       setSubStep('generate');
     },
     [dispatch],
@@ -86,11 +122,21 @@ export function StrategyStep(): React.ReactElement {
         },
         feedback,
       }),
-    [apiConfig.providerId, apiConfig.apiKey, identity.name, identity.bio, strategy.sectors, strategy.timeframes],
+    [
+      apiConfig.providerId,
+      apiConfig.apiKey,
+      identity.name,
+      identity.bio,
+      strategy.sectors,
+      strategy.timeframes,
+    ],
   );
 
-  const defaultSectors = strategy.sectors.length > 0 ? new Set(strategy.sectors) : DEFAULT_SECTOR_VALUES;
-  const defaultTimeframes = strategy.timeframes.length > 0 ? new Set(strategy.timeframes) : ALL_TIMEFRAME_VALUES;
+  const defaultSectors =
+    strategy.sectors.length > 0 ? new Set(strategy.sectors) : DEFAULT_SECTOR_VALUES;
+  const defaultTimeframes =
+    strategy.timeframes.length > 0 ? new Set(strategy.timeframes) : ALL_TIMEFRAME_VALUES;
+  const initialContent = strategy.content || strategy.draft || undefined;
 
   return (
     <Box flexDirection="column">
@@ -99,12 +145,14 @@ export function StrategyStep(): React.ReactElement {
         <Box flexDirection="column" marginLeft={2} marginBottom={1}>
           {strategy.sectors.length > 0 && (
             <Text color={colors.gray}>
-              {symbols.check} Sectors: <Text color={colors.honey}>{strategy.sectors.join(', ')}</Text>
+              {symbols.check} Sectors:{' '}
+              <Text color={colors.honey}>{strategy.sectors.join(', ')}</Text>
             </Text>
           )}
           {strategy.timeframes.length > 0 && (
             <Text color={colors.gray}>
-              {symbols.check} Timeframes: <Text color={colors.honey}>{strategy.timeframes.join(', ')}</Text>
+              {symbols.check} Timeframes:{' '}
+              <Text color={colors.honey}>{strategy.timeframes.join(', ')}</Text>
             </Text>
           )}
         </Box>
@@ -130,11 +178,22 @@ export function StrategyStep(): React.ReactElement {
         />
       )}
 
+      {/* once user generated first draft, user can edit the prompt though feedback so no need to comeback at this step */}
+      {subStep === 'select' && !initialContent && (
+        <SelectPrompt
+          label="Choose a strategy preset or write your own"
+          items={selectItems}
+          onSelect={handleSelect}
+          onBack={() => setSubStep('timeframes')}
+        />
+      )}
+
       {subStep === 'generate' && (
         <StreamingGenerationStep
           title="STRATEGY.md"
-          initialContent={strategy.content || strategy.draft || undefined}
+          initialContent={initialContent}
           initialPrompt={strategy.prompt || undefined}
+          autoGenerate={autoGenerate}
           promptLabel="Describe your agent's decision framework and trading approach"
           promptPlaceholder="e.g. technical analysis focused, uses RSI and MACD, conservative with short timeframes"
           createStream={createStream}

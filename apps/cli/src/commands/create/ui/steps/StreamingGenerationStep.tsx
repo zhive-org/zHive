@@ -5,14 +5,15 @@ import { TextPrompt } from '../../../../components/TextPrompt.js';
 import { CodeBlock } from '../../../../components/CodeBlock.js';
 import { Spinner } from '../../../../components/Spinner.js';
 import { colors, symbols } from '../../../shared/theme.js';
-import { required } from '../../validation.js';
 
 interface StreamingGenerationStepProps {
   title: string;
   initialContent?: string;
   initialPrompt?: string;
+  autoGenerate?: boolean;
   promptLabel: string;
   promptPlaceholder: string;
+  validate?: (value: string) => string | true;
   createStream: (initialPrompt: string, feedback?: string) => AsyncIterable<string>;
   onBack?: (draft?: string, prompt?: string) => void;
   onComplete: (content: string) => void;
@@ -24,18 +25,25 @@ export function StreamingGenerationStep({
   title,
   initialContent,
   initialPrompt: savedPrompt,
+  autoGenerate,
   promptLabel,
   promptPlaceholder,
+  validate,
   createStream,
   onBack,
   onComplete,
 }: StreamingGenerationStepProps): React.ReactElement {
-  const [phase, setPhase] = useState<Phase>(initialContent ? 'review' : 'prompt-input');
+  const shouldAutoGenerate = !initialContent && !!savedPrompt && autoGenerate;
+  const [phase, setPhase] = useState<Phase>(
+    initialContent ? 'review' : shouldAutoGenerate ? 'streaming' : 'prompt-input',
+  );
   const [prompt, setPrompt] = useState(savedPrompt ?? '');
   const [draft, setDraft] = useState(initialContent ?? '');
   const [errorMessage, setErrorMessage] = useState('');
   const [feedbackCount, setFeedbackCount] = useState(0);
-  const [currentStream, setCurrentStream] = useState<AsyncIterable<string> | null>(null);
+  const [currentStream, setCurrentStream] = useState<AsyncIterable<string> | null>(
+    shouldAutoGenerate ? createStream(savedPrompt) : null,
+  );
 
   const handlePromptSubmit = useCallback(
     (value: string) => {
@@ -97,7 +105,7 @@ export function StreamingGenerationStep({
             defaultValue={prompt || undefined}
             onBack={() => onBack?.(draft, prompt)}
             onSubmit={handlePromptSubmit}
-            validate={required(title)}
+            validate={validate}
           />
         </Box>
       )}

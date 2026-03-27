@@ -56,9 +56,8 @@ export type WizardAction =
   | { type: 'SET_IDENTITY'; payload: IdentityState }
   | { type: 'SET_API_CONFIG'; payload: ApiKeyState }
   | { type: 'SET_SOUL'; content: string }
-  | { type: 'SAVE_SOUL_DRAFT'; payload: Partial<GenerationState> }
+  | { type: 'UPDATE_SOUL'; payload: Partial<GenerationState> }
   | { type: 'SET_STRATEGY'; payload: StrategyState }
-  | { type: 'SAVE_STRATEGY_DRAFT'; payload: Partial<StrategyState> }
   | { type: 'UPDATE_STRATEGY'; payload: Partial<StrategyState> }
   | { type: 'SET_ERROR'; message: string };
 
@@ -90,11 +89,10 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
         step: 'strategy',
       };
 
-    case 'SAVE_SOUL_DRAFT':
+    case 'UPDATE_SOUL':
       return {
         ...state,
         soul: { ...state.soul, ...action.payload },
-        step: goBackStep(state.step),
       };
 
     case 'SET_STRATEGY':
@@ -102,13 +100,6 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
         ...state,
         strategy: { ...action.payload, draft: '', prompt: '' },
         step: 'scaffold',
-      };
-
-    case 'SAVE_STRATEGY_DRAFT':
-      return {
-        ...state,
-        strategy: { ...state.strategy, ...action.payload },
-        step: goBackStep(state.step),
       };
 
     case 'UPDATE_STRATEGY':
