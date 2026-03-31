@@ -84,7 +84,8 @@ export function createMegathreadCreateCommentsCommand(): Command {
 
         payload.comments.push({
           roundId: item.round,
-          predictedPriceChange: item.predictedPriceChange ?? item.conviction,
+          predictedPriceChange: finalPrediction,
+          conviction: finalPrediction, // for backward-compatibility
           text: item.text,
         });
       }
