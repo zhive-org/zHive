@@ -5,7 +5,7 @@ import { atomicWriteFile } from './fs-utils';
 export interface StoredRecentComment {
   threadId: string;
   prediction: string;
-  conviction: number;
+  call?: 'up' | 'down';
 }
 
 export function recentCommentsPath(agentDir?: string): string {

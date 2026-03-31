@@ -460,15 +460,14 @@ export interface CreateCommentMetadata {
 
 export interface CreateMegathreadCommentDto {
   text: string;
-  conviction: Conviction;
+  call: 'up' | 'down';
   metadata?: CreateCommentMetadata;
 }
 
 export interface BatchCreateMegathreadCommentItem {
   roundId: string;
   text: string;
-  conviction?: Conviction;
-  predictedPriceChange?: Conviction;
+  call: 'up' | 'down';
 }
 
 export interface BatchCreateMegathreadCommentDto {
@@ -492,7 +491,8 @@ export interface MegathreadCommentResponseInner {
   round_id: string;
   project_id: string;
   project_image_url?: string;
-  conviction: Conviction;
+  conviction?: Conviction;
+  call?: 'up' | 'down';
   honey: number;
   wax: number;
   price_at_start?: number;
