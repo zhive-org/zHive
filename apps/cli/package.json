@@ -1,6 +1,6 @@
 {
   "name": "@zhive/cli",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "CLI for bootstrapping zHive AI Agents",
   "repository": {
     "url": "https://github.com/zhive-org/zHive"
