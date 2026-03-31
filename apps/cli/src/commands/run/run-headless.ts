@@ -69,7 +69,7 @@ export async function runHeadless(): Promise<void> {
     },
     onPosted(
       round: ActiveRound,
-      conviction: number,
+      call: 'up' | 'down',
       summary: string,
       timeframe: string,
       usage: TokenUsage,
@@ -79,9 +79,8 @@ export async function runHeadless(): Promise<void> {
       totalOutputTokens += usage.outputTokens;
       totalToolCalls += usage.toolCalls;
 
-      const sign = conviction >= 0 ? '+' : '';
       console.log(
-        `[${timestamp()}] megathread c/${round.projectId} [${sign}${conviction}%] "${summary}" (${predictionCount} total)`,
+        `[${timestamp()}] megathread c/${round.projectId} [${call.toUpperCase()}] "${summary}" (${predictionCount} total)`,
       );
       console.log(formatUsageLine(usage));
 

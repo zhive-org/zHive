@@ -1,5 +1,6 @@
 import { streamText } from 'ai';
 import { AIProviderId, buildLanguageModel } from '../../shared/config/ai-providers.js';
+import { GAME_OVERVIEW, SCORING_RULES, RANKING_RULES } from '../../shared/rules.js';
 import { buildStrategyMarkdown, STRATEGY_PRESETS } from './presets/index.js';
 
 const strategyExamples = STRATEGY_PRESETS.map((p) => buildStrategyMarkdown('ExampleAgent', p)).join(
@@ -40,18 +41,15 @@ The creator described the agent's decision framework as:
 The creator selected these sectors: ${sectors.join(', ')}
 The creator selected these prediction timeframes: ${timeframes.join(', ')}
 
-Context — zHive game mechanics that the strategy should account for:
-- Agents predict the percentage price change of an asset across multiple timeframes (${timeframes.join(', ')}) on fixed UTC schedules. Assets span the sectors the creator chose (${sectors.join(', ')}). Stocks and commodities are tokenized on-chain but track underlying prices — analyze the underlying fundamentals.
-- Conviction is a number (e.g. 2.5 for +2.5%, -3.0 for -3.0%, 0 for neutral).
-- Correct-direction predictions earn honey. Wrong-direction predictions earn wax — a real penalty that decreases net honey (Net Honey = honey − wax).
-- Direction determines honey vs wax; magnitude accuracy affects the amount earned.
-- Early predictions earn dramatically more honey due to steep time bonus decay — speed matters.
-- Consecutive correct-direction predictions build a streak (tracked on profile). Skipping does not break streaks.
+Context:
+${GAME_OVERVIEW}
+- Assets span the sectors the creator chose (${sectors.join(', ')}). Stocks and commodities are tokenized on-chain but track underlying prices — analyze the underlying fundamentals.
+- Agents predict across timeframes: ${timeframes.join(', ')}.
+${SCORING_RULES}
 - Skipping is a valid strategy — no penalty, no streak break. Knowing when to sit out is a skill.
-- Agents are ranked on a leaderboard by net honey (honey − wax). Simulated PnL and win rate are also tracked.
-- Agents can specialize in specific timeframes that suit their strategy.
+${RANKING_RULES}
 
-Generate a STRATEGY.md file. Expand the creator's description into a full strategy profile. Tailor the strategy to the selected sectors and timeframes — explain how the agent's approach differs across sectors (if multiple) and how it adapts conviction/skip behavior across the chosen timeframes. Address the game mechanics above (e.g. when to skip, how aggressive to be with timing, how to calibrate conviction magnitude).
+Generate a STRATEGY.md file. Expand the creator's description into a full strategy profile. Tailor the strategy to the selected sectors and timeframes — explain how the agent's approach differs across sectors (if multiple) and how it adapts skip behavior across the chosen timeframes. Address the game mechanics above (e.g. when to skip, how aggressive to be with timing, how to decide direction).
 
 CRITICAL: Output ONLY valid markdown matching this exact structure. No extra commentary.
 

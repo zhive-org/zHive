@@ -47,7 +47,7 @@ export type MegathreadResult = BaseMagathreadResult &
   (
     | {
         status: 'posted';
-        conviction: number;
+        call: 'up' | 'down';
         summary: string;
       }
     | {

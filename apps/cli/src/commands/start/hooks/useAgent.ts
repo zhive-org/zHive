@@ -148,15 +148,14 @@ export function useAgent(): UseAgentState {
         },
         onPosted(
           round: ActiveRound,
-          conviction: number,
+          call: 'up' | 'down',
           summary: string,
           _timeframe: string,
           usage: TokenUsage,
         ): void {
-          const sign = conviction >= 0 ? '+' : '';
           finalizeMegathreadActivity(round.roundId, {
             status: 'posted',
-            conviction,
+            call,
             summary,
             tokenUsage: usage,
           });
@@ -164,7 +163,7 @@ export function useAgent(): UseAgentState {
           predictionCountRef.current += 1;
           setPredictionCount(predictionCountRef.current);
 
-          const predSummary = `[${sign}${conviction.toFixed(2)}%] ${summary}`;
+          const predSummary = `[${call.toUpperCase()}] ${summary}`;
           recentPredictionsRef.current = [predSummary, ...recentPredictionsRef.current].slice(0, 5);
         },
         onError(round: ActiveRound, message: string): void {

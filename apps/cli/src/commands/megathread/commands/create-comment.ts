@@ -4,14 +4,12 @@ import { HiveClient, CreateMegathreadCommentDto } from '@zhive/sdk';
 import { styled, symbols } from '../../shared/theme';
 import { HIVE_API_URL } from '../../../shared/config/constant';
 import { findAgentByName, scanAgents } from '../../../shared/config/agent';
-import _ from 'lodash';
 import { printZodError } from '../../shared/utils';
 
 const CreateCommentOptionsSchema = z.object({
   agent: z.string().min(1),
   round: z.string().min(1),
-  conviction: z.coerce.number().min(-100).max(100).optional(),
-  predictedPriceChange: z.coerce.number().min(-100).max(100).optional(),
+  call: z.enum(['up', 'down']),
   text: z.string().min(1),
 });
 
@@ -20,23 +18,16 @@ export function createMegathreadCreateCommentCommand(): Command {
     .description('Create a comment on a megathread round')
     .requiredOption('--agent <name>', 'Agent name')
     .requiredOption('--round <roundId>', 'Round ID to comment on')
-    .option('--conviction <number>', '[Deprecated] use --predictedPriceChange instead')
-    .option('--predictedPriceChange <number>', 'Predicted price change (-100 to 100)')
+    .requiredOption('--call <direction>', 'Directional call: up or down')
     .requiredOption('--text <text>', 'Comment text')
-    .action(async (options: { agent: string; round: string; conviction: string; text: string }) => {
+    .action(async (options: { agent: string; round: string; call: string; text: string }) => {
       const parseResult = CreateCommentOptionsSchema.safeParse(options);
       if (!parseResult.success) {
         printZodError(parseResult);
         process.exit(1);
       }
 
-      const {
-        agent: agentName,
-        round: roundId,
-        conviction,
-        predictedPriceChange,
-        text,
-      } = parseResult.data;
+      const { agent: agentName, round: roundId, call, text } = parseResult.data;
 
       const agentConfig = await findAgentByName(agentName);
       if (!agentConfig) {
@@ -60,17 +51,9 @@ export function createMegathreadCreateCommentCommand(): Command {
 
       const client = new HiveClient(HIVE_API_URL, agentConfig.apiKey);
 
-      const finalPredictedPriceChange = predictedPriceChange ?? conviction;
-      if (_.isNil(finalPredictedPriceChange)) {
-        console.error(
-          styled.red(`Either --conviction or --predictedPriceChange should be provided`),
-        );
-        process.exit(1);
-      }
-
       const payload: CreateMegathreadCommentDto = {
         text,
-        conviction: finalPredictedPriceChange,
+        call,
       };
 
       try {
@@ -79,12 +62,10 @@ export function createMegathreadCreateCommentCommand(): Command {
         console.log('');
         console.log(styled.green(`${symbols.check} Comment posted successfully!`));
         console.log('');
-        console.log(`  ${styled.gray('Round:')}      ${roundId}`);
+        console.log(`  ${styled.gray('Round:')}  ${roundId}`);
+        console.log(`  ${styled.gray('Call:')}   ${call.toUpperCase()}`);
         console.log(
-          `  ${styled.gray('Conviction:')} ${finalPredictedPriceChange >= 0 ? '+' : ''}${finalPredictedPriceChange.toFixed(1)}%`,
-        );
-        console.log(
-          `  ${styled.gray('Text:')}       ${text.length > 50 ? text.slice(0, 50) + '...' : text}`,
+          `  ${styled.gray('Text:')}   ${text.length > 50 ? text.slice(0, 50) + '...' : text}`,
         );
         console.log('');
       } catch (error) {

@@ -1,5 +1,6 @@
 import { ActiveRound, durationMsToTimeframe } from '@zhive/sdk';
 import z from 'zod';
+import { GAME_OVERVIEW } from '../rules';
 import { humanDuration } from './utils';
 import { AgentRuntime } from './runtime';
 import _ from 'lodash';
@@ -44,9 +45,7 @@ export async function screenMegathreadRounds(
   const prompt = `You are a megathread scanner. Your task is to pick ${limit} megathread rounds to engage
 
 # What is megathread
-
-Megathread (round) consist of project (crypto,stock,commodity etc.), baseline price and timeframe. you need to predict the price 
-of project at the end of the round. Score will be given based on your prediction.  Direction determines honey vs wax: correct direction earns honey, wrong direction earns wax
+${GAME_OVERVIEW}
 
 You are not predicting yet, you ONLY need to pick round that match your preference for now.
 

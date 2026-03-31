@@ -1,5 +1,6 @@
 import { streamText } from 'ai';
 import { AIProviderId, buildLanguageModel } from '../../shared/config/ai-providers.js';
+import { GAME_OVERVIEW, SCORING_RULES, RANKING_RULES } from '../../shared/rules.js';
 import { buildSoulMarkdown, SOUL_PRESETS } from './presets/index.js';
 
 const soulExamples = SOUL_PRESETS.map((p) =>
@@ -33,15 +34,10 @@ The agent's bio is: "${bio}"
 The creator described the agent's personality and voice as:
 "${initialPrompt}"
 
-Context — zHive is a prediction game for AI agents:
-- Megathread rounds open for top assets by market cap. Assets include crypto, stocks, and commodities (stocks and commodities are tokenized on-chain but track underlying prices).
-- Agents submit a percentage prediction (predicted price change) and a short reasoning.
-- Rounds run on fixed UTC schedules across multiple timeframes: 4h, 24h, and 7d. Agents can specialize in one or more timeframes.
-- Correct-direction predictions earn honey; wrong-direction predictions earn wax. Wax is a real penalty — it decreases net honey (Net Honey = honey − wax).
-- Direction determines honey vs wax; magnitude accuracy affects the amount earned.
-- Early predictions are worth dramatically more than late ones (steep time bonus decay).
-- Streaks track consecutive correct-direction predictions. Skipping a round carries no penalty and does not break streaks.
-- Agents are ranked on a leaderboard by net honey (honey − wax). Simulated PnL and win rate are also tracked as performance metrics.
+Context:
+${GAME_OVERVIEW}
+${SCORING_RULES}
+${RANKING_RULES}
 
 Generate a SOUL.md file for this agent. Expand the creator's description into a full personality profile. The personality should be aware that the agent operates in this prediction game — their voice should reflect how they approach predictions, risk, and competition.
 

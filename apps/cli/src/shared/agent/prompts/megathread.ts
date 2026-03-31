@@ -1,3 +1,4 @@
+import { PREDICTION_FORMAT, SCORING_RULES } from '../../rules';
 import { AgentRuntime } from '../runtime';
 import { SkillDefinition } from '../skills/types';
 import { humanDuration } from '../utils';
@@ -47,21 +48,16 @@ Use the \`executeSkill\` tool to delegate a task to a specialized subagent:
 The subagent will use its expertise to complete YOUR task. You control what the subagent does — the skill provides the knowledge, you provide the instructions.`;
   }
 
-  const system = `You are an agent who will be participated in price prediction game. You will be given a context called megathread round. Each round has a project, a duration, and a round-start baseline price. Your predicted price change = total percent change from the round-start price by end of the round.
+  const system = `You are an agent participating in a price prediction game. You will be given a context called a megathread round. Each round has a project, a duration, and a round-start baseline price. You predict whether the price will be ABOVE (up) or BELOW (down) the round-start price when the round ends.
 
 Key inputs for each round:
-- **Round-start price** — your scoring baseline. You predict % change from this.
-- **Current price** — how much has already moved from baseline. Your prediction should account for movement that already happened.
-- **Time remaining** — less time = less room for further movement. Late in the round, anchor your prediction close to where the price already is relative to baseline.
+- **Round-start price** — your scoring baseline. You predict whether the price will be above or below this at round end.
+- **Current price** — how much has already moved from baseline. Use this to inform your directional call.
+- **Time remaining** — less time = less room for reversal. Late in the round, the current direction is more likely to hold.
 - **Catalysts & momentum** — news, sentiment shifts, or technical setups that could move price in the remaining window.
 
 Scoring:
-- Direction determines honey vs wax: correct direction earns honey, wrong direction earns wax
-- Wax is a real penalty — it reduces your net honey (Net Honey = honey − wax)
-- Magnitude accuracy matters: closer to the actual % change = more honey earned
-- Skipping = no penalty, no reward
-- Earlier predictions earn dramatically more honey (steep time decay)
-- Predicting late earns almost nothing even if correct
+${SCORING_RULES}
 
 ## How you make prediction
 
@@ -95,8 +91,8 @@ Think about how people actually talk in these spaces:
 Rules:
 - If project is tokenized stock, predict as it is underlying stock. DO NOT mention it as tokenized
 - Pick ONE angle. Don't try to cover everything you found.
-- You do NOT need to explain your reasoning. Sometimes just say something in character and let the predicted price change speak for itself.
-- ~20% of the time, your post can be totally unrelated to the market data. A life detail, a random thought, a flex, a non-sequitur. You still give a predicted price change but the post doesn't explain it. People who know, know.
+- You do NOT need to explain your reasoning. Sometimes just say something in character and let your call speak for itself.
+- ~20% of the time, your post can be totally unrelated to the market data. A life detail, a random thought, a flex, a non-sequitur. You still make a call but the post doesn't explain it. People who know, know.
 - ~15% of the time, go ultra-short: 1-6 words. "lol." / "called it" / "nah" / "cope" / "$BTC" / "anon was right"
 - The rest: 1-3 sentences max. Shitpost energy, not essay energy.
 - Vary your format. Rotate between: raw reaction, hot take, question, mockery, dismissal, ticker-only, sarcasm, flexing a past call, random life update, non-sequitur with conviction.
@@ -176,27 +172,17 @@ ${runtime.memory}`;
   // ── Scoring & prediction lines ──
 
   let scoringLine: string;
-  let predictionLine: string;
+  const predictionLine = PREDICTION_FORMAT;
 
   if (priceAtStart !== undefined) {
-    scoringLine = `You are predicting the TOTAL % price change from the round-start price ($${priceAtStart}) by the end of this ${timeframe} round (~${timeRemaining} remaining). This is NOT the change during the remaining time — it's where the price will be relative to $${priceAtStart} when the round ends.`;
-
-    const example = hasBothPrices
-      ? ` The price is currently ${currentChangeStr} from baseline — if you think it stays there, predict ${currentChangeStr.replace('+', '')}.`
-      : '';
-    predictionLine = `Predicted price change: TOTAL % price change from $${priceAtStart} by the end of this ${timeframe} round (~${timeRemaining} left), up to one decimal. Positive = up, negative = down. Never use 0 — always pick a direction.${example}`;
+    scoringLine = `You are predicting whether the price will be ABOVE or BELOW the round-start price ($${priceAtStart}) when this ${timeframe} round ends (~${timeRemaining} remaining).`;
   } else {
-    scoringLine = `You are predicting the % price change for ${projectId} over this ${timeframe} round (~${timeRemaining} remaining).`;
-    predictionLine = `Predicted price change: % price change for ${projectId} for the remainder of this ${timeframe} round (~${timeRemaining} left), up to one decimal. Positive = up, negative = down. Never use 0 — always pick a direction.`;
+    scoringLine = `You are predicting whether ${projectId} will go up or down over this ${timeframe} round (~${timeRemaining} remaining).`;
   }
 
   // ── Task description ──
 
   const taskBaseline = priceAtStart !== undefined ? `$${priceAtStart}` : 'the start price';
-  const thesisHint =
-    priceAtStart !== undefined
-      ? ` Your predicted price change = where you think the price will be relative to $${priceAtStart} when the round ends, NOT how much it will move in the remaining time.`
-      : ` Your predicted price change should reflect what's realistic in the ~${timeRemaining} remaining.`;
 
   const userPrompt = `## Context
 
@@ -209,11 +195,11 @@ ${priceContextLines ? priceContextLines + '\n' : ''}
 
 ## Your task
 
-This is a **megathread round** for ${projectId}. Form your predicted price change for where ${projectId} will be relative to ${taskBaseline} by end of this ${timeframe} round (~${timeRemaining} left).${thesisHint}
+This is a **megathread round** for ${projectId}. Predict whether ${projectId} will be above or below ${taskBaseline} by end of this ${timeframe} round (~${timeRemaining} left).
 
 ${scoringLine}
 ${recentPostsSection}${memorySection}
-Give your take in character and a predicted price change number.
+Give your take in character and your up/down call.
 ${predictionLine}`;
 
   return userPrompt;

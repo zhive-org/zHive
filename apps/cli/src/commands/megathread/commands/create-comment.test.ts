@@ -78,54 +78,8 @@ describe('createMegathreadCreateCommentCommand', () => {
     processExitSpy.mockRestore();
   });
 
-  describe('conviction validation', () => {
-    it('shows error when conviction is too high', async () => {
-      const command = createMegathreadCreateCommentCommand();
-
-      await expect(
-        command.parseAsync(
-          [
-            '--agent',
-            'test-agent',
-            '--round',
-            'round-123',
-            '--conviction',
-            '150',
-            '--text',
-            'Test comment',
-          ],
-          { from: 'user' },
-        ),
-      ).rejects.toThrow('process.exit(1)');
-
-      expect(consoleErrorOutput.join('\n')).toContain('conviction');
-      expect(consoleErrorOutput.join('\n')).toContain('100');
-    });
-
-    it('shows error when conviction is too low', async () => {
-      const command = createMegathreadCreateCommentCommand();
-
-      await expect(
-        command.parseAsync(
-          [
-            '--agent',
-            'test-agent',
-            '--round',
-            'round-123',
-            '--conviction',
-            '-150',
-            '--text',
-            'Test comment',
-          ],
-          { from: 'user' },
-        ),
-      ).rejects.toThrow('process.exit(1)');
-
-      expect(consoleErrorOutput.join('\n')).toContain('conviction');
-      expect(consoleErrorOutput.join('\n')).toContain('-100');
-    });
-
-    it('shows error when conviction or predictedPriceChange is not provided', async () => {
+  describe('call validation', () => {
+    it('shows error when call is not provided', async () => {
       const command = createMegathreadCreateCommentCommand();
 
       await expect(
@@ -133,14 +87,10 @@ describe('createMegathreadCreateCommentCommand', () => {
           ['--agent', 'test-agent', '--round', 'round-123', '--text', 'Test comment'],
           { from: 'user' },
         ),
-      ).rejects.toThrow('process.exit(1)');
-
-      expect(consoleErrorOutput.join('\n')).toContain(
-        'Either --conviction or --predictedPriceChange should be provided',
-      );
+      ).rejects.toThrow();
     });
 
-    it('shows error when conviction is not a number', async () => {
+    it('shows error when call is invalid value', async () => {
       const command = createMegathreadCreateCommentCommand();
 
       await expect(
@@ -150,113 +100,14 @@ describe('createMegathreadCreateCommentCommand', () => {
             'test-agent',
             '--round',
             'round-123',
-            '--conviction',
-            'abc',
+            '--call',
+            'sideways',
             '--text',
             'Test comment',
           ],
           { from: 'user' },
         ),
       ).rejects.toThrow('process.exit(1)');
-
-      expect(consoleErrorOutput.join('\n')).toContain('conviction');
-      expect(consoleErrorOutput.join('\n')).toContain('number');
-    });
-
-    it('accepts valid conviction at upper boundary', async () => {
-      mockPostMegathreadComment.mockResolvedValue(undefined);
-
-      const command = createMegathreadCreateCommentCommand();
-      await command.parseAsync(
-        [
-          '--agent',
-          'test-agent',
-          '--round',
-          'round-123',
-          '--conviction',
-          '100',
-          '--text',
-          'Test comment',
-        ],
-        { from: 'user' },
-      );
-
-      expect(mockPostMegathreadComment).toHaveBeenCalledWith('round-123', {
-        text: 'Test comment',
-        conviction: 100,
-      });
-    });
-
-    it('accepts valid conviction at lower boundary', async () => {
-      mockPostMegathreadComment.mockResolvedValue(undefined);
-
-      const command = createMegathreadCreateCommentCommand();
-      await command.parseAsync(
-        [
-          '--agent',
-          'test-agent',
-          '--round',
-          'round-123',
-          '--conviction',
-          '-100',
-          '--text',
-          'Test comment',
-        ],
-        { from: 'user' },
-      );
-
-      expect(mockPostMegathreadComment).toHaveBeenCalledWith('round-123', {
-        text: 'Test comment',
-        conviction: -100,
-      });
-    });
-
-    it('accepts valid predictedPriceChange at lower boundary', async () => {
-      mockPostMegathreadComment.mockResolvedValue(undefined);
-
-      const command = createMegathreadCreateCommentCommand();
-      await command.parseAsync(
-        [
-          '--agent',
-          'test-agent',
-          '--round',
-          'round-123',
-          '--predictedPriceChange',
-          '-100',
-          '--text',
-          'Test comment',
-        ],
-        { from: 'user' },
-      );
-
-      expect(mockPostMegathreadComment).toHaveBeenCalledWith('round-123', {
-        text: 'Test comment',
-        conviction: -100,
-      });
-    });
-
-    it('accepts decimal conviction values', async () => {
-      mockPostMegathreadComment.mockResolvedValue(undefined);
-
-      const command = createMegathreadCreateCommentCommand();
-      await command.parseAsync(
-        [
-          '--agent',
-          'test-agent',
-          '--round',
-          'round-123',
-          '--conviction',
-          '25.5',
-          '--text',
-          'Test comment',
-        ],
-        { from: 'user' },
-      );
-
-      expect(mockPostMegathreadComment).toHaveBeenCalledWith('round-123', {
-        text: 'Test comment',
-        conviction: 25.5,
-      });
     });
   });
 
@@ -271,8 +122,8 @@ describe('createMegathreadCreateCommentCommand', () => {
             'non-existent',
             '--round',
             'round-123',
-            '--conviction',
-            '50',
+            '--call',
+            'up',
             '--text',
             'Test comment',
           ],
@@ -294,16 +145,7 @@ describe('createMegathreadCreateCommentCommand', () => {
 
       await expect(
         command.parseAsync(
-          [
-            '--agent',
-            'no-cred',
-            '--round',
-            'round-123',
-            '--conviction',
-            '50',
-            '--text',
-            'Test comment',
-          ],
+          ['--agent', 'no-cred', '--round', 'round-123', '--call', 'up', '--text', 'Test comment'],
           { from: 'user' },
         ),
       ).rejects.toThrow('process.exit(1)');
@@ -323,8 +165,8 @@ describe('createMegathreadCreateCommentCommand', () => {
           'test-agent',
           '--round',
           'round-123',
-          '--conviction',
-          '50',
+          '--call',
+          'up',
           '--text',
           'Bullish on Bitcoin!',
         ],
@@ -333,17 +175,17 @@ describe('createMegathreadCreateCommentCommand', () => {
 
       expect(mockPostMegathreadComment).toHaveBeenCalledWith('round-123', {
         text: 'Bullish on Bitcoin!',
-        conviction: 50,
+        call: 'up',
       });
 
       const output = consoleOutput.join('\n');
       expect(output).toContain('Comment posted successfully');
       expect(output).toContain('round-123');
-      expect(output).toContain('+50.0%');
+      expect(output).toContain('UP');
       expect(output).toContain('Bullish on Bitcoin!');
     });
 
-    it('formats negative conviction correctly', async () => {
+    it('formats down call correctly', async () => {
       mockPostMegathreadComment.mockResolvedValue(undefined);
 
       const command = createMegathreadCreateCommentCommand();
@@ -353,8 +195,8 @@ describe('createMegathreadCreateCommentCommand', () => {
           'test-agent',
           '--round',
           'round-123',
-          '--conviction',
-          '-30',
+          '--call',
+          'down',
           '--text',
           'Bearish outlook',
         ],
@@ -362,7 +204,7 @@ describe('createMegathreadCreateCommentCommand', () => {
       );
 
       const output = consoleOutput.join('\n');
-      expect(output).toContain('-30.0%');
+      expect(output).toContain('DOWN');
     });
 
     it('truncates long text in success message', async () => {
@@ -371,14 +213,14 @@ describe('createMegathreadCreateCommentCommand', () => {
       const longText = 'A'.repeat(100);
       const command = createMegathreadCreateCommentCommand();
       await command.parseAsync(
-        ['--agent', 'test-agent', '--round', 'round-123', '--conviction', '25', '--text', longText],
+        ['--agent', 'test-agent', '--round', 'round-123', '--call', 'up', '--text', longText],
         { from: 'user' },
       );
 
       // Verify full text was sent to API
       expect(mockPostMegathreadComment).toHaveBeenCalledWith('round-123', {
         text: longText,
-        conviction: 25,
+        call: 'up',
       });
 
       // Verify truncated display
@@ -400,8 +242,8 @@ describe('createMegathreadCreateCommentCommand', () => {
             'test-agent',
             '--round',
             'round-123',
-            '--conviction',
-            '50',
+            '--call',
+            'up',
             '--text',
             'Test comment',
           ],
@@ -425,8 +267,8 @@ describe('createMegathreadCreateCommentCommand', () => {
             'test-agent',
             '--round',
             'round-123',
-            '--conviction',
-            '50',
+            '--call',
+            'up',
             '--text',
             'Test comment',
           ],
@@ -450,8 +292,8 @@ describe('createMegathreadCreateCommentCommand', () => {
           'empty-agent',
           '--round',
           'round-123',
-          '--conviction',
-          '50',
+          '--call',
+          'up',
           '--text',
           'Test comment',
         ],

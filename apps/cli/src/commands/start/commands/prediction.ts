@@ -9,6 +9,7 @@ interface PredictionResponse {
   project_id: string;
   round_id: string;
   conviction: number;
+  call?: string;
   honey: number;
   wax: number;
   text: string;
@@ -48,23 +49,22 @@ export function formatPredictions(predictions: PredictionResponse[]) {
     return 'No resolved predictions yet. Make some predictions and wait for them to resolve!';
   }
   const rows = predictions.map((pred) => {
-    const sign = pred.conviction >= 0 ? '+' : '';
-    const conviction = `${sign}${pred.conviction.toFixed(1)}%`;
+    const callLabel = pred.call?.toUpperCase() ?? (pred.conviction >= 0 ? 'UP' : 'DOWN');
     const outcome = getOutcomeStr(pred);
     const date = new Date(pred.created_at).toLocaleDateString();
     const durationMs = pred.duration_ms ?? 0;
     const duration = { 14400000: '4h', 86400000: '24h', 604800000: '7d' }[durationMs] || '??';
-    return { name: pred.project_id, duration, conviction, outcome, date };
+    return { name: pred.project_id, duration, callLabel, outcome, date };
   });
   const maxName = Math.max(...rows.map((r) => r.name.length));
   const maxOutcome = Math.max(...rows.map((r) => r.outcome.length));
   const lines = [styled.honeyBold('Your Recent Predictions:'), ''];
   for (const r of rows) {
     const name = r.name.padEnd(maxName);
-    const conv = r.conviction.padStart(6);
+    const call = r.callLabel.padStart(4);
     const paddedOutcome = r.outcome.padEnd(maxOutcome);
     const tag = r.outcome.includes('WIN') ? styled.green(paddedOutcome) : styled.red(paddedOutcome);
-    lines.push(`  ${name}  ${r.duration.padStart(3)}  ${conv}  ${tag}  ${r.date}`);
+    lines.push(`  ${name}  ${r.duration.padStart(3)}  ${call}  ${tag}  ${r.date}`);
   }
   return lines.join('\n');
 }

@@ -2,7 +2,6 @@ import type {
   ActiveRound,
   AgentPlatform,
   BatchCreateMegathreadCommentDto,
-  Conviction,
   HiveAgent,
 } from '@zhive/sdk';
 import _ from 'lodash';
@@ -28,7 +27,7 @@ export interface MegathreadReporter {
   onToolsUsed(toolNames: string[], callCount: number): void;
   onPosted(
     round: ActiveRound,
-    conviction: number,
+    call: 'up' | 'down',
     summary: string,
     timeframe: string,
     usage: TokenUsage,
@@ -78,7 +77,7 @@ async function run({
   runtime: AgentRuntime;
   reporter: MegathreadReporter;
   recentComments: readonly string[];
-}): Promise<{ summary: string; conviction: Conviction; usage?: TokenUsage }> {
+}): Promise<{ summary: string; call: 'up' | 'down'; usage?: TokenUsage }> {
   const timeframe = calculateTimeframe(round);
   reporter.onRoundStart(round, timeframe);
   // ── Fetch prices ──────────────────────────────
@@ -109,13 +108,13 @@ async function run({
     if (!result.summary) {
       reporter.onError(round, 'Fail to generate summary');
     } else {
-      reporter.onPosted(round, result.conviction, result.summary, timeframe, result.usage);
+      reporter.onPosted(round, result.call, result.summary, timeframe, result.usage);
     }
 
     return result;
   } catch (e) {
     reporter.onError(round, 'Failed to process megathread round');
-    return { summary: '', conviction: 0 };
+    return { summary: '', call: 'up' };
   }
 }
 
@@ -167,8 +166,7 @@ export function createMegathreadRoundBatchHandler(
         }
 
         payload.comments.push({
-          conviction: data.conviction,
-          predictedPriceChange: data.conviction,
+          call: data.call,
           roundId: round.roundId,
           text: data.summary,
         });
@@ -203,7 +201,7 @@ export function createMegathreadRoundHandler(
       // ── Post comment ──────────────────────────────
       await agent.postMegathreadComment(round.roundId, {
         text: result.summary,
-        conviction: result.conviction,
+        call: result.call,
       });
     } catch (err: unknown) {
       const raw = extractErrorMessage(err);

@@ -1,5 +1,4 @@
 import {
-  Conviction,
   getMemoryLineCount,
   loadMemory,
   MEMORY_SOFT_LIMIT,
@@ -34,11 +33,11 @@ const megathreadPredictionSchema = z.object({
     .describe(
       'Your take on this project, written in first person AS your character. NEVER write in third person (e.g. "agent predicts X"). Write like a tweet: short, punchy, opinionated. Include your reasoning — why you are bullish or bearish. null if skipping. (Maximum 300 character)',
     ),
-  predictedPriceChange: z
-    .number()
+  call: z
+    .enum(['up', 'down'])
     .nullable()
     .describe(
-      'Predicted TOTAL percent price change from round-start price by end of round, up to two decimal places. Account for time remaining — less time means smaller expected moves. NEVER use 0 — always commit to a directional lean, even if small (e.g. ±0.3). Use the FULL range based on catalyst strength: routine ±0.5-1.0, moderate ±1.5-5.0, strong ±5.0-12.0, extreme ±12.0-25.0. Negative for bearish. NEVER default to ±0.1 on every prediction — vary based on your actual analysis. null if skipping.',
+      'Your directional call: "up" if price will be above round-start price at round end, "down" if below. null if skipping.',
     ),
 });
 
@@ -117,7 +116,7 @@ export async function processMegathreadRound({
   priceAtStart?: number;
   currentPrice?: number;
   currentTime?: Date;
-}): Promise<{ summary: string; conviction: Conviction; usage: TokenUsage }> {
+}): Promise<{ summary: string; call: 'up' | 'down'; usage: TokenUsage }> {
   const promptOptions: BuildMegathreadPromptOptions = {
     projectId,
     durationMs,
@@ -159,16 +158,16 @@ export async function processMegathreadRound({
 
   const { output } = res;
   if (!output) {
-    return { summary: '', conviction: 0, usage };
+    return { summary: '', call: 'up', usage };
   }
 
   const prediction = output as MegathreadPrediction;
 
-  if (prediction.summary === null || prediction.predictedPriceChange === null) {
-    return { summary: '', conviction: 0, usage };
+  if (prediction.summary === null || prediction.call === null) {
+    return { summary: '', call: 'up', usage };
   }
 
-  return { summary: prediction.summary, conviction: prediction.predictedPriceChange, usage };
+  return { summary: prediction.summary, call: prediction.call, usage };
 }
 
 // ─── Memory Extraction ──────────────────────────────

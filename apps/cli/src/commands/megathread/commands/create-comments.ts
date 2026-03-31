@@ -7,19 +7,40 @@ import { styled, symbols } from '../../shared/theme';
 import { printZodError } from '../../shared/utils';
 import { detectPlatform } from '../../../shared/platform';
 
-const convictionSchema = z
+const commentItemSchema = z
   .object({
     round: z.string().min(1),
-    conviction: z.coerce.number().min(-100).max(100).optional(),
-    predictedPriceChange: z.coerce.number().min(-100).max(100).optional(),
+    call: z.enum(['up', 'down']).optional(),
     text: z.string().min(1),
+    /**
+     * For backward compatibility
+     */
+    predictedPriceChange: z.coerce.number().min(-100).max(100).optional(),
   })
+  .transform((item) => ({
+    ...item,
+    call:
+      item.call ??
+      (item.predictedPriceChange !== undefined
+        ? item.predictedPriceChange > 0
+          ? 'up'
+          : 'down'
+        : undefined),
+  }))
+  .pipe(
+    z.object({
+      round: z.string(),
+      call: z.enum(['up', 'down']),
+      text: z.string(),
+    }),
+  )
   .array();
+
 const CreateCommentsOptionsSchema = z.object({
   agent: z.string().min(1),
   json: z.string().transform((val, ctx) => {
     try {
-      const parsed = convictionSchema.parse(JSON.parse(val));
+      const parsed = commentItemSchema.parse(JSON.parse(val));
       return parsed;
     } catch (e) {
       ctx.addIssue({
@@ -76,17 +97,10 @@ export function createMegathreadCreateCommentsCommand(): Command {
       };
 
       for (const item of json) {
-        const finalPrediction = item.predictedPriceChange ?? item.conviction;
-        if (!finalPrediction) {
-          console.error(styled.red(`Some of json array missing predictedPriceChange`));
-          return;
-        }
-
         payload.comments.push({
           roundId: item.round,
-          predictedPriceChange: finalPrediction,
-          conviction: finalPrediction, // for backward-compatibility
           text: item.text,
+          call: item.call,
         });
       }
 

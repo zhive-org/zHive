@@ -58,8 +58,7 @@ const megathreadPostedActivityFormatter: PollActivityFormatter<
   Extract<PollActivityItem, { type: 'megathread'; status: 'posted' }>
 > = {
   getText(item) {
-    const sign = item.conviction >= 0 ? '+' : '';
-    return `[${sign}${item.conviction.toFixed(2)}%] "${item.summary}"`;
+    return `[${item.call.toUpperCase()}] "${item.summary}"`;
   },
   getDetail(item) {
     return item.timestamp.toISOString();
@@ -67,7 +66,7 @@ const megathreadPostedActivityFormatter: PollActivityFormatter<
   format(item) {
     const lines: string[] = [];
     const pad = ' '.repeat(13);
-    const cColor = item.conviction >= 0 ? colors.green : colors.red;
+    const cColor = item.call === 'up' ? colors.green : colors.red;
     const url = `${HIVE_FRONTEND_URL}/c/${item.projectId}/megathread/${item.timeframe}`;
     const result = this.getText(item);
 
