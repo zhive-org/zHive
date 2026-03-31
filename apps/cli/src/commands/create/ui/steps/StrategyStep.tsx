@@ -47,6 +47,13 @@ export function StrategyStep(): React.ReactElement {
     { label: 'Custom', value: '__custom__', description: 'Write your own prompt from scratch' },
   ];
 
+  const defaultSectors =
+    strategy.sectors.length > 0 ? new Set(strategy.sectors) : DEFAULT_SECTOR_VALUES;
+  const defaultTimeframes =
+    strategy.timeframes.length > 0 ? new Set(strategy.timeframes) : ALL_TIMEFRAME_VALUES;
+  const initialContent = strategy.content || strategy.draft || undefined;
+  const initialContentExists = Boolean(initialContent);
+
   const handleSectorsSubmit = useCallback(
     (selected: MultiSelectItem[]) => {
       dispatch({ type: 'UPDATE_STRATEGY', payload: { sectors: selected.map((s) => s.value) } });
@@ -58,9 +65,9 @@ export function StrategyStep(): React.ReactElement {
   const handleTimeframesSubmit = useCallback(
     (selected: MultiSelectItem[]) => {
       dispatch({ type: 'UPDATE_STRATEGY', payload: { timeframes: selected.map((t) => t.value) } });
-      setSubStep('select');
+      setSubStep(initialContentExists ? 'generate' : 'select');
     },
-    [dispatch],
+    [dispatch, initialContentExists],
   );
 
   const handleSelect = useCallback(
@@ -131,12 +138,6 @@ export function StrategyStep(): React.ReactElement {
       strategy.timeframes,
     ],
   );
-
-  const defaultSectors =
-    strategy.sectors.length > 0 ? new Set(strategy.sectors) : DEFAULT_SECTOR_VALUES;
-  const defaultTimeframes =
-    strategy.timeframes.length > 0 ? new Set(strategy.timeframes) : ALL_TIMEFRAME_VALUES;
-  const initialContent = strategy.content || strategy.draft || undefined;
 
   return (
     <Box flexDirection="column">
