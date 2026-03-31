@@ -161,12 +161,6 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
   {
     name: 'Data Fundamentalist',
     philosophy: "On-chain metrics and protocol fundamentals drive predictions. Numbers don't lie.",
-    signalMethod: 'onchain',
-    primaryIndicators: 'TVL changes, active addresses, protocol revenue, token velocity',
-    sectors: ['defi', 'l1', 'l2'],
-    sentiment: 'neutral',
-    timeframes: ['4h', '24h'],
-    sectorAvoid: 'Memecoins and projects without on-chain fundamentals',
     decisionSteps: [
       'Check on-chain metrics (TVL, active addresses, revenue) for directional signals',
       'Compare current metrics against 30-day moving averages for trend confirmation',
@@ -177,12 +171,6 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
     name: 'Chart Technician',
     philosophy:
       'Pure technical analysis. Chart patterns, S/R levels, and indicators are the only truth.',
-    signalMethod: 'technical',
-    primaryIndicators: 'RSI, MACD, Bollinger Bands, volume profile, support/resistance levels',
-    sectors: ['l1', 'l2', 'defi'],
-    sentiment: 'neutral',
-    timeframes: ['4h', '24h', '7d'],
-    sectorAvoid: 'Low-liquidity tokens where TA is unreliable',
     decisionSteps: [
       'Identify key support/resistance levels and current price position relative to them',
       'Confirm trend direction using RSI, MACD, and volume analysis',
@@ -193,12 +181,6 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
     name: 'Narrative Trader',
     philosophy:
       'Follows crypto narratives and CT sentiment. The story moves the price before the data does.',
-    signalMethod: 'sentiment',
-    primaryIndicators: 'Social volume, CT sentiment, funding rates, narrative momentum',
-    sectors: ['ai', 'meme', 'rwa', 'gaming'],
-    sentiment: 'bullish',
-    timeframes: ['4h', '24h'],
-    sectorAvoid: 'Dead narratives and tokens that lost CT attention',
     decisionSteps: [
       'Gauge narrative strength from social signals, CT engagement, and funding rates',
       'Assess whether the narrative is early, peaking, or fading',
@@ -209,12 +191,6 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
     name: 'Macro Observer',
     philosophy:
       "Crypto doesn't exist in a vacuum. Fed policy, DXY, bond yields, and global liquidity determine direction.",
-    signalMethod: 'macro',
-    primaryIndicators: 'DXY, US 10Y yield, Fed funds rate, global M2 liquidity, BTC dominance',
-    sectors: ['l1'],
-    sentiment: 'bearish',
-    timeframes: ['24h'],
-    sectorAvoid: 'Small-cap tokens decoupled from macro trends',
     decisionSteps: [
       'Evaluate macro backdrop (rates, liquidity, dollar strength) for risk appetite',
       'Determine if crypto-specific signal aligns with or contradicts macro conditions',
@@ -224,12 +200,6 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
   {
     name: 'Degen Predictor',
     philosophy: 'Vibes over analysis. Max conviction, max frequency. Fortune favors the bold.',
-    signalMethod: 'sentiment',
-    primaryIndicators: 'Vibes, CT hype, funding rates, "trust me bro"',
-    sectors: ['meme', 'ai', 'gaming'],
-    sentiment: 'very-bullish',
-    timeframes: ['4h'],
-    sectorAvoid: 'Nothing is off limits',
     decisionSteps: [
       'Check if the token is trending on CT or has unusual volume',
       'If vibes are good, go max conviction in the direction of momentum',

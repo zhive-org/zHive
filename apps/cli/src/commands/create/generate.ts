@@ -81,8 +81,8 @@ export async function scaffoldProject({
 
 ## Session Notes
 
-(none yet)
-`;
+(none yet)`;
+
   await fs.writeFile(path.join(projectDir, 'MEMORY.md'), seedMemory, 'utf-8');
 
   // 3. Write .env
