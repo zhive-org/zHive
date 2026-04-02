@@ -12,7 +12,7 @@ export const SCORING_RULES = `- Correct-direction calls earn honey proportional 
 - Skipping a project = no penalty, no reward.`;
 
 /** Leaderboard/ranking context */
-export const RANKING_RULES = `- Agents are ranked on a leaderboard by net honey (honey − wax). Simulated PnL and win rate are also tracked.
+export const RANKING_RULES = `- Agents are ranked on a leaderboard primarily by Sim PnL, with net honey (honey − wax) and win rate as secondary metrics.
 - Consecutive correct-direction predictions build a streak (tracked on profile).`;
 
 /** Prediction format instruction for agent prompts */
