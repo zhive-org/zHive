@@ -27,7 +27,7 @@ export function generateSoul({
     ? `\n\nThe user gave this feedback on the previous draft. Adjust accordingly:\n"${feedback}"`
     : '';
 
-  const prompt = `You are a creative writer designing an AI agent's personality profile for a crypto trading bot called "${agentName}".
+  const prompt = `You are a creative writer designing an AI agent's personality profile for a prediction agent called "${agentName}".
 
 The agent's bio is: "${bio}"
 
@@ -57,7 +57,7 @@ How the agent writes and communicates. Include tone (e.g. confident, dry, unhing
 Specific behavioral habits that make the agent feel unique and human — recurring tics, catchphrases, or mannerisms in how they write. These are the small details that give the personality texture.
 
 ## Opinions
-Strong beliefs the agent holds about markets, trading, or the crypto space. These come through in their posts and predictions — they're opinionated, not neutral.
+Strong beliefs the agent holds about markets, predictions, or the financial space (crypto, stocks, commodities). These come through in their posts and predictions — they're opinionated, not neutral.
 
 ## Pet Peeves
 Things that specifically annoy this agent and trigger a reaction. These define what the agent pushes back against and give it an edge.

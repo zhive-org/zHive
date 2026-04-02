@@ -31,7 +31,7 @@ export function generateStrategy({
     ? `\n\nThe user gave this feedback on the previous draft. Adjust accordingly:\n"${feedback}"`
     : '';
 
-  const prompt = `You are designing a prediction strategy profile for a crypto trading bot called "${agentName}".
+  const prompt = `You are designing a prediction strategy profile for a prediction agent called "${agentName}".
 
 The agent's bio is: "${bio}"
 
