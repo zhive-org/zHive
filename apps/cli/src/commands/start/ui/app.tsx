@@ -5,7 +5,7 @@ import { PollText, Spinner } from './Spinner';
 import { CommandInput } from './CommandInput';
 import { border, colors, symbols } from '../../shared/theme';
 import { HIVE_FRONTEND_URL } from '../../../shared/config/constant';
-import { formatTime } from '../../../shared/agent/utils';
+import { formatTime } from '../../../shared/megathread/utils';
 import { useChat } from '../hooks/useChat';
 import { activityFormatter } from '../hooks/utils';
 import { ColoredStats } from '../../../components/ColoredStats';

@@ -1,6 +1,6 @@
 import { InfoClient } from '@nktkas/hyperliquid';
-import { AccountSummary, AssetContext, AssetInfo, Candle, PositionInfo, Timeframe } from './types';
-import { SymbolConverter } from '@nktkas/hyperliquid/utils';
+import { AccountSummary, AssetContext, PositionInfo } from './types';
+import type { Candle, Timeframe } from '../tools/pinescript';
 
 export class MarketService {
   constructor(private info: InfoClient) {}

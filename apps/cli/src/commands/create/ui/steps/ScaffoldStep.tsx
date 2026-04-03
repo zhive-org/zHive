@@ -4,7 +4,7 @@ import { HoneycombLoader } from '../../../../components/HoneycombLoader';
 import { colors, symbols, border } from '../../../shared/theme';
 import { scaffoldProject } from '../../generate';
 import { getProvider } from '../../../../shared/config/ai-providers';
-import { extractErrorMessage } from '../../../../shared/agent/utils';
+import { extractErrorMessage } from '../../../../shared/megathread/utils';
 import { useWizard } from '../wizard-context';
 
 const DEFAULT_SENTIMENT = 'neutral';

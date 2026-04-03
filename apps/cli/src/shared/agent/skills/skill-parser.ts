@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { SkillDefinition, SkillMetadata } from './types';
-import { extractErrorMessage } from '../utils';
+import { extractErrorMessage } from '../../megathread/utils';
 
 /**
  * Parse YAML frontmatter from SKILL.md content.

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
 import { colors, border } from '../commands/shared/theme';
-import { extractErrorMessage } from '../shared/agent/utils';
+import { extractErrorMessage } from '../shared/megathread/utils';
 
 interface StreamingTextProps {
   stream: AsyncIterable<string> | null;

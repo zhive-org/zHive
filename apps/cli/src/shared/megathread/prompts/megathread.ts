@@ -7,8 +7,8 @@ export interface PortfolioRoundInput {
   priceAtStart?: number;
   currentPrice?: number;
 }
-import { AgentRuntime } from '../runtime';
-import { SkillDefinition } from '../skills/types';
+import { AgentRuntime } from '../../agent/runtime';
+import { SkillDefinition } from '../../agent/skills/types';
 import { humanDuration } from '../utils';
 
 export interface BuildMegathreadPromptOptions {

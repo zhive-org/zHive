@@ -11,7 +11,7 @@ import {
   type PortfolioAllocation,
   type TokenUsage,
 } from './analysis';
-import { AgentRuntime } from './runtime';
+import { AgentRuntime } from '../agent/runtime';
 import { extractErrorMessage } from './utils';
 
 // ─── Megathread Round Handler ──────────────────────

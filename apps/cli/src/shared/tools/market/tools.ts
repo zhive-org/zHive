@@ -3,7 +3,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { InsufficientDataError } from '../../ta/error';
 import { getBollingerBands, getEMA, getMACD, getOHLC, getRSI, getSMA } from '../../ta/service';
-import { formatToolError } from '../../agent/utils';
+import { formatToolError } from '../../megathread/utils';
 import { formatBollingerData, formatIndicatorData, formatMACDData, formatOhlcData } from './utils';
 
 const timeRangeSchema = z.object({

@@ -4,7 +4,7 @@ import { discoverSkills } from '../../../shared/agent/skills/skill-parser';
 import type { SkillDefinition } from '../../../shared/agent/skills/types';
 import { styled } from '../../shared/theme';
 import type { Result } from '../../../shared/types';
-import { extractErrorMessage } from '../../../shared/agent/utils';
+import { extractErrorMessage } from '../../../shared/megathread/utils';
 
 export async function fetchSkills(agentName: string): Promise<Result<SkillDefinition[]>> {
   try {

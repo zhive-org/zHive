@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import { PineTS } from 'pinets';
 import z from 'zod';
-import { formatToolError } from '../../agent/utils';
+import { formatToolError } from '../../megathread/utils';
 import { PineResult, formatPineResult } from '../../ta/utils';
 import { Candle, Timeframe } from './types';
 import { timeframeToMs } from './utils';

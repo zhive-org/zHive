@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { initializeAgentRuntime } from '../../../shared/agent/runtime';
-import { extractErrorMessage } from '../../../shared/agent/utils';
+import { extractErrorMessage } from '../../../shared/megathread/utils';
 import { type AgentStats, fetchBulkStats } from '../../../shared/config/agent';
 import { ModelInfo, resolveModelInfo } from '../../../shared/config/ai-providers';
 import { TradingAgent, TradingAgentCallbacks } from '../../../shared/trading/bot';

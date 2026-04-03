@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { extractErrorMessage } from '../../agent/utils';
+import { extractErrorMessage } from '../../megathread/utils';
 
 const RULES_URL = 'https://docs.zhive.ai/game-mechanics';
 

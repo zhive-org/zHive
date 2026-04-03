@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { extractErrorMessage } from '../../shared/agent/utils';
+import { extractErrorMessage } from '../../shared/megathread/utils';
 
 /** Files scaffolded by the old `hive create` that are now in @zhive/cli */
 const OLD_FILES = [

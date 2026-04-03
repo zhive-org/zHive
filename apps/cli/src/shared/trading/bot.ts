@@ -1,12 +1,11 @@
 import { ExchangeClient, HttpTransport, InfoClient } from '@nktkas/hyperliquid';
+import { SymbolConverter } from '@nktkas/hyperliquid/utils';
+import { privateKeyToAccount } from 'viem/accounts';
+import { AgentRuntime } from '../agent/runtime';
 import { AssetEvaluator } from './evaluator';
 import { TradeExecutor } from './executor';
 import { MarketService } from './market';
-import { privateKeyToAccount } from 'viem/accounts';
-import { config } from 'process';
-import { AgentRuntime } from '../agent/runtime';
 import { AccountSummary, TradeDecision } from './types';
-import { SymbolConverter } from '@nktkas/hyperliquid/utils';
 
 export type TradingAgentCallbacks = {
   onError?: (err: unknown) => void;

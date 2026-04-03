@@ -6,7 +6,7 @@ import {
   signPrefix,
   truncateTimeseries,
   truncationLabel,
-} from '../../agent/utils';
+} from '../../megathread/utils';
 import type {
   MindshareData,
   MindshareFilterBy,

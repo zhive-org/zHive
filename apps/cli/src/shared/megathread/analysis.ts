@@ -3,7 +3,7 @@ import * as ai from 'ai';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { z } from 'zod';
 import { getModel } from '../config/ai-providers';
-import { cacheableSystem } from './cache';
+import { cacheableSystem } from '../agent/cache';
 import type { ChatMessage } from './prompts/chat-prompt';
 import {
   buildMegathreadInputPrompt,
@@ -13,7 +13,7 @@ import {
   type PortfolioRoundInput,
 } from './prompts/megathread';
 import { buildMemoryExtractionPrompt } from './prompts/memory-prompt';
-import { AgentRuntime } from './runtime';
+import { AgentRuntime } from '../agent/runtime';
 import { extractErrorMessage, stripCodeFences } from './utils';
 import { clearSubagentUsage, getSubagentUsage, SubagentUsage } from '../tools/execute-skill';
 

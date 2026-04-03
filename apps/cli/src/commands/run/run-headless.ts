@@ -1,11 +1,11 @@
 import { HiveAgent } from '@zhive/sdk';
 import type { ActiveRound } from '@zhive/sdk';
-import type { TokenUsage } from '../../shared/agent/analysis';
+import type { TokenUsage } from '../../shared/megathread/analysis';
 import { HIVE_API_URL, HIVE_FRONTEND_URL } from '../../shared/config/constant';
 import { resolveModelInfo } from '../../shared/config/ai-providers';
-import { formatTimeLeft, formatTokenCount, formatTokenUsage } from '../../shared/agent/utils';
+import { formatTimeLeft, formatTokenCount, formatTokenUsage } from '../../shared/megathread/utils';
 import { initializeAgentRuntime } from '../../shared/agent/runtime';
-import { createMegathreadRoundHandler, MegathreadReporter } from '../../shared/agent/handler';
+import { createMegathreadRoundHandler, MegathreadReporter } from '../../shared/megathread/handler';
 
 function formatUsageLine(usage: TokenUsage): string {
   const { input, output, tools } = formatTokenUsage(usage);

@@ -3,7 +3,7 @@ import { Box, Text, useInput, useApp } from 'ink';
 import { scanAgents, type AgentConfig } from '../../../shared/config/agent';
 import { colors, symbols, styled, border } from '../../shared/theme';
 import { isOldStyleAgent, migrateAgent, type MigrateResult } from '../migrate';
-import { extractErrorMessage } from '../../../shared/agent/utils';
+import { extractErrorMessage } from '../../../shared/megathread/utils';
 
 type Phase = 'scanning' | 'selecting' | 'migrating' | 'done';
 

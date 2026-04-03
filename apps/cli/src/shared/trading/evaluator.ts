@@ -2,11 +2,11 @@ import * as ai from 'ai';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { traceable } from 'langsmith/traceable';
 import { z } from 'zod';
-import { AgentRuntime } from '../agent/runtime.js';
-import { formatToolError } from '../agent/utils.js';
+import type { AgentRuntime } from '../agent';
+import type { MarketService } from './market.js';
+import { formatToolError } from '../megathread/utils.js';
 import { AssetAnalyzer } from './analyzer.js';
-import { MarketService } from './market.js';
-import { AccountSummary, AssetContext, TradeDecision } from './types.js';
+import type { AccountSummary, AssetContext, TradeDecision } from './types.js';
 
 const { Output, generateText } = wrapAISDK(ai);
 

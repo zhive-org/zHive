@@ -17,8 +17,8 @@ import {
   fetchRoundPrices,
   initializeAgentRuntime,
 } from '../shared/agent/agent-runtime';
-import { processMegathreadRound } from '../shared/agent/analysis';
-import { extractErrorMessage } from '../shared/agent/utils';
+import { processMegathreadRound } from '../shared/megathread/analysis';
+import { extractErrorMessage } from '../shared/megathread/utils';
 
 interface AnalyzeOptions {
   text: string;

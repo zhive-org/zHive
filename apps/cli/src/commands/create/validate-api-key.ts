@@ -1,6 +1,6 @@
 import { generateText } from 'ai';
 import { buildLanguageModel, type AIProviderId } from '../../shared/config/ai-providers';
-import { extractErrorMessage } from '../../shared/agent/utils';
+import { extractErrorMessage } from '../../shared/megathread/utils';
 
 /**
  * Make a lightweight test call to validate the user's API key.
