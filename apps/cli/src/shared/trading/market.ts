@@ -1,29 +1,9 @@
 import { InfoClient } from '@nktkas/hyperliquid';
 import { AccountSummary, AssetContext, AssetInfo, Candle, PositionInfo, Timeframe } from './types';
+import { SymbolConverter } from '@nktkas/hyperliquid/utils';
 
 export class MarketService {
-  private constructor(
-    private info: InfoClient,
-    private _assetMap: Map<string, AssetInfo>,
-  ) {}
-
-  static async create(info: InfoClient): Promise<MarketService> {
-    const meta = await info.meta();
-    const map = new Map<string, AssetInfo>();
-    for (let i = 0; i < meta.universe.length; i++) {
-      const asset = meta.universe[i];
-      map.set(asset.name, {
-        name: asset.name,
-        assetId: i,
-        szDecimals: asset.szDecimals,
-        maxLeverage: asset.maxLeverage,
-      });
-    }
-    return new MarketService(info, map);
-  }
-  get assetMap(): Map<string, AssetInfo> {
-    return this._assetMap;
-  }
+  constructor(private info: InfoClient) {}
 
   async getAssetContext(name: string): Promise<AssetContext | undefined> {
     const parts = name.split(':');

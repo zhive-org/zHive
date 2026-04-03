@@ -5,13 +5,14 @@ import { MarketService } from './market';
 import { privateKeyToAccount } from 'viem/accounts';
 import { config } from 'process';
 import { AgentRuntime } from '../agent/runtime';
-import { TradeDecision } from './types';
+import { AccountSummary, TradeDecision } from './types';
+import { SymbolConverter } from '@nktkas/hyperliquid/utils';
 
 export type TradingAgentCallbacks = {
   onError?: (err: unknown) => void;
   onSleep?: (sleepTimeMs: number) => void;
   onEvalStarted?: (assets: string[]) => void;
-  onEvalCompleted?: (decisions: TradeDecision[]) => void;
+  onEvalCompleted?: (account: AccountSummary, decisions: TradeDecision[]) => void;
 };
 
 export class TradingAgent {
@@ -44,9 +45,10 @@ export class TradingAgent {
     const info = new InfoClient({ transport });
     const exchange = new ExchangeClient({ transport, wallet });
 
-    const marketSrv = await MarketService.create(info);
+    const marketSrv = new MarketService(info);
     const evaluator = new AssetEvaluator(marketSrv, runtime);
-    const executor = new TradeExecutor(exchange, info, marketSrv.assetMap);
+    const converter = await SymbolConverter.create({ transport });
+    const executor = new TradeExecutor(exchange, info, converter);
 
     return new TradingAgent(watchList, marketSrv, evaluator, executor, address, callbacks ?? {});
   }
@@ -75,7 +77,7 @@ export class TradingAgent {
     const account = await this.marketService.fetchAccountState(this.address);
     this.callbacks.onEvalStarted?.(this.watchList);
     const decisions = await this.evaluator.evaluate(this.watchList, account);
-    this.callbacks.onEvalCompleted?.(decisions);
+    this.callbacks.onEvalCompleted?.(account, decisions);
 
     for (const decision of decisions) {
       if (decision.action !== 'HOLD') {

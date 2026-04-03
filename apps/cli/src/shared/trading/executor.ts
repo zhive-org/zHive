@@ -1,5 +1,7 @@
 import type { ExchangeClient, InfoClient } from '@nktkas/hyperliquid';
 import type { TradeDecision, ExecutionResult, AssetInfo, AccountSummary } from './types.js';
+import { formatPrice, formatSize, SymbolConverter } from '@nktkas/hyperliquid/utils';
+import _ from 'lodash';
 
 const SLIPPAGE = 0.03;
 
@@ -7,7 +9,7 @@ export class TradeExecutor {
   constructor(
     private exchange: ExchangeClient,
     private info: InfoClient,
-    private assetMap: Map<string, AssetInfo>,
+    private converter: SymbolConverter,
   ) {}
 
   async execute(decision: TradeDecision, account: AccountSummary): Promise<ExecutionResult> {
@@ -26,40 +28,48 @@ export class TradeExecutor {
   }
 
   private async executeSingle(d: TradeDecision, account: AccountSummary): Promise<ExecutionResult> {
-    const asset = this.assetMap.get(d.coin);
-    if (!asset) {
+    const assetId = this.converter.getAssetId(d.coin);
+    if (_.isNil(assetId)) {
       return { coin: d.coin, action: d.action, success: false, details: 'Unknown asset' };
     }
 
     if (d.action === 'CLOSE') {
-      return this.executeClose(d, asset, account);
+      return this.executeMarketClose(d, account);
     }
 
-    return this.executeOpen(d, asset);
+    return this.executeMarketOpen(d);
   }
 
-  private async executeClose(
+  private async executeMarketClose(
     d: TradeDecision,
-    asset: AssetInfo,
     account: AccountSummary,
   ): Promise<ExecutionResult> {
+    const assetId = await this.converter.getAssetId(d.coin);
+    if (_.isNil(assetId)) {
+      return { coin: d.coin, action: 'CLOSE', success: false, details: 'Unknown asset' };
+    }
+
     const position = account.positions.find((p) => p.coin === d.coin);
     if (!position) {
       return { coin: d.coin, action: 'CLOSE', success: false, details: 'No position to close' };
     }
 
     const isBuy = position.side === 'short';
-    const slippageMultiplier = isBuy ? 1 + SLIPPAGE : 1 - SLIPPAGE;
-    const price = position.entryPrice * slippageMultiplier;
-    const sz = roundSize(position.size, asset.szDecimals);
+    const mids = await this.info.allMids();
+    const szDecimals = this.converter.getSzDecimals(d.coin);
+    const mid = parseFloat(mids[d.coin]);
+    if (_.isNil(mid) || _.isNil(szDecimals)) {
+      return { coin: d.coin, action: 'CLOSE', success: false, details: 'Unknown asset' };
+    }
 
+    const price = mid * (isBuy ? 1 + SLIPPAGE : 1 - SLIPPAGE);
     const response = await this.exchange.order({
       orders: [
         {
-          a: asset.assetId,
+          a: assetId,
           b: isBuy,
-          p: price.toFixed(6),
-          s: sz,
+          p: formatPrice(price, szDecimals),
+          s: formatSize(position.size, szDecimals),
           r: true,
           t: { limit: { tif: 'FrontendMarket' } },
         },
@@ -80,17 +90,23 @@ export class TradeExecutor {
     };
   }
 
-  private async executeOpen(d: TradeDecision, asset: AssetInfo): Promise<ExecutionResult> {
+  private async executeMarketOpen(d: TradeDecision): Promise<ExecutionResult> {
     const isBuy = d.action === 'OPEN_LONG';
 
+    const assetId = this.converter.getAssetId(d.coin);
+    if (_.isNil(assetId)) {
+      return { coin: d.coin, action: d.action, success: false, details: 'Unknown asset' };
+    }
+
     await this.exchange.updateLeverage({
-      asset: asset.assetId,
+      asset: assetId,
       isCross: true,
       leverage: d.leverage,
     });
 
-    const book = await this.info.l2Book({ coin: d.coin });
-    if (!book) {
+    const mids = await this.info.allMids();
+    const szDecimal = this.converter.getSzDecimals(d.coin);
+    if (!(d.coin in mids) || _.isNil(szDecimal)) {
       return {
         coin: d.coin,
         action: d.action,
@@ -98,28 +114,16 @@ export class TradeExecutor {
         details: 'Failed to fetch order book',
       };
     }
-    const bids = book.levels[0];
-    const asks = book.levels[1];
-    if (!bids.length || !asks.length) {
-      return { coin: d.coin, action: d.action, success: false, details: 'Empty order book' };
-    }
-    const bestBid = parseFloat(bids[0].px);
-    const bestAsk = parseFloat(asks[0].px);
-    const midPrice = (bestBid + bestAsk) / 2;
-
-    const rawSize = d.sizeUsd / midPrice;
-    const sz = roundSize(rawSize, asset.szDecimals);
-
-    const slippageMultiplier = isBuy ? 1 + SLIPPAGE : 1 - SLIPPAGE;
-    const price = midPrice * slippageMultiplier;
+    const mid = parseFloat(mids[d.coin]);
+    const price = mid * (isBuy ? 1 + SLIPPAGE : 1 - SLIPPAGE);
 
     const response = await this.exchange.order({
       orders: [
         {
-          a: asset.assetId,
+          a: assetId,
           b: isBuy,
-          p: price.toFixed(6),
-          s: sz,
+          p: formatPrice(price, szDecimal),
+          s: formatSize(d.sizeUsd, szDecimal),
           r: false,
           t: { limit: { tif: 'FrontendMarket' } },
         },
@@ -139,9 +143,4 @@ export class TradeExecutor {
       details: `Opened ${isBuy ? 'long' : 'short'} ~$${d.sizeUsd} at ${d.leverage}x`,
     };
   }
-}
-
-function roundSize(size: number, szDecimals: number): string {
-  const factor = 10 ** szDecimals;
-  return (Math.floor(size * factor) / factor).toFixed(szDecimals);
 }

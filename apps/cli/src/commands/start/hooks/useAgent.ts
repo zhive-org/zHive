@@ -98,18 +98,23 @@ export function useAgent(): UseAgentState {
             timestamp: new Date(),
           });
         },
-        onEvalCompleted(decisions) {
+        onEvalCompleted(account, decisions) {
           for (const decision of decisions) {
+            const size = decision.action === 'HOLD' ? '' : ` $${decision.sizeUsd} `;
+            const action =
+              decision.action === 'HOLD' && !account.positions.find((p) => p.coin === decision.coin)
+                ? 'NO_ACTION'
+                : decision.action;
             addLog({
               type: 'message',
-              text: `[${decision.action}] ${decision.coin} $${decision.sizeUsd} - ${decision.reasoning}`,
+              text: `[${action}] ${decision.coin}${size}- ${decision.reasoning}`,
               timestamp: new Date(),
             });
           }
         },
       };
 
-      const agent = await TradingAgent.create(['BTC'], runtime, callbacks);
+      const agent = await TradingAgent.create(['BTC', 'ETH', 'SOL'], runtime, callbacks);
       agentRef.current = agent;
 
       await agent.run();
