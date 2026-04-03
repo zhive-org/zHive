@@ -12,7 +12,7 @@ const { Output, generateText } = wrapAISDK(ai);
 
 const TradeDecisionSchema = z.object({
   coin: z.string(),
-  action: z.enum(['OPEN_LONG', 'OPEN_SHORT', 'CLOSE', 'HOLD']),
+  action: z.enum(['LONG', 'SHORT', 'CLOSE', 'HOLD']),
   sizeUsd: z.number(),
   leverage: z.number(),
   reasoning: z.string(),
@@ -114,7 +114,7 @@ You will be given:
     - positions: current user position
     - analysis from technical perspective for each asset
 
-You task is to make trading decision for EACH asset: OPEN_LONG, OPEN_SHORT, CLOSE, or HOLD.
+You task is to make trading decision for EACH asset: LONG, SHORT, CLOSE, or HOLD.
 
 Trading Strategy:
 ${this.runtime.config.strategyContent}

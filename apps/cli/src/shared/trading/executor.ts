@@ -91,7 +91,7 @@ export class TradeExecutor {
   }
 
   private async executeMarketOpen(d: TradeDecision): Promise<ExecutionResult> {
-    const isBuy = d.action === 'OPEN_LONG';
+    const isBuy = d.action === 'LONG';
 
     const assetId = this.converter.getAssetId(d.coin);
     if (_.isNil(assetId)) {

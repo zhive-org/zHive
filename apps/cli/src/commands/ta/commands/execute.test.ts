@@ -5,6 +5,7 @@ import type { Kline } from 'pinets';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockedConsole, MockedConsole } from '../../../tests/console';
 import { createTaExecuteCommand } from './execute';
+import { OHLCResponse } from '@zhive/sdk';
 
 const mockGetOHLC = vi.fn();
 
@@ -14,37 +15,25 @@ vi.mock('../../../shared/config/hive-client', () => ({
   }),
 }));
 
-vi.mock('../../../shared/ta/data-provider', async () => {
+vi.mock('../../../shared/ta/service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../shared/ta/service')>();
   return {
-    HiveDataProvider: vi.fn().mockImplementation(() => {
-      // Return a provider whose getMarketData returns controlled data
-      return {
-        getMarketData: vi.fn().mockImplementation(async (): Promise<Kline[]> => {
-          return generateKlines(200);
-        }),
-        getSymbolInfo: vi.fn().mockResolvedValue({ tickerid: 'bitcoin', ticker: 'bitcoin' }),
-        configure: vi.fn(),
-      };
+    ...actual,
+    getOHLC: vi.fn().mockImplementation(() => {
+      return generateKlines(200);
     }),
   };
 });
 
-function generateKlines(count: number): Kline[] {
+function generateKlines(count: number): OHLCResponse {
   const baseTime = new Date('2026-01-01T00:00:00Z').getTime();
-  return Array.from({ length: count }, (_, i) => ({
-    openTime: baseTime + i * 3_600_000,
-    open: 100 + Math.sin(i / 5) * 10,
-    high: 110 + Math.sin(i / 5) * 10,
-    low: 90 + Math.sin(i / 5) * 10,
-    close: 105 + Math.sin(i / 5) * 10,
-    volume: 1000,
-    closeTime: baseTime + (i + 1) * 3_600_000,
-    quoteAssetVolume: 0,
-    numberOfTrades: 0,
-    takerBuyBaseAssetVolume: 0,
-    takerBuyQuoteAssetVolume: 0,
-    ignore: 0,
-  }));
+  return Array.from({ length: count }, (_, i) => [
+    baseTime + (i + 1) * 3_600_000,
+    100 + Math.sin(i / 5) * 10,
+    110 + Math.sin(i / 5) * 10,
+    90 + Math.sin(i / 5) * 10,
+    105 + Math.sin(i / 5) * 10,
+  ]);
 }
 
 const rsiScript = `//@version=5

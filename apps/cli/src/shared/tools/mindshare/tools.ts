@@ -6,14 +6,14 @@ import {
   signPrefix,
   truncateTimeseries,
   truncationLabel,
-} from '../../utils';
+} from '../../agent/utils';
 import type {
   MindshareData,
   MindshareFilterBy,
   MindshareRankBy,
   MindshareTimeframe,
 } from '@zhive/sdk';
-import { getHiveClient } from '../../../config/hive-client';
+import { getHiveClient } from '../../config/hive-client';
 
 const timeframeSchema = z
   .enum(['30m', '24h', '3D', '7D', '1M', '3M', 'YTD'])
@@ -217,10 +217,3 @@ export const getProjectLeaderboardBySectorTool = tool({
     }
   },
 });
-
-export const mindshareTools = {
-  getProjectLeaderboard: getProjectLeaderboardTool,
-  getProjectMindshare: getProjectMindshareTool,
-  getProjectMindshareTimeseries: getProjectMindshareTimeseriesTool,
-  getProjectLeaderboardBySector: getProjectLeaderboardBySectorTool,
-};

@@ -4,8 +4,8 @@ import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { useCallback, useRef, useState } from 'react';
 import { extractAndSaveMemory } from '../../../shared/agent/analysis';
 import { buildChatPrompt, type ChatMessage } from '../../../shared/agent/prompts/chat-prompt';
-import { editSectionTool } from '../../../shared/agent/tools/edit-section';
-import { fetchRulesTool } from '../../../shared/agent/tools/fetch-rules';
+import { editSectionTool } from '../../../shared/tools/edit-section';
+import { fetchRulesTool } from '../../../shared/tools/fetch-rules';
 import { extractErrorMessage } from '../../../shared/agent/utils';
 import { getModel } from '../../../shared/config/ai-providers';
 import { styled } from '../../shared/theme';
@@ -277,6 +277,7 @@ export function useChat(): UseChatState & UseChatActions {
       runtime?.tools,
       runtime?.config.soulContent,
       runtime?.config.strategyContent,
+      runtime,
     ],
   );
 

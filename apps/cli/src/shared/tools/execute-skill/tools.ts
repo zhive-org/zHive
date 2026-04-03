@@ -2,9 +2,8 @@ import { tool, type Tool, LanguageModel } from 'ai';
 import * as ai from 'ai';
 import { z } from 'zod';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
-import type { SkillDefinition } from '../skills/types';
-import { getAllTools } from './index';
-import { cacheableSystem } from '../cache';
+import type { SkillDefinition } from '../../agent/skills/types';
+import { cacheableSystem } from '../../agent/cache';
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 
@@ -70,6 +69,7 @@ Use your expertise and available tools to complete the task given to you.`;
 
 export interface ExecuteSkillToolConfig {
   model: LanguageModel;
+  tools?: Record<string, Tool>;
   subagentConfig?: Partial<SubagentConfig>;
 }
 
@@ -111,7 +111,6 @@ export function createExecuteSkillTool(
 
       // ── Build subagent ──
       const systemPrompt = buildSubagentSystemPrompt(skill);
-      const tools = getAllTools();
 
       const userPrompt = context
         ? `${task}\n\nContext: ${context}\n\nCurrent Time: ${new Date().toISOString()}`
@@ -123,7 +122,7 @@ export function createExecuteSkillTool(
           model: config.model,
           systemPrompt,
           userPrompt,
-          tools,
+          tools: config.tools,
           maxOutputTokens: subagentConfig.maxOutputTokens,
         });
 
@@ -187,7 +186,7 @@ async function runSubagent({
   model: LanguageModel;
   systemPrompt: string;
   userPrompt: string;
-  tools: Record<string, Tool>;
+  tools?: Record<string, Tool>;
   maxOutputTokens: number;
 }): Promise<SubagentResult> {
   const agent = new ToolLoopAgent({

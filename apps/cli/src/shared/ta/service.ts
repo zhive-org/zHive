@@ -3,6 +3,7 @@ import type { MarketInterval } from '@zhive/sdk';
 import { getHiveClient } from '../config/hive-client';
 import { InsufficientDataError, PriceUnavailableError } from './error';
 import { adjustFromDate } from './utils';
+import { Timeframe } from '../tools/pinescript/types';
 
 export type IndicatorValue = {
   timestamp: string;
@@ -23,10 +24,35 @@ export type BollingerBandsValue = {
   lower: number;
 };
 
+const INTERVAL_MS: Record<string, number> = {
+  '1h': 3_600_000,
+  '24h': 86_400_000,
+  '1d': 86_400_000,
+};
+
 export const getPrice = async ({ project, at }: { project: string; at?: string | Date }) => {
   const client = getHiveClient().market;
   const priceData = await client.getPrice(project, at ?? new Date());
   return priceData.price ?? undefined;
+};
+
+export const convertTimeframeToInterval = (tf: Timeframe): MarketInterval => {
+  const intervalMap: Partial<Record<string, MarketInterval>> = {
+    '1h': 'hourly',
+    '1d': 'daily',
+  };
+  const interval = intervalMap[tf];
+  if (!interval) {
+    throw new Error(
+      `Unsupported timeframe "${tf}". Supported timeframes: ${Object.keys(intervalMap).join(', ')}`,
+    );
+  }
+
+  return interval;
+};
+
+export const getIntervalMs = (interval: MarketInterval): number => {
+  return INTERVAL_MS[interval];
 };
 
 export const getOHLC = async ({

@@ -3,8 +3,8 @@ import { PineTS } from 'pinets';
 import z from 'zod';
 import { formatToolError } from '../../agent/utils';
 import { PineResult, formatPineResult } from '../../ta/utils';
-import { Candle, Timeframe } from '../types';
-import { timeframeToMs } from '../utils';
+import { Candle, Timeframe } from './types';
+import { timeframeToMs } from './utils';
 
 export const createPineScriptTool = (
   fetchCandles: (
@@ -13,6 +13,7 @@ export const createPineScriptTool = (
     startTime: number,
     endTime: number,
   ) => Promise<Candle[]>,
+  supportedTimeframes: Timeframe[] = Object.values(Timeframe),
 ) => {
   return tool({
     description:
@@ -20,7 +21,7 @@ export const createPineScriptTool = (
     inputSchema: z.object({
       asset: z.string().describe('The asset symbol to analyze, e.g. BTC, ETH'),
       script: z.string().describe('Inline Pine Script v5 source code'),
-      timeframe: z.enum(Timeframe).describe('Candle interval'),
+      timeframe: z.enum(supportedTimeframes).describe('Candle interval'),
       fetchCandleCount: z
         .number()
         .int()

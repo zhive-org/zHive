@@ -2,8 +2,8 @@ import * as ai from 'ai';
 import { MarketService } from './market';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { AgentRuntime } from '../agent/runtime';
-import { createPineScriptTool } from './tools/pinescript-tool';
 import { AssetContext } from './types';
+import { createPineScriptTool } from '../tools/pinescript';
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 

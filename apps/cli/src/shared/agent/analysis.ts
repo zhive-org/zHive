@@ -14,12 +14,10 @@ import {
 } from './prompts/megathread';
 import { buildMemoryExtractionPrompt } from './prompts/memory-prompt';
 import { AgentRuntime } from './runtime';
-import { clearSubagentUsage, getSubagentUsage, type SubagentUsage } from './tools/index';
 import { extractErrorMessage, stripCodeFences } from './utils';
+import { clearSubagentUsage, getSubagentUsage, SubagentUsage } from '../tools/execute-skill';
 
 const { ToolLoopAgent, generateText, Output } = wrapAISDK(ai);
-
-export type { SubagentUsage };
 
 // ─── Prediction Schema ──────────────────────────────
 

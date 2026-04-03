@@ -1,12 +1,13 @@
 import { Command } from 'commander';
 import z from 'zod';
-import { getHiveClient } from '../../../shared/config/hive-client';
 import { formatPineResult } from '../../../shared/ta/utils';
 import { styled } from '../../shared/theme';
 import { printZodError } from '../../shared/utils';
-import { HiveDataProvider } from '../../../shared/ta/data-provider';
 import path from 'node:path';
 import { lstat, readFile } from 'node:fs/promises';
+import { timeframeToMs } from '../../../shared/tools/pinescript/utils';
+import { Timeframe } from '../../../shared/tools/pinescript/types';
+import { convertTimeframeToInterval, getIntervalMs, getOHLC } from '../../../shared/ta/service';
 
 const ALLOWED_EXTENSIONS = ['.pine', '.ps', '.txt'];
 const MAX_SCRIPT_SIZE_BYTES = 512 * 1024; // 512 KB
@@ -51,7 +52,7 @@ const schema = z
     script: z.string().optional(),
     file: z.string().optional(),
     project: z.string(),
-    timeframe: z.enum(['1h', '24h']).default('1h'),
+    timeframe: z.enum([Timeframe['1h'], Timeframe['1d']]).default(Timeframe['1h']),
     fetchCandleCount: z.coerce.number().int().min(1).max(1500).default(100),
     returnCandleCount: z.coerce.number().int().min(1).max(100).default(10),
   })
@@ -98,13 +99,30 @@ export const createTaExecuteCommand = () => {
         scriptSource = input.script!;
       }
 
+      const endTime = Date.now();
+      const startTime = endTime - input.fetchCandleCount * timeframeToMs(input.timeframe);
+
+      const interval = convertTimeframeToInterval(input.timeframe);
+      const intervalMs = getIntervalMs(interval);
+
+      const ohlcData = await getOHLC({
+        project: input.project,
+        from: new Date(startTime),
+        to: new Date(endTime),
+        interval,
+      });
+
       const { PineTS } = await import('pinets');
-      const pineTS = new PineTS(
-        new HiveDataProvider(getHiveClient()),
-        input.project,
-        input.timeframe,
-        input.fetchCandleCount,
-      );
+      const klines = ohlcData.map(([timestamp, open, high, low, close]) => ({
+        openTime: timestamp - intervalMs,
+        closeTime: timestamp,
+        open,
+        high,
+        low,
+        close,
+        volume: 0, // hive api doesn't support volume
+      }));
+      const pineTS = new PineTS(klines);
       try {
         const result = await pineTS.run(scriptSource);
         console.log(JSON.stringify(formatPineResult(result, input.returnCandleCount)));
