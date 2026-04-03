@@ -1,5 +1,5 @@
 import * as ai from 'ai';
-import { MarketService } from './market';
+import { HyperliquidMarketService } from './market';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { AgentRuntime } from '../agent/runtime';
 import { AssetContext } from './types';
@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `You are a technical analysis. You task is to analyze give
 export class AssetAnalyzer {
   constructor(
     private runtime: AgentRuntime,
-    private marketService: MarketService,
+    private marketService: HyperliquidMarketService,
   ) {}
 
   async analyze(coin: string, ctx: AssetContext): Promise<string> {

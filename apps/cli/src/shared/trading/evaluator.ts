@@ -3,7 +3,7 @@ import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { traceable } from 'langsmith/traceable';
 import { z } from 'zod';
 import type { AgentRuntime } from '../agent';
-import type { MarketService } from './market.js';
+import type { HyperliquidMarketService } from './market.js';
 import { formatToolError } from '../megathread/utils.js';
 import { AssetAnalyzer } from './analyzer.js';
 import type { AccountSummary, AssetContext, TradeDecision } from './types.js';
@@ -26,7 +26,7 @@ export class AssetEvaluator {
   private analyzer: AssetAnalyzer;
 
   constructor(
-    private marketService: MarketService,
+    private marketService: HyperliquidMarketService,
     private runtime: AgentRuntime,
   ) {
     this.analyzer = new AssetAnalyzer(runtime, marketService);

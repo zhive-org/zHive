@@ -4,7 +4,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { AgentRuntime } from '../agent/runtime';
 import { AssetEvaluator } from './evaluator';
 import { TradeExecutor } from './executor';
-import { MarketService } from './market';
+import { HyperliquidMarketService } from './market';
 import { AccountSummary, TradeDecision } from './types';
 
 export type TradingAgentCallbacks = {
@@ -21,7 +21,7 @@ export class TradingAgent {
 
   private constructor(
     private watchList: string[],
-    private marketService: MarketService,
+    private marketService: HyperliquidMarketService,
     private evaluator: AssetEvaluator,
     private executor: TradeExecutor,
     private address: `0x${string}`,
@@ -49,7 +49,7 @@ export class TradingAgent {
     const info = new InfoClient({ transport });
     const exchange = new ExchangeClient({ transport, wallet });
 
-    const marketSrv = new MarketService(info);
+    const marketSrv = new HyperliquidMarketService(info);
     const evaluator = new AssetEvaluator(marketSrv, runtime);
     const converter = await SymbolConverter.create({ transport });
     const executor = new TradeExecutor(exchange, info, converter);

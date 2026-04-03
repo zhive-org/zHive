@@ -2,8 +2,13 @@ import { InfoClient } from '@nktkas/hyperliquid';
 import { AccountSummary, AssetContext, PositionInfo } from './types';
 import type { Candle, Timeframe } from '../tools/pinescript';
 
-export class MarketService {
+export class HyperliquidMarketService {
   constructor(private info: InfoClient) {}
+
+  async getAvailableAssets({ dex }: { dex?: string } = {}): Promise<string[]> {
+    const [meta] = await this.info.metaAndAssetCtxs({ dex });
+    return meta.universe.map((u) => u.name);
+  }
 
   async getAssetContext(name: string): Promise<AssetContext | undefined> {
     const parts = name.split(':');

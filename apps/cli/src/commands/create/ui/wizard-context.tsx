@@ -3,12 +3,20 @@ import type { AIProviderId } from '../../../shared/config/ai-providers.js';
 
 // ── Step navigation ────────────────────────────────────────────
 
-export type Step = 'identity' | 'api-key' | 'soul' | 'strategy' | 'scaffold';
+export type Step = 'identity' | 'watchlist' | 'api-key' | 'soul' | 'strategy' | 'scaffold';
 
-export const STEP_ORDER: Step[] = ['identity', 'api-key', 'soul', 'strategy', 'scaffold'];
+export const STEP_ORDER: Step[] = [
+  'identity',
+  'watchlist',
+  'api-key',
+  'soul',
+  'strategy',
+  'scaffold',
+];
 
 export const STEP_LABELS: Record<Step, string> = {
   identity: 'Identity',
+  watchlist: 'Watchlist',
   'api-key': 'API Key',
   soul: 'Soul',
   strategy: 'Strategy',
@@ -21,6 +29,10 @@ export interface IdentityState {
   name: string;
   bio: string;
   avatarUrl: string;
+}
+
+export interface WatchlistState {
+  assets: string[];
 }
 
 export interface ApiKeyState {
@@ -42,6 +54,7 @@ export interface StrategyState extends GenerationState {
 export interface WizardState {
   step: Step;
   identity: IdentityState;
+  watchlist: WatchlistState;
   apiConfig: ApiKeyState;
   soul: GenerationState;
   strategy: StrategyState;
@@ -54,6 +67,7 @@ export type WizardAction =
   | { type: 'GO_TO_STEP'; step: Step }
   | { type: 'GO_BACK' }
   | { type: 'SET_IDENTITY'; payload: IdentityState }
+  | { type: 'SET_WATCHLIST'; payload: WatchlistState }
   | { type: 'SET_API_CONFIG'; payload: ApiKeyState }
   | { type: 'SET_SOUL'; content: string }
   | { type: 'UPDATE_SOUL'; payload: Partial<GenerationState> }
@@ -77,7 +91,10 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, step: goBackStep(state.step) };
 
     case 'SET_IDENTITY':
-      return { ...state, identity: action.payload, step: 'api-key' };
+      return { ...state, identity: action.payload, step: 'watchlist' };
+
+    case 'SET_WATCHLIST':
+      return { ...state, watchlist: action.payload, step: 'api-key' };
 
     case 'SET_API_CONFIG':
       return { ...state, apiConfig: action.payload, step: 'soul' };
@@ -122,6 +139,7 @@ export function createInitialState(initialName?: string): WizardState {
   return {
     step: 'identity',
     identity: { name: initialName ?? '', bio: '', avatarUrl: '' },
+    watchlist: { assets: [] },
     apiConfig: { providerId: null, apiKey: '' },
     soul: { content: '', draft: '', prompt: '' },
     strategy: { content: '', draft: '', prompt: '', sectors: [], timeframes: [] },

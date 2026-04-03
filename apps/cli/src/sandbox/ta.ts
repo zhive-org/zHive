@@ -2,7 +2,7 @@ import { join } from 'path';
 import { initializeAgentRuntime } from '../shared/agent/runtime';
 import { AssetAnalyzer } from '../shared/trading/analyzer';
 import { getHiveDir } from '../shared/config/constant';
-import { MarketService } from '../shared/trading/market';
+import { HyperliquidMarketService } from '../shared/trading/market';
 import { HttpTransport, InfoClient } from '@nktkas/hyperliquid';
 import { loadAgentEnv } from '../shared/config/env-loader';
 
@@ -14,7 +14,7 @@ import { loadAgentEnv } from '../shared/config/env-loader';
   const runtime = await initializeAgentRuntime();
   const transport = new HttpTransport({ isTestnet: true });
   const info = new InfoClient({ transport });
-  const marketService = new MarketService(info);
+  const marketService = new HyperliquidMarketService(info);
   const analyzer = new AssetAnalyzer(runtime, marketService);
 
   const ctx = await marketService.getAssetContext('BTC');

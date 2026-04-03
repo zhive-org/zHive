@@ -3,6 +3,7 @@ import { Box, Text } from 'ink';
 import { Header } from '../../../components/Header';
 import { StepIndicator } from '../../../components/StepIndicator';
 import { AgentIdentityStep } from './steps/AgentIdentityStep';
+import { WatchlistStep } from './steps/WatchlistStep';
 import { ApiKeyStep } from './steps/ApiKeyStep';
 import { SoulStep } from './steps/SoulStep';
 import { StrategyStep } from './steps/StrategyStep';
@@ -26,6 +27,8 @@ function CreateAppInner(): React.ReactElement {
       <StepIndicator steps={STEP_DEFS} currentIndex={stepIndex} />
 
       {state.step === 'identity' && <AgentIdentityStep />}
+
+      {state.step === 'watchlist' && <WatchlistStep />}
 
       {state.step === 'api-key' && <ApiKeyStep />}
 
