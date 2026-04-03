@@ -27,8 +27,6 @@ export function App(): React.ReactElement {
     connected,
     agentName,
     modelInfo,
-    sectorsDisplay,
-    timeframesDisplay,
     activePollActivities,
     settledPollActivities,
     termWidth,
@@ -86,25 +84,6 @@ export function App(): React.ReactElement {
             <Text color={colors.purple}>zData</Text>
           </Box>
         )}
-        {sectorsDisplay && (
-          <Box paddingLeft={1}>
-            <Text color={colors.gray}>{symbols.hive} </Text>
-            <Text color={colors.gray}>sectors: </Text>
-            <Text color={colors.white}>{sectorsDisplay}</Text>
-          </Box>
-        )}
-        {timeframesDisplay && (
-          <Box paddingLeft={1}>
-            <Text color={colors.gray}>{symbols.hive} </Text>
-            <Text color={colors.gray}>timeframes: </Text>
-            {timeframesDisplay.split(', ').map((tf, i, arr) => (
-              <React.Fragment key={tf}>
-                <Text color={timeframeColor(tf)}>{tf}</Text>
-                {i < arr.length - 1 && <Text color={colors.grayDim}>, </Text>}
-              </React.Fragment>
-            ))}
-          </Box>
-        )}
         {stats && (
           <Box paddingLeft={1}>
             <Text color={colors.gray}>{symbols.hive} </Text>
@@ -129,7 +108,6 @@ export function App(): React.ReactElement {
           </Box>
         )}
 
-        {/* Active poll items (analyzing) — re-rendered for spinner animation */}
         <Box flexDirection="column" paddingLeft={1} paddingRight={1} minHeight={2}>
           {!connected && <Spinner label="Initiating neural link..." />}
           {activePollActivities.map((item, i) => {
@@ -146,7 +124,6 @@ export function App(): React.ReactElement {
                     animate={false}
                   />
                   <Text> </Text>
-                  <Spinner label="analyzing..." />
                 </Box>
                 {activityFormatter.getDetail(item) && (
                   <Box marginLeft={13}>
