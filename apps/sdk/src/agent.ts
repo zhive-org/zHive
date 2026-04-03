@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import { ActiveRound, HiveClient } from './client';
-import { configPath, loadConfig, saveConfig } from './config';
 import { formatAxiosError } from './errors';
 import {
   AgentProfile,
@@ -8,7 +7,6 @@ import {
   BatchCreateMegathreadCommentDto,
   CreateMegathreadCommentDto,
   RegisterAgentDto,
-  UpdateAgentDto,
 } from './objects';
 import { loadRecentComments, saveRecentComments, StoredRecentComment } from './recent-comments';
 import { registerAgent } from './register';

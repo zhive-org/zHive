@@ -14,6 +14,8 @@ export type TradingAgentCallbacks = {
   onEvalCompleted?: (account: AccountSummary, decisions: TradeDecision[]) => void;
 };
 
+const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // 1 hr
+
 export class TradingAgent {
   private _timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -24,12 +26,15 @@ export class TradingAgent {
     private executor: TradeExecutor,
     private address: `0x${string}`,
     private callbacks: TradingAgentCallbacks,
+    private intervalMs: number = DEFAULT_INTERVAL_MS,
   ) {}
 
   static async create(
     watchList: string[],
     runtime: AgentRuntime,
-    callbacks?: TradingAgentCallbacks,
+    config?: TradingAgentCallbacks & {
+      intervalMs?: number;
+    },
   ): Promise<TradingAgent> {
     const transport = new HttpTransport({ isTestnet: true });
     const privateKey = process.env.PRIVATE_KEY as `0x${string}`;
@@ -49,15 +54,22 @@ export class TradingAgent {
     const converter = await SymbolConverter.create({ transport });
     const executor = new TradeExecutor(exchange, info, converter);
 
-    return new TradingAgent(watchList, marketSrv, evaluator, executor, address, callbacks ?? {});
+    return new TradingAgent(
+      watchList,
+      marketSrv,
+      evaluator,
+      executor,
+      address,
+      config ?? {},
+      config?.intervalMs,
+    );
   }
 
   private async _scheduleNextRun() {
-    const sleepMs = 15 * 60 * 1000;
-    this.callbacks.onSleep?.(sleepMs);
+    this.callbacks.onSleep?.(this.intervalMs);
     this._timeoutId = setTimeout(() => {
       this.run();
-    }, sleepMs);
+    }, this.intervalMs);
   }
 
   async run() {

@@ -3,7 +3,7 @@ import { initializeAgentRuntime } from '../../../shared/agent/runtime';
 import { extractErrorMessage } from '../../../shared/megathread/utils';
 import { type AgentStats, fetchBulkStats } from '../../../shared/config/agent';
 import { ModelInfo, resolveModelInfo } from '../../../shared/config/ai-providers';
-import { TradingAgent, TradingAgentCallbacks } from '../../../shared/trading/bot';
+import { TradingAgent, TradingAgentCallbacks } from '../../../shared/trading/agent';
 import { PollActivityItem } from './types';
 import { usePollActivity } from './usePollActivity';
 
@@ -87,7 +87,7 @@ export function useAgent(): UseAgentState {
         onSleep(sleepMs) {
           addLog({
             type: 'message',
-            text: `Sleeping ${(sleepMs / (1000 * 60)).toFixed(2)}m until next cycle`,
+            text: `Sleeping ${sleepMs / (1000 * 60)}m until next cycle`,
             timestamp: new Date(),
           });
         },
