@@ -4,9 +4,8 @@ import pkg from './package.json' with { type: 'json' };
 export default defineConfig({
   entry: ['src/index.ts'],
   format: ['esm'],
-  target: 'es2021',
+  tsconfig: 'tsconfig.build.json',
   platform: 'node',
-  outDir: 'dist',
   clean: true,
   splitting: false,
   sourcemap: false,
