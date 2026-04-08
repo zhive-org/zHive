@@ -19,10 +19,9 @@ export function WatchlistStep(): React.ReactElement {
     const info = new InfoClient({ transport });
     const market = new HyperliquidMarketService(info);
 
-    market
-      .getAvailableAssets()
-      .then((names) => {
-        setAssets(names.map((n) => ({ label: n, value: n })));
+    Promise.all([market.getAvailableAssets(), market.getAvailableAssets({ dex: 'xyz' })])
+      .then((assets) => {
+        setAssets(assets.flat().map((n) => ({ label: n, value: n })));
         setLoading(false);
       })
       .catch((err) => {
