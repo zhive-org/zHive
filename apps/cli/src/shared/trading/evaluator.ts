@@ -7,6 +7,7 @@ import type { HyperliquidMarketService } from './market.js';
 import { formatToolError } from '../megathread/utils.js';
 import { AssetAnalyzer } from './analyzer.js';
 import type { AccountSummary, AssetContext, TradeDecision } from './types.js';
+import { loadMemory } from './memory';
 
 const { Output, generateText } = wrapAISDK(ai);
 
@@ -76,7 +77,7 @@ export class AssetEvaluator {
         }
 
         const systemPrompt = this.buildSystemPrompt();
-        const userPrompt = this.buildUserPrompt(assetEntries, account);
+        const userPrompt = await this.buildUserPrompt(assetEntries, account);
 
         try {
           const { output } = await generateText({
@@ -123,13 +124,16 @@ Consider cross-asset correlations and portfolio-level risk when making decisions
 Be conservative: prefer HOLD when signals are ambiguous.
 
 Rules
+- Never Risk More Than 1-2% Per Trade
 - Make decision based on given analysis.
 - Capital preservation is the foundation of successful crypto trading—your primary goal is to protect what you have so you can continue trading and growing.  
 - Don't open leveraged position more than 1x.
-- Don't open position larger than available balance.`;
+- Trade only when high-probability setups emerge.
+- Avoid overtrading; patience and discipline preserve capital.
+- Treat trading like a probability game with positive expectancy over many trades`;
   }
 
-  private buildUserPrompt(
+  private async buildUserPrompt(
     assetEntries: Array<{
       coin: string;
       ctx: AssetContext;
@@ -143,44 +147,46 @@ Rules
       };
     }>,
     account: AccountSummary,
-  ): string {
-    const lines: string[] = [];
-
-    lines.push(
-      `Analyze the following ${assetEntries.length} assets and provide a trading decision for each.`,
-    );
-    lines.push('');
-
-    lines.push(
-      `Account: value=$${account.accountValue.toFixed(2)}, marginUsed=$${account.marginUsed.toFixed(2)}`,
-    );
-    const availableUsdc = account.spotBalances.find((b) => b.coin === 'USDC')?.total ?? '0';
-    lines.push(`Available Trading Balance: value=${availableUsdc}`);
-    lines.push('');
-
+  ): Promise<string> {
+    const assetLines: string[] = [];
     for (const { coin, ctx, position, analysis } of assetEntries) {
-      lines.push(`--- ${coin} ---`);
-      lines.push(`  Mark price: $${ctx.markPx}`);
-      lines.push(`  Mid price: ${ctx.midPx ? `$${ctx.midPx}` : 'N/A'}`);
-      lines.push(`  Funding rate: ${ctx.funding}`);
-      lines.push(`  Open interest: $${ctx.openInterest.toLocaleString()}`);
-      lines.push(`  Prev day price: $${ctx.prevDayPx}`);
-      lines.push(`  24h volume: $${ctx.dayNtlVlm.toLocaleString()}`);
-      lines.push(`  Analysis: ${analysis ?? 'No analysis available'}`);
+      assetLines.push(`--- ${coin} ---`);
+      assetLines.push(`  Mark price: $${ctx.markPx}`);
+      assetLines.push(`  Mid price: ${ctx.midPx ? `$${ctx.midPx}` : 'N/A'}`);
+      assetLines.push(`  Funding rate: ${ctx.funding}`);
+      assetLines.push(`  Open interest: $${ctx.openInterest.toLocaleString()}`);
+      assetLines.push(`  Prev day price: $${ctx.prevDayPx}`);
+      assetLines.push(`  24h volume: $${ctx.dayNtlVlm.toLocaleString()}`);
+      assetLines.push(`  Analysis: ${analysis ?? 'No analysis available'}`);
 
       if (position) {
-        lines.push(
+        assetLines.push(
           `  Position: ${position.side} size=${position.size} entry=$${position.entryPrice} pnl=$${position.pnl.toFixed(2)} lev=${position.leverage}x`,
         );
       } else {
-        lines.push('  No current position.');
+        assetLines.push('  No current position.');
       }
-      lines.push('');
+      assetLines.push('');
     }
 
-    lines.push(`Current Time: ${new Date().toDateString()}`);
+    const memory = await loadMemory('trade-decisions.md');
 
-    return lines.join('\n');
+    const availableUsdc = account.spotBalances.find((b) => b.coin === 'USDC')?.total ?? '0';
+    const prompt = `Analyze the following ${assetEntries.length} assets and provide a trading decision for each.
+
+Account: value=$${account.accountValue.toFixed(2)}, marginUsed=$${account.marginUsed.toFixed(2)}
+Available Trading Balance: value=${availableUsdc}
+Current Time: ${new Date().toISOString()}
+
+## Asset
+${assetLines.join('\n')}
+
+## Memory
+
+Your past trading decisions.
+${memory}`;
+
+    return prompt;
   }
 }
 

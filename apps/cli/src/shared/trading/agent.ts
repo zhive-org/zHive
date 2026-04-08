@@ -5,7 +5,10 @@ import { AgentRuntime } from '../agent/runtime';
 import { AssetEvaluator } from './evaluator';
 import { TradeExecutor } from './executor';
 import { HyperliquidMarketService } from './market';
-import { AccountSummary, TradeDecision } from './types';
+import { AccountSummary, ExecutionResult, TradeDecision } from './types';
+import { loadMemory, saveMemory } from './memory';
+import { getMemoryLineCount } from '@zhive/sdk';
+import { generateText } from 'ai';
 
 export type TradingAgentCallbacks = {
   onError?: (err: unknown) => void;
@@ -20,6 +23,7 @@ export class TradingAgent {
   private _timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   private constructor(
+    private runtime: AgentRuntime,
     private watchList: string[],
     private marketService: HyperliquidMarketService,
     private evaluator: AssetEvaluator,
@@ -55,6 +59,7 @@ export class TradingAgent {
     const executor = new TradeExecutor(exchange, info, converter);
 
     return new TradingAgent(
+      runtime,
       watchList,
       marketSrv,
       evaluator,
@@ -89,11 +94,41 @@ export class TradingAgent {
     this.callbacks.onEvalStarted?.(this.watchList);
     const decisions = await this.evaluator.evaluate(this.watchList, account);
     this.callbacks.onEvalCompleted?.(account, decisions);
+    await this.saveDecisions(decisions);
 
     for (const decision of decisions) {
-      if (decision.action !== 'HOLD') {
-        await this.executor.execute(decision, account);
+      if (decision.action === 'HOLD') continue;
+      const res = await this.executor.execute(decision, account);
+
+      if (!res.success) {
+        this.callbacks.onError?.(new Error(res.details));
       }
     }
+  }
+
+  private async saveDecisions(decisions: TradeDecision[]): Promise<void> {
+    const memory = await loadMemory('trade-decisions.md');
+    const timestamp = new Date().toISOString();
+    const newEntry =
+      `## ${timestamp}\n\n` +
+      decisions.map((d) => `- ${d.coin}: ${d.action} $${d.sizeUsd} (${d.reasoning})`).join('\n') +
+      '\n\n';
+    let updatedMemory = memory + newEntry;
+    const lineCount = getMemoryLineCount(updatedMemory);
+    if (lineCount > 200) {
+      updatedMemory = await this.compactDecisions(updatedMemory);
+    }
+    await saveMemory('trade-decisions.md', updatedMemory);
+  }
+
+  private async compactDecisions(content: string): Promise<string> {
+    const prompt = `The following is a trading log of past decisions. Please summarize the key points in a concise manner, keeping the most recent information and removing redundant entries. The goal is to reduce the total line count while preserving important context for future reference.\n\n${content}`;
+
+    const { text } = await generateText({
+      model: this.runtime.model,
+      prompt,
+    });
+
+    return text;
   }
 }
