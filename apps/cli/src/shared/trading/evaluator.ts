@@ -8,6 +8,7 @@ import { formatToolError } from '../megathread/utils.js';
 import { AssetAnalyzer } from './analyzer.js';
 import type { AccountSummary, AssetContext, TradeDecision } from './types.js';
 import { loadMemory } from './memory';
+import { RiskEngine } from './risk';
 
 const { Output, generateText } = wrapAISDK(ai);
 
@@ -30,6 +31,7 @@ export class AssetEvaluator {
 
   constructor(
     private marketService: HyperliquidMarketService,
+    private riskEngine: RiskEngine,
     private runtime: AgentRuntime,
   ) {
     this.analyzer = new AssetAnalyzer(runtime, marketService);
@@ -125,11 +127,15 @@ ${this.runtime.config.strategyContent}
 Consider cross-asset correlations and portfolio-level risk when making decisions.
 Be conservative: prefer HOLD when signals are ambiguous.
 
+Risk Management
+Max Leverage: ${this.riskEngine.limits.maxLeverage}x
+Total Exposure Limit: $${this.riskEngine.limits.maxTotalExposureQuote.toLocaleString()}
+
 Rules
 - Make decision based on given analysis.
 - Capital preservation is the foundation of successful crypto trading—your primary goal is to protect what you have so you can continue trading and growing.  
-- Don't open leveraged position more than 1x.
-- Trade only when high-probability setups emerge.
+- Don't open leveraged position more than max leverage.
+- Don't exceed total exposure limit across all positions.
 - Avoid overtrading; patience and discipline preserve capital.
 - Treat trading like a probability game with positive expectancy over many trades`;
   }

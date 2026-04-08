@@ -9,12 +9,13 @@ import { AccountSummary, ExecutionResult, TradeDecision } from './types';
 import { loadMemory, saveMemory } from './memory';
 import { getMemoryLineCount } from '@zhive/sdk';
 import { generateText } from 'ai';
+import { RiskEngine } from './risk';
 
 export type TradingAgentCallbacks = {
   onError?: (err: unknown) => void;
   onSleep?: (sleepTimeMs: number) => void;
   onEvalStarted?: (assets: string[]) => void;
-  onEvalCompleted?: (account: AccountSummary, decisions: TradeDecision[]) => void;
+  onEvalCompleted?: (decision: TradeDecision) => void;
 };
 
 const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // 1 hr
@@ -28,6 +29,7 @@ export class TradingAgent {
     private marketService: HyperliquidMarketService,
     private evaluator: AssetEvaluator,
     private executor: TradeExecutor,
+    private riskEngine: RiskEngine,
     private address: `0x${string}`,
     private callbacks: TradingAgentCallbacks,
     private intervalMs: number = DEFAULT_INTERVAL_MS,
@@ -54,7 +56,11 @@ export class TradingAgent {
     const exchange = new ExchangeClient({ transport, wallet });
 
     const marketSrv = new HyperliquidMarketService(info);
-    const evaluator = new AssetEvaluator(marketSrv, runtime);
+    const riskEngine = new RiskEngine({
+      maxLeverage: 1,
+      maxTotalExposureQuote: 1000,
+    });
+    const evaluator = new AssetEvaluator(marketSrv, riskEngine, runtime);
     const converter = await SymbolConverter.create({ transport });
     const executor = new TradeExecutor(exchange, info, converter);
 
@@ -64,6 +70,7 @@ export class TradingAgent {
       marketSrv,
       evaluator,
       executor,
+      riskEngine,
       address,
       config ?? {},
       config?.intervalMs,
@@ -90,20 +97,28 @@ export class TradingAgent {
   }
 
   private async runOnce() {
-    const account = await this.marketService.fetchAccountState(this.address);
+    let account = await this.marketService.fetchAccountState(this.address);
+
     this.callbacks.onEvalStarted?.(this.watchList);
     const decisions = await this.evaluator.evaluate(this.watchList, account);
-    this.callbacks.onEvalCompleted?.(account, decisions);
-    await this.saveDecisions(decisions);
 
-    for (const decision of decisions) {
-      if (decision.action === 'HOLD') continue;
-      const res = await this.executor.execute(decision, account);
+    for (let i = 0; i < decisions.length; i++) {
+      decisions[i] = this.riskEngine.validate(decisions[i], account);
 
-      if (!res.success) {
-        this.callbacks.onError?.(new Error(res.details));
+      const decision = decisions[i];
+      if (decision.action !== 'HOLD') {
+        const res = await this.executor.execute(decision, account);
+        if (!res.success) {
+          this.callbacks.onError?.(new Error(res.details));
+        }
+
+        // refresh account state
+        account = await this.marketService.fetchAccountState(this.address);
       }
+      this.callbacks?.onEvalCompleted?.(decision);
     }
+
+    await this.saveDecisions(decisions);
   }
 
   private async saveDecisions(decisions: TradeDecision[]): Promise<void> {

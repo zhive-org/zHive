@@ -98,19 +98,15 @@ export function useAgent(): UseAgentState {
             timestamp: new Date(),
           });
         },
-        onEvalCompleted(account, decisions) {
-          for (const decision of decisions) {
-            const size = decision.action === 'HOLD' ? '' : ` $${decision.sizeUsd} `;
-            const action =
-              decision.action === 'HOLD' && !account.positions.find((p) => p.coin === decision.coin)
-                ? 'NO_ACTION'
-                : decision.action;
-            addLog({
-              type: 'message',
-              text: `[${action}] ${decision.coin}${size}- ${decision.reasoning}`,
-              timestamp: new Date(),
-            });
-          }
+        onEvalCompleted(decision) {
+          const size = decision.action === 'HOLD' ? '' : ` $${decision.sizeUsd}`;
+          const actionText = decision.action === 'HOLD' ? 'NO_ACTION' : decision.action;
+
+          addLog({
+            type: 'message',
+            text: `[${actionText}]${size} - ${decision.reasoning}`,
+            timestamp: new Date(),
+          });
         },
       };
 
