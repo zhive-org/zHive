@@ -1,4 +1,4 @@
-import type { ExchangeClient, InfoClient } from '@nktkas/hyperliquid';
+import type { ExchangeClient, InfoClient, OrderParameters } from '@nktkas/hyperliquid';
 import type { TradeDecision, ExecutionResult, AssetInfo, AccountSummary } from './types.js';
 import { formatPrice, formatSize, SymbolConverter } from '@nktkas/hyperliquid/utils';
 import _ from 'lodash';
@@ -44,7 +44,7 @@ export class TradeExecutor {
     d: TradeDecision,
     account: AccountSummary,
   ): Promise<ExecutionResult> {
-    const assetId = await this.converter.getAssetId(d.coin);
+    const assetId = this.converter.getAssetId(d.coin);
     if (_.isNil(assetId)) {
       return { coin: d.coin, action: 'CLOSE', success: false, details: 'Unknown asset' };
     }
@@ -116,19 +116,56 @@ export class TradeExecutor {
     }
     const mid = parseFloat(mids[d.coin]);
     const price = mid * (isBuy ? 1 + SLIPPAGE : 1 - SLIPPAGE);
+    const size = d.sizeUsd / price;
+
+    const orders: OrderParameters['orders'] = [
+      {
+        a: assetId,
+        b: isBuy,
+        p: formatPrice(price, szDecimal),
+        s: formatSize(size, szDecimal),
+        r: false,
+        t: { limit: { tif: 'FrontendMarket' } },
+      },
+    ];
+
+    if (!_.isNil(d.sl)) {
+      orders.push({
+        a: assetId,
+        b: !isBuy,
+        p: formatPrice(d.sl * (isBuy ? 1 - SLIPPAGE : 1 + SLIPPAGE), szDecimal),
+        s: formatSize(size, szDecimal),
+        r: true,
+        t: {
+          trigger: {
+            isMarket: true,
+            tpsl: 'sl',
+            triggerPx: formatPrice(d.sl, szDecimal),
+          },
+        },
+      });
+    }
+
+    if (!_.isNil(d.tp)) {
+      orders.push({
+        a: assetId,
+        b: !isBuy,
+        p: formatPrice(d.tp * (isBuy ? 1 - SLIPPAGE : 1 + SLIPPAGE), szDecimal),
+        s: formatSize(size, szDecimal),
+        r: true,
+        t: {
+          trigger: {
+            isMarket: true,
+            tpsl: 'tp',
+            triggerPx: formatPrice(d.tp, szDecimal),
+          },
+        },
+      });
+    }
 
     const response = await this.exchange.order({
-      orders: [
-        {
-          a: assetId,
-          b: isBuy,
-          p: formatPrice(price, szDecimal),
-          s: formatSize(d.sizeUsd, szDecimal),
-          r: false,
-          t: { limit: { tif: 'FrontendMarket' } },
-        },
-      ],
-      grouping: 'na',
+      orders: orders,
+      grouping: orders.length > 1 ? 'normalTpsl' : 'na',
     });
 
     const status = response.response.data.statuses[0];

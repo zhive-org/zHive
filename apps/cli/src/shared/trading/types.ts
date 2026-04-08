@@ -45,6 +45,8 @@ export interface TradeDecision {
   sizeUsd: number;
   leverage: number;
   reasoning: string;
+  tp?: number | null;
+  sl?: number | null;
 }
 
 export interface AssetInfo {

@@ -14,9 +14,11 @@ const { Output, generateText } = wrapAISDK(ai);
 const TradeDecisionSchema = z.object({
   coin: z.string(),
   action: z.enum(['LONG', 'SHORT', 'CLOSE', 'HOLD']),
-  sizeUsd: z.number(),
-  leverage: z.number(),
   reasoning: z.string(),
+  leverage: z.number(),
+  sizeUsd: z.number().describe('Position size in USD'),
+  tp: z.number().describe('Take profit price'),
+  sl: z.number().describe('Stop loss price'),
 });
 
 const TradeDecisionArraySchema = z.object({
@@ -124,7 +126,6 @@ Consider cross-asset correlations and portfolio-level risk when making decisions
 Be conservative: prefer HOLD when signals are ambiguous.
 
 Rules
-- Never Risk More Than 1-2% Per Trade
 - Make decision based on given analysis.
 - Capital preservation is the foundation of successful crypto trading—your primary goal is to protect what you have so you can continue trading and growing.  
 - Don't open leveraged position more than 1x.
