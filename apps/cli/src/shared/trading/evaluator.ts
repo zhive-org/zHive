@@ -18,8 +18,18 @@ const TradeDecisionSchema = z.object({
   reasoning: z.string(),
   leverage: z.number(),
   sizeUsd: z.number().describe('Position size in USD'),
-  tp: z.number().describe('Take profit price'),
-  sl: z.number().describe('Stop loss price'),
+  sl: z
+    .number()
+    .int()
+    .describe(
+      'Stop loss as % PnL on margin (leverage-adjusted). Example: 10 at 10x leverage triggers on a 1% adverse price move. Must be < 100 to avoid liquidation.',
+    ),
+  tp: z
+    .number()
+    .int()
+    .describe(
+      'Take profit as % PnL on margin. Example: 20 at 10x leverage triggers on a 2% favorable price move.',
+    ),
 });
 
 const TradeDecisionArraySchema = z.object({

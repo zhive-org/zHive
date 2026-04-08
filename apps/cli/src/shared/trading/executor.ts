@@ -57,12 +57,12 @@ export class TradeExecutor {
     const isBuy = position.side === 'short';
     const mids = await this.info.allMids();
     const szDecimals = this.converter.getSzDecimals(d.coin);
-    const mid = parseFloat(mids[d.coin]);
+    const mid = mids[d.coin];
     if (_.isNil(mid) || _.isNil(szDecimals)) {
       return { coin: d.coin, action: 'CLOSE', success: false, details: 'Unknown asset' };
     }
 
-    const price = mid * (isBuy ? 1 + SLIPPAGE : 1 - SLIPPAGE);
+    const price = parseFloat(mid) * (isBuy ? 1 + SLIPPAGE : 1 - SLIPPAGE);
     const response = await this.exchange.order({
       orders: [
         {
@@ -92,7 +92,6 @@ export class TradeExecutor {
 
   private async executeMarketOpen(d: TradeDecision): Promise<ExecutionResult> {
     const isBuy = d.action === 'LONG';
-
     const assetId = this.converter.getAssetId(d.coin);
     if (_.isNil(assetId)) {
       return { coin: d.coin, action: d.action, success: false, details: 'Unknown asset' };
@@ -114,57 +113,71 @@ export class TradeExecutor {
         details: 'Failed to fetch order book',
       };
     }
+
     const mid = parseFloat(mids[d.coin]);
-    const price = mid * (isBuy ? 1 + SLIPPAGE : 1 - SLIPPAGE);
-    const size = d.sizeUsd / price;
+    const entryPrice = mid * (isBuy ? 1 + SLIPPAGE : 1 - SLIPPAGE);
+    const size = d.sizeUsd / entryPrice;
+
+    // Convert PnL % to price move %, accounting for leverage.
+    // PnL% = priceMove% * leverage  =>  priceMove% = PnL% / leverage
+    const slPriceMovePct = !_.isNil(d.sl) ? d.sl / d.leverage / 100 : null;
+    const tpPriceMovePct = !_.isNil(d.tp) ? d.tp / d.leverage / 100 : null;
 
     const orders: OrderParameters['orders'] = [
       {
         a: assetId,
         b: isBuy,
-        p: formatPrice(price, szDecimal),
+        p: formatPrice(entryPrice, szDecimal),
         s: formatSize(size, szDecimal),
         r: false,
         t: { limit: { tif: 'FrontendMarket' } },
       },
     ];
 
-    if (!_.isNil(d.sl)) {
+    if (!_.isNil(slPriceMovePct)) {
+      // SL triggers when price moves against the position
+      const triggerPrice = entryPrice * (isBuy ? 1 - slPriceMovePct : 1 + slPriceMovePct);
+      // Limit price is worse than trigger to ensure fill on market trigger
+      const limitPrice = triggerPrice * (isBuy ? 1 - SLIPPAGE : 1 + SLIPPAGE);
       orders.push({
         a: assetId,
         b: !isBuy,
-        p: formatPrice(d.sl * (isBuy ? 1 - SLIPPAGE : 1 + SLIPPAGE), szDecimal),
+        p: formatPrice(limitPrice, szDecimal),
         s: formatSize(size, szDecimal),
         r: true,
         t: {
           trigger: {
             isMarket: true,
             tpsl: 'sl',
-            triggerPx: formatPrice(d.sl, szDecimal),
+            triggerPx: formatPrice(triggerPrice, szDecimal),
           },
         },
       });
     }
 
-    if (!_.isNil(d.tp)) {
+    if (!_.isNil(tpPriceMovePct)) {
+      // TP triggers when price moves in favor of the position
+      const triggerPrice = entryPrice * (isBuy ? 1 + tpPriceMovePct : 1 - tpPriceMovePct);
+      // Limit price is worse than trigger to ensure fill
+      const limitPrice = triggerPrice * (isBuy ? 1 - SLIPPAGE : 1 + SLIPPAGE);
       orders.push({
         a: assetId,
         b: !isBuy,
-        p: formatPrice(d.tp * (isBuy ? 1 - SLIPPAGE : 1 + SLIPPAGE), szDecimal),
+        p: formatPrice(limitPrice, szDecimal),
         s: formatSize(size, szDecimal),
         r: true,
         t: {
           trigger: {
             isMarket: true,
             tpsl: 'tp',
-            triggerPx: formatPrice(d.tp, szDecimal),
+            triggerPx: formatPrice(triggerPrice, szDecimal),
           },
         },
       });
     }
 
     const response = await this.exchange.order({
-      orders: orders,
+      orders,
       grouping: orders.length > 1 ? 'normalTpsl' : 'na',
     });
 
@@ -177,7 +190,7 @@ export class TradeExecutor {
       coin: d.coin,
       action: d.action,
       success: true,
-      details: `Opened ${isBuy ? 'long' : 'short'} ~$${d.sizeUsd} at ${d.leverage}x`,
+      details: `Opened ${isBuy ? 'long' : 'short'} ~$${d.sizeUsd} at ${d.leverage}x (SL ${d.sl ?? '-'}% / TP ${d.tp ?? '-'}% PnL)`,
     };
   }
 }
