@@ -1,15 +1,12 @@
-import { ExchangeClient, HttpTransport, InfoClient } from '@nktkas/hyperliquid';
-import { SymbolConverter } from '@nktkas/hyperliquid/utils';
-import { privateKeyToAccount } from 'viem/accounts';
-import { AgentRuntime } from '../agent/runtime';
-import { AssetEvaluator } from './evaluator';
-import { TradeExecutor } from './executor';
-import { HyperliquidMarketService } from './market';
-import { AccountSummary, ExecutionResult, TradeDecision } from './types';
-import { loadMemory, saveMemory } from './memory';
 import { getMemoryLineCount } from '@zhive/sdk';
 import { generateText } from 'ai';
+import { AgentRuntime } from '../agent/runtime';
+import { AssetEvaluator } from './evaluator';
+import { HyperliquidExchange } from './exchange/hyperliquid';
+import { IExchange } from './exchange/types';
+import { loadMemory, saveMemory } from './memory';
 import { RiskEngine } from './risk';
+import { TradeDecision } from './types';
 
 export type TradingAgentCallbacks = {
   onError?: (err: unknown) => void;
@@ -26,11 +23,9 @@ export class TradingAgent {
   private constructor(
     private runtime: AgentRuntime,
     private watchList: string[],
-    private marketService: HyperliquidMarketService,
     private evaluator: AssetEvaluator,
-    private executor: TradeExecutor,
+    private exchange: IExchange,
     private riskEngine: RiskEngine,
-    private address: `0x${string}`,
     private callbacks: TradingAgentCallbacks,
     private intervalMs: number = DEFAULT_INTERVAL_MS,
   ) {}
@@ -42,36 +37,19 @@ export class TradingAgent {
       intervalMs?: number;
     },
   ): Promise<TradingAgent> {
-    const transport = new HttpTransport({ isTestnet: true });
-    const privateKey = process.env.PRIVATE_KEY as `0x${string}`;
-    if (!privateKey) {
-      throw new Error('PRIVATE_KEY not set');
-    }
-    const address = process.env.WALLET_ADDRESS as `0x${string}`;
-    if (!address) {
-      throw new Error(`WALLET_ADDRESS not set`);
-    }
-    const wallet = privateKeyToAccount(privateKey);
-    const info = new InfoClient({ transport });
-    const exchange = new ExchangeClient({ transport, wallet });
-
-    const marketSrv = new HyperliquidMarketService(info);
     const riskEngine = new RiskEngine({
       maxLeverage: 1,
       maxTotalExposureQuote: 1000,
     });
-    const evaluator = new AssetEvaluator(marketSrv, riskEngine, runtime);
-    const converter = await SymbolConverter.create({ transport });
-    const executor = new TradeExecutor(exchange, info, converter);
+    const exchange = await HyperliquidExchange.create();
+    const evaluator = new AssetEvaluator(exchange, riskEngine, runtime);
 
     return new TradingAgent(
       runtime,
       watchList,
-      marketSrv,
       evaluator,
-      executor,
+      exchange,
       riskEngine,
-      address,
       config ?? {},
       config?.intervalMs,
     );
@@ -97,7 +75,7 @@ export class TradingAgent {
   }
 
   private async runOnce() {
-    let account = await this.marketService.fetchAccountState(this.address);
+    const account = await this.exchange.fetchAccountState();
 
     this.callbacks.onEvalStarted?.(this.watchList);
     const decisions = await this.evaluator.evaluate(this.watchList, account);
@@ -107,13 +85,10 @@ export class TradingAgent {
 
       const decision = decisions[i];
       if (decision.action !== 'HOLD') {
-        const res = await this.executor.execute(decision, account);
+        const res = await this.exchange.placeOrder(decision);
         if (!res.success) {
           this.callbacks.onError?.(new Error(res.details));
         }
-
-        // refresh account state
-        account = await this.marketService.fetchAccountState(this.address);
       }
       this.callbacks?.onEvalCompleted?.(decision);
     }

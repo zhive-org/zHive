@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text } from 'ink';
-import { HttpTransport, InfoClient } from '@nktkas/hyperliquid';
-import { HyperliquidMarketService } from '../../../../shared/trading/market.js';
+import React, { useCallback, useEffect, useState } from 'react';
 import { SearchSelect, type SearchSelectItem } from '../../../../components/SearchSelect.js';
 import { Spinner } from '../../../../components/Spinner.js';
+import { HyperliquidExchange } from '../../../../shared/trading/exchange/hyperliquid.js';
 import { colors, symbols } from '../../../shared/theme.js';
 import { useWizard } from '../wizard-context.js';
 
@@ -15,13 +14,11 @@ export function WatchlistStep(): React.ReactElement {
   const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
-    const transport = new HttpTransport({});
-    const info = new InfoClient({ transport });
-    const market = new HyperliquidMarketService(info);
-
-    Promise.all([market.getAvailableAssets(), market.getAvailableAssets({ dex: 'xyz' })])
+    HyperliquidExchange.create()
+      .then((exchange) => exchange.getAvailableTradingPairs())
+      .then()
       .then((assets) => {
-        setAssets(assets.flat().map((n) => ({ label: n, value: n })));
+        setAssets(assets.map((n) => ({ label: n, value: n })));
         setLoading(false);
       })
       .catch((err) => {

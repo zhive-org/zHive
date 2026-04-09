@@ -1,9 +1,9 @@
 import * as ai from 'ai';
-import { HyperliquidMarketService } from './market';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { AgentRuntime } from '../agent/runtime';
-import { AssetContext } from './types';
 import { createPineScriptTool } from '../tools/pinescript';
+import { IExchange } from './exchange/types';
+import { AssetContext } from './types';
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 
@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `You are a technical analysis. You task is to analyze give
 export class AssetAnalyzer {
   constructor(
     private runtime: AgentRuntime,
-    private marketService: HyperliquidMarketService,
+    private exchange: IExchange,
   ) {}
 
   async analyze(coin: string, ctx: AssetContext): Promise<string> {
@@ -24,9 +24,7 @@ export class AssetAnalyzer {
       model: this.runtime.model,
       instructions: SYSTEM_PROMPT,
       tools: {
-        pineScriptTool: createPineScriptTool(
-          this.marketService.fetchCandles.bind(this.marketService),
-        ),
+        pineScriptTool: createPineScriptTool(this.exchange.fetchCandles.bind(this.exchange)),
       },
     });
     const prompt = `## Asset

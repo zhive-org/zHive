@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ExchangeClient, InfoClient } from '@nktkas/hyperliquid';
 import type { SymbolConverter } from '@nktkas/hyperliquid/utils';
-import { TradeExecutor } from './executor.js';
-import type { AccountSummary, PositionInfo, TradeDecision } from './types.js';
+import { AccountSummary, PositionInfo, TradeDecision } from '../types';
+import { HyperliquidExchange } from './hyperliquid';
 
 const SLIPPAGE = 0.03;
 const BTC_MID = 50_000;
@@ -57,11 +57,11 @@ const makeAccount = (positions: PositionInfo[] = []): AccountSummary => ({
   positions,
 });
 
-describe('TradeExecutor', () => {
+describe('HyperliquidExchange', () => {
   let exchange: ExchangeMock;
   let info: InfoMock;
   let converter: ConverterMock;
-  let executor: TradeExecutor;
+  let hyperliquid: HyperliquidExchange;
 
   beforeEach(() => {
     exchange = {
@@ -75,18 +75,19 @@ describe('TradeExecutor', () => {
       getAssetId: vi.fn().mockReturnValue(BTC_ASSET_ID),
       getSzDecimals: vi.fn().mockReturnValue(SZ_DECIMALS),
     };
-    executor = new TradeExecutor(
+    hyperliquid = new HyperliquidExchange(
+      '0x123',
       exchange as unknown as ExchangeClient,
       info as unknown as InfoClient,
       converter as unknown as SymbolConverter,
     );
   });
 
-  describe('executeMarketOpen', () => {
+  describe('create market order', () => {
     it('returns failure when asset is unknown and does not call exchange', async () => {
       converter.getAssetId.mockReturnValue(undefined);
 
-      const result = await executor.execute(makeDecision(), makeAccount());
+      const result = await hyperliquid.placeOrder(makeDecision());
 
       expect(result).toEqual({
         coin: 'BTC',
@@ -101,7 +102,7 @@ describe('TradeExecutor', () => {
     it('returns failure when allMids is missing the coin', async () => {
       info.allMids.mockResolvedValue({ ETH: '2000' });
 
-      const result = await executor.execute(makeDecision(), makeAccount());
+      const result = await hyperliquid.placeOrder(makeDecision());
 
       expect(result.success).toBe(false);
       expect(result.details).toBe('Failed to fetch order book');
@@ -111,7 +112,7 @@ describe('TradeExecutor', () => {
     it('returns failure when szDecimals is nil', async () => {
       converter.getSzDecimals.mockReturnValue(undefined);
 
-      const result = await executor.execute(makeDecision(), makeAccount());
+      const result = await hyperliquid.placeOrder(makeDecision());
 
       expect(result.success).toBe(false);
       expect(result.details).toBe('Failed to fetch order book');
@@ -121,7 +122,7 @@ describe('TradeExecutor', () => {
     it('opens a LONG with no TP/SL: single market order, updates leverage', async () => {
       const decision = makeDecision({ action: 'LONG', sizeUsd: 1000, leverage: 5 });
 
-      const result = await executor.execute(decision, makeAccount());
+      const result = await hyperliquid.placeOrder(decision);
 
       expect(exchange.updateLeverage).toHaveBeenCalledWith({
         asset: BTC_ASSET_ID,
@@ -160,7 +161,7 @@ describe('TradeExecutor', () => {
         tp: 50, // PnL %
       });
 
-      const result = await executor.execute(decision, makeAccount());
+      const result = await hyperliquid.placeOrder(decision);
 
       expect(exchange.order).toHaveBeenCalledTimes(1);
       const payload = exchange.order.mock.calls[0][0];
@@ -209,7 +210,7 @@ describe('TradeExecutor', () => {
         tp: 30,
       });
 
-      await executor.execute(decision, makeAccount());
+      await hyperliquid.placeOrder(decision);
 
       const payload = exchange.order.mock.calls[0][0];
       const [, sl, tp] = payload.orders;
@@ -227,7 +228,7 @@ describe('TradeExecutor', () => {
     it('returns failure when exchange responds with an error status', async () => {
       exchange.order.mockResolvedValue(errorStatus('insufficient margin'));
 
-      const result = await executor.execute(makeDecision(), makeAccount());
+      const result = await hyperliquid.placeOrder(makeDecision());
 
       expect(result).toEqual({
         coin: 'BTC',
@@ -240,7 +241,7 @@ describe('TradeExecutor', () => {
     it('catches thrown errors from exchange.order', async () => {
       exchange.order.mockRejectedValue(new Error('network down'));
 
-      const result = await executor.execute(makeDecision(), makeAccount());
+      const result = await hyperliquid.placeOrder(makeDecision());
 
       expect(result.success).toBe(false);
       expect(result.action).toBe('LONG');
@@ -248,14 +249,13 @@ describe('TradeExecutor', () => {
     });
   });
 
-  describe('executeMarketClose', () => {
+  describe('close market', () => {
     it('returns failure when asset is unknown', async () => {
       converter.getAssetId.mockReturnValue(undefined);
 
-      const result = await executor.execute(
-        makeDecision({ action: 'CLOSE' }),
-        makeAccount([makePosition()]),
-      );
+      vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([makePosition()]));
+
+      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
 
       expect(result).toEqual({
         coin: 'BTC',
@@ -267,7 +267,8 @@ describe('TradeExecutor', () => {
     });
 
     it('returns failure when there is no matching position', async () => {
-      const result = await executor.execute(makeDecision({ action: 'CLOSE' }), makeAccount([]));
+      vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([]));
+      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
 
       expect(result).toEqual({
         coin: 'BTC',
@@ -280,11 +281,9 @@ describe('TradeExecutor', () => {
 
     it('returns failure when allMids is missing the coin', async () => {
       info.allMids.mockResolvedValue({ ETH: '2000' });
+      vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([makePosition()]));
 
-      const result = await executor.execute(
-        makeDecision({ action: 'CLOSE' }),
-        makeAccount([makePosition()]),
-      );
+      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
 
       expect(result.success).toBe(false);
       expect(result.action).toBe('CLOSE');
@@ -293,11 +292,9 @@ describe('TradeExecutor', () => {
 
     it('closes a LONG position by selling with reduce-only at slippage-adjusted price', async () => {
       const position = makePosition({ side: 'long', size: 0.02 });
+      vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([position]));
 
-      const result = await executor.execute(
-        makeDecision({ action: 'CLOSE' }),
-        makeAccount([position]),
-      );
+      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
 
       expect(exchange.order).toHaveBeenCalledTimes(1);
       const payload = exchange.order.mock.calls[0][0];
@@ -322,11 +319,9 @@ describe('TradeExecutor', () => {
 
     it('closes a SHORT position by buying with reduce-only at slippage-adjusted price', async () => {
       const position = makePosition({ side: 'short', size: 0.05 });
+      vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([position]));
 
-      const result = await executor.execute(
-        makeDecision({ action: 'CLOSE' }),
-        makeAccount([position]),
-      );
+      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
 
       const [order] = exchange.order.mock.calls[0][0].orders;
       expect(order.b).toBe(true);
@@ -340,11 +335,9 @@ describe('TradeExecutor', () => {
 
     it('returns failure when exchange responds with an error status', async () => {
       exchange.order.mockResolvedValue(errorStatus('reduce-only rejected'));
+      vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([makePosition()]));
 
-      const result = await executor.execute(
-        makeDecision({ action: 'CLOSE' }),
-        makeAccount([makePosition()]),
-      );
+      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
 
       expect(result).toEqual({
         coin: 'BTC',
@@ -356,11 +349,9 @@ describe('TradeExecutor', () => {
 
     it('catches thrown errors from exchange.order', async () => {
       exchange.order.mockRejectedValue(new Error('boom'));
+      vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([makePosition()]));
 
-      const result = await executor.execute(
-        makeDecision({ action: 'CLOSE' }),
-        makeAccount([makePosition()]),
-      );
+      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
 
       expect(result.success).toBe(false);
       expect(result.action).toBe('CLOSE');

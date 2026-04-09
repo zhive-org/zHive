@@ -3,12 +3,12 @@ import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { traceable } from 'langsmith/traceable';
 import { z } from 'zod';
 import type { AgentRuntime } from '../agent';
-import type { HyperliquidMarketService } from './market.js';
 import { formatToolError } from '../megathread/utils.js';
 import { AssetAnalyzer } from './analyzer.js';
-import type { AccountSummary, AssetContext, TradeDecision } from './types.js';
+import { IExchange } from './exchange/types';
 import { loadMemory } from './memory';
 import { RiskEngine } from './risk';
+import type { AccountSummary, AssetContext, TradeDecision } from './types.js';
 
 const { Output, generateText } = wrapAISDK(ai);
 
@@ -40,11 +40,11 @@ export class AssetEvaluator {
   private analyzer: AssetAnalyzer;
 
   constructor(
-    private marketService: HyperliquidMarketService,
+    private exchange: IExchange,
     private riskEngine: RiskEngine,
     private runtime: AgentRuntime,
   ) {
-    this.analyzer = new AssetAnalyzer(runtime, marketService);
+    this.analyzer = new AssetAnalyzer(runtime, exchange);
   }
 
   async evaluate(coins: string[], account: AccountSummary): Promise<TradeDecision[]> {
@@ -59,7 +59,7 @@ export class AssetEvaluator {
 
         const analysisPromises: Promise<string>[] = [];
         for (const coin of coins) {
-          const ctx = await this.marketService.getAssetContext(coin);
+          const ctx = await this.exchange.getPairInfo(coin);
           if (!ctx) {
             continue;
           }
