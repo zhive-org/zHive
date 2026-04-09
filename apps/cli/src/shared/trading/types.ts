@@ -54,6 +54,9 @@ export interface AccountSummary {
   positions: PositionInfo[];
 }
 
+/**
+ * If action is CLOSE, sizeUsd, tp, sl and leverage won't be used.
+ */
 export interface TradeDecision {
   coin: string;
   action: 'LONG' | 'SHORT' | 'CLOSE' | 'HOLD';
@@ -74,6 +77,10 @@ export interface AssetInfo {
 export interface ExecutionResult {
   coin: string;
   action: string;
-  success: boolean;
-  details: string;
+  /**
+   * size in currency unit
+   */
+  size: string;
+  tpPrice?: string;
+  slPrice?: string;
 }

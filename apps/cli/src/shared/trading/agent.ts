@@ -7,9 +7,10 @@ import { IExchange } from './exchange/types';
 import { loadMemory, saveMemory } from './memory';
 import { RiskEngine } from './risk';
 import { TradeDecision } from './types';
+import { PositionNotFound, UnknownError, UnSupportedAssetError } from './exchange/error';
 
 export type TradingAgentCallbacks = {
-  onError?: (err: unknown) => void;
+  onError?: (err: string) => void;
   onSleep?: (sleepTimeMs: number) => void;
   onEvalStarted?: (assets: string[]) => void;
   onEvalCompleted?: (decision: TradeDecision) => void;
@@ -85,12 +86,22 @@ export class TradingAgent {
 
       const decision = decisions[i];
       if (decision.action !== 'HOLD') {
-        const res = await this.exchange.placeOrder(decision);
-        if (!res.success) {
-          this.callbacks.onError?.(new Error(res.details));
+        try {
+          await this.exchange.placeOrder(decision);
+          this.callbacks?.onEvalCompleted?.(decision);
+        } catch (e) {
+          let message = 'Failed to execute order';
+          if (e instanceof UnSupportedAssetError) {
+            message = 'Unknown asset';
+          } else if (e instanceof PositionNotFound) {
+            message = 'Position not found';
+          } else if (e instanceof UnknownError) {
+            message = e.message;
+          }
+
+          this.callbacks.onError?.(message);
         }
       }
-      this.callbacks?.onEvalCompleted?.(decision);
     }
 
     await this.saveDecisions(decisions);

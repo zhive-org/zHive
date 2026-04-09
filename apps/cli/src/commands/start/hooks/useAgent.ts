@@ -98,6 +98,13 @@ export function useAgent(): UseAgentState {
             timestamp: new Date(),
           });
         },
+        onError(message) {
+          addLog({
+            type: 'error',
+            errorMessage: message,
+            timestamp: new Date(),
+          });
+        },
         onEvalCompleted(decision) {
           const size = decision.action === 'HOLD' ? '' : ` $${decision.sizeUsd}`;
           const actionText = decision.action === 'HOLD' ? 'NO_ACTION' : decision.action;

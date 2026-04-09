@@ -16,8 +16,8 @@ const TradeDecisionSchema = z.object({
   coin: z.string(),
   action: z.enum(['LONG', 'SHORT', 'CLOSE', 'HOLD']),
   reasoning: z.string(),
-  leverage: z.number(),
   sizeUsd: z.number().describe('Position size in USD'),
+  leverage: z.number(),
   sl: z
     .number()
     .int()

@@ -3,6 +3,7 @@ import type { ExchangeClient, InfoClient } from '@nktkas/hyperliquid';
 import type { SymbolConverter } from '@nktkas/hyperliquid/utils';
 import { AccountSummary, PositionInfo, TradeDecision } from '../types';
 import { HyperliquidExchange } from './hyperliquid';
+import { PositionNotFound, UnknownError, UnSupportedAssetError } from './error';
 
 const SLIPPAGE = 0.03;
 const BTC_MID = 50_000;
@@ -87,14 +88,8 @@ describe('HyperliquidExchange', () => {
     it('returns failure when asset is unknown and does not call exchange', async () => {
       converter.getAssetId.mockReturnValue(undefined);
 
-      const result = await hyperliquid.placeOrder(makeDecision());
+      await expect(hyperliquid.placeOrder(makeDecision())).rejects.toThrow(UnSupportedAssetError);
 
-      expect(result).toEqual({
-        coin: 'BTC',
-        action: 'LONG',
-        success: false,
-        details: 'Unknown asset',
-      });
       expect(exchange.updateLeverage).not.toHaveBeenCalled();
       expect(exchange.order).not.toHaveBeenCalled();
     });
@@ -102,20 +97,13 @@ describe('HyperliquidExchange', () => {
     it('returns failure when allMids is missing the coin', async () => {
       info.allMids.mockResolvedValue({ ETH: '2000' });
 
-      const result = await hyperliquid.placeOrder(makeDecision());
-
-      expect(result.success).toBe(false);
-      expect(result.details).toBe('Failed to fetch order book');
-      expect(exchange.order).not.toHaveBeenCalled();
+      await expect(hyperliquid.placeOrder(makeDecision())).rejects.toThrow(UnSupportedAssetError);
     });
 
     it('returns failure when szDecimals is nil', async () => {
       converter.getSzDecimals.mockReturnValue(undefined);
 
-      const result = await hyperliquid.placeOrder(makeDecision());
-
-      expect(result.success).toBe(false);
-      expect(result.details).toBe('Failed to fetch order book');
+      await expect(hyperliquid.placeOrder(makeDecision())).rejects.toThrow(UnSupportedAssetError);
       expect(exchange.order).not.toHaveBeenCalled();
     });
 
@@ -144,12 +132,7 @@ describe('HyperliquidExchange', () => {
       const expectedEntry = BTC_MID * (1 + SLIPPAGE);
       expect(Number(entry.p)).toBeCloseTo(expectedEntry, 0);
       expect(Number(entry.s)).toBeCloseTo(1000 / expectedEntry, 3);
-
-      expect(result.success).toBe(true);
       expect(result.action).toBe('LONG');
-      expect(result.details).toContain('5x');
-      expect(result.details).toContain('SL -');
-      expect(result.details).toContain('TP -');
     });
 
     it('opens a SHORT with TP and SL: three orders, normalTpsl grouping, correct trigger sides', async () => {
@@ -197,9 +180,7 @@ describe('HyperliquidExchange', () => {
       expect(tp.t.trigger.tpsl).toBe('tp');
       expect(Number(tp.t.trigger.triggerPx)).toBeCloseTo(expectedTpTrigger, 0);
       expect(Number(tp.p)).toBeCloseTo(expectedTpLimit, 0);
-
-      expect(result.success).toBe(true);
-      expect(result.details).toContain('short');
+      expect(result.action).toBe('SHORT');
     });
 
     it('places TP/SL on the correct sides for a LONG', async () => {
@@ -228,24 +209,13 @@ describe('HyperliquidExchange', () => {
     it('returns failure when exchange responds with an error status', async () => {
       exchange.order.mockResolvedValue(errorStatus('insufficient margin'));
 
-      const result = await hyperliquid.placeOrder(makeDecision());
-
-      expect(result).toEqual({
-        coin: 'BTC',
-        action: 'LONG',
-        success: false,
-        details: 'insufficient margin',
-      });
+      await expect(hyperliquid.placeOrder(makeDecision())).rejects.toThrow();
     });
 
     it('catches thrown errors from exchange.order', async () => {
       exchange.order.mockRejectedValue(new Error('network down'));
 
-      const result = await hyperliquid.placeOrder(makeDecision());
-
-      expect(result.success).toBe(false);
-      expect(result.action).toBe('LONG');
-      expect(result.details).toContain('network down');
+      await expect(hyperliquid.placeOrder(makeDecision())).rejects.toThrow();
     });
   });
 
@@ -255,27 +225,18 @@ describe('HyperliquidExchange', () => {
 
       vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([makePosition()]));
 
-      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
+      await expect(hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }))).rejects.toThrow(
+        UnSupportedAssetError,
+      );
 
-      expect(result).toEqual({
-        coin: 'BTC',
-        action: 'CLOSE',
-        success: false,
-        details: 'Unknown asset',
-      });
       expect(exchange.order).not.toHaveBeenCalled();
     });
 
     it('returns failure when there is no matching position', async () => {
       vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([]));
-      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
-
-      expect(result).toEqual({
-        coin: 'BTC',
-        action: 'CLOSE',
-        success: false,
-        details: 'No position to close',
-      });
+      await expect(hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }))).rejects.toThrow(
+        PositionNotFound,
+      );
       expect(exchange.order).not.toHaveBeenCalled();
     });
 
@@ -283,11 +244,9 @@ describe('HyperliquidExchange', () => {
       info.allMids.mockResolvedValue({ ETH: '2000' });
       vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([makePosition()]));
 
-      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
-
-      expect(result.success).toBe(false);
-      expect(result.action).toBe('CLOSE');
-      expect(exchange.order).not.toHaveBeenCalled();
+      await expect(hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }))).rejects.toThrow(
+        UnSupportedAssetError,
+      );
     });
 
     it('closes a LONG position by selling with reduce-only at slippage-adjusted price', async () => {
@@ -309,11 +268,10 @@ describe('HyperliquidExchange', () => {
       expect(Number(order.p)).toBeCloseTo(BTC_MID * (1 - SLIPPAGE), 0);
       expect(Number(order.s)).toBeCloseTo(0.02, 3);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         coin: 'BTC',
         action: 'CLOSE',
-        success: true,
-        details: 'Closed long position',
+        size: '0.02',
       });
     });
 
@@ -321,41 +279,27 @@ describe('HyperliquidExchange', () => {
       const position = makePosition({ side: 'short', size: 0.05 });
       vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([position]));
 
-      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
+      await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
 
       const [order] = exchange.order.mock.calls[0][0].orders;
       expect(order.b).toBe(true);
       expect(order.r).toBe(true);
       expect(Number(order.p)).toBeCloseTo(BTC_MID * (1 + SLIPPAGE), 0);
       expect(Number(order.s)).toBeCloseTo(0.05, 3);
-
-      expect(result.success).toBe(true);
-      expect(result.details).toBe('Closed short position');
     });
 
     it('returns failure when exchange responds with an error status', async () => {
       exchange.order.mockResolvedValue(errorStatus('reduce-only rejected'));
       vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([makePosition()]));
 
-      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
-
-      expect(result).toEqual({
-        coin: 'BTC',
-        action: 'CLOSE',
-        success: false,
-        details: 'reduce-only rejected',
-      });
+      await expect(hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }))).rejects.toThrow();
     });
 
     it('catches thrown errors from exchange.order', async () => {
       exchange.order.mockRejectedValue(new Error('boom'));
       vi.spyOn(hyperliquid, 'fetchAccountState').mockResolvedValue(makeAccount([makePosition()]));
 
-      const result = await hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }));
-
-      expect(result.success).toBe(false);
-      expect(result.action).toBe('CLOSE');
-      expect(result.details).toContain('boom');
+      await expect(hyperliquid.placeOrder(makeDecision({ action: 'CLOSE' }))).rejects.toThrow();
     });
   });
 });

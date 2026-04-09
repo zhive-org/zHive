@@ -11,6 +11,7 @@ import {
   TradeDecision,
 } from '../types';
 import { IExchange } from './types';
+import { PositionNotFound, UnSupportedAssetError } from './error';
 
 export interface PositionSummary {
   token_id: string;
@@ -54,26 +55,16 @@ export class ZhiveExchange implements IExchange {
   }
 
   async placeOrder(order: TradeDecision): Promise<ExecutionResult> {
-    try {
-      const assetId = this.converter.getAssetId(order.coin);
-      if (_.isNil(assetId)) {
-        return { coin: order.coin, action: order.action, success: false, details: 'Unknown asset' };
-      }
-
-      if (order.action === 'CLOSE') {
-        return await this._executeMarketClose(order);
-      }
-
-      return await this._executeMarketOpen(order);
-    } catch (err) {
-      const result: ExecutionResult = {
-        coin: order.coin,
-        action: order.action,
-        success: false,
-        details: String(err),
-      };
-      return result;
+    const assetId = this.converter.getAssetId(order.coin);
+    if (_.isNil(assetId)) {
+      throw new UnSupportedAssetError();
     }
+
+    if (order.action === 'CLOSE') {
+      return await this._executeMarketClose(order);
+    }
+
+    return await this._executeMarketOpen(order);
   }
 
   async getAvailableTradingPairs(): Promise<string[]> {
@@ -95,13 +86,13 @@ export class ZhiveExchange implements IExchange {
   private async _executeMarketClose(d: TradeDecision): Promise<ExecutionResult> {
     const assetId = this.converter.getAssetId(d.coin);
     if (_.isNil(assetId)) {
-      return { coin: d.coin, action: 'CLOSE', success: false, details: 'Unknown asset' };
+      throw new UnSupportedAssetError();
     }
 
     const account = await this.fetchAccountState();
     const position = account.positions.find((p) => p.coin === d.coin);
     if (!position) {
-      return { coin: d.coin, action: 'CLOSE', success: false, details: 'No position to close' };
+      throw new PositionNotFound();
     }
 
     const isBuy = position.side === 'short';
@@ -132,8 +123,7 @@ export class ZhiveExchange implements IExchange {
     return {
       coin: d.coin,
       action: 'CLOSE',
-      success: true,
-      details: `Closed ${position.side} position`,
+      size: position.size.toString(),
     };
   }
 
@@ -143,16 +133,11 @@ export class ZhiveExchange implements IExchange {
     const mids = await this.info.allMids();
     const szDecimal = this.converter.getSzDecimals(order.coin);
     if (!(order.coin in mids) || _.isNil(szDecimal)) {
-      return {
-        coin: order.coin,
-        action: order.action,
-        success: false,
-        details: 'Failed to fetch order book',
-      };
+      throw new UnSupportedAssetError();
     }
 
     const entryPrice = parseFloat(mids[order.coin]);
-    const size = order.sizeUsd / entryPrice;
+    const size = formatSize((order.sizeUsd / entryPrice) * (isBuy ? 1 : -1), szDecimal);
 
     const req: {
       token_id: string;
@@ -161,20 +146,25 @@ export class ZhiveExchange implements IExchange {
       take_profit?: string;
     } = {
       token_id: order.coin,
-      position_delta: formatSize(size * (isBuy ? 1 : -1), szDecimal),
+      position_delta: size,
     };
+
+    let slPrice: string | undefined;
+    let tpPrice: string | undefined;
 
     if (order.sl) {
       const priceMovePct = order.sl / order.leverage / 100;
       // SL triggers when price moves against the position
       const triggerPrice = entryPrice * (isBuy ? 1 - priceMovePct : 1 + priceMovePct);
-      req.stop_loss = formatPrice(triggerPrice, szDecimal);
+      slPrice = formatPrice(triggerPrice, szDecimal);
+      req.stop_loss = slPrice;
     }
 
     if (order.tp) {
       const priceMovePct = order.tp / order.leverage / 100;
       const triggerPrice = entryPrice * (isBuy ? 1 + priceMovePct : 1 - priceMovePct);
-      req.take_profit = formatPrice(triggerPrice, szDecimal);
+      tpPrice = formatPrice(triggerPrice, szDecimal);
+      req.take_profit = tpPrice;
     }
 
     const url = `${this.baseUrl}/v2/order/open`;
@@ -195,8 +185,9 @@ export class ZhiveExchange implements IExchange {
     return {
       coin: order.coin,
       action: order.action,
-      success: true,
-      details: `Opened ${isBuy ? 'long' : 'short'} ~$${order.sizeUsd} at ${order.leverage}x (SL ${order.sl ?? '-'}% / TP ${order.tp ?? '-'}% PnL)`,
+      size: Math.abs(Number(size)).toString(),
+      slPrice,
+      tpPrice,
     };
   }
 

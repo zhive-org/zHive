@@ -12,6 +12,7 @@ import {
 } from '../types';
 import _ from 'lodash';
 import { privateKeyToAccount } from 'viem/accounts';
+import { PositionNotFound, UnknownError, UnSupportedAssetError } from './error';
 
 const DEFAULT_SLIPPAGE = 0.03;
 
@@ -53,38 +54,28 @@ export class HyperliquidExchange implements IExchange {
   }
 
   async placeOrder(order: TradeDecision): Promise<ExecutionResult> {
-    try {
-      const assetId = this.converter.getAssetId(order.coin);
-      if (_.isNil(assetId)) {
-        return { coin: order.coin, action: order.action, success: false, details: 'Unknown asset' };
-      }
-
-      if (order.action === 'CLOSE') {
-        return await this._executeMarketClose(order);
-      }
-
-      return await this._executeMarketOpen(order);
-    } catch (err) {
-      const result: ExecutionResult = {
-        coin: order.coin,
-        action: order.action,
-        success: false,
-        details: String(err),
-      };
-      return result;
+    const assetId = this.converter.getAssetId(order.coin);
+    if (_.isNil(assetId)) {
+      throw new UnSupportedAssetError();
     }
+
+    if (order.action === 'CLOSE') {
+      return await this._executeMarketClose(order);
+    }
+
+    return await this._executeMarketOpen(order);
   }
 
   private async _executeMarketClose(d: TradeDecision): Promise<ExecutionResult> {
     const assetId = this.converter.getAssetId(d.coin);
     if (_.isNil(assetId)) {
-      return { coin: d.coin, action: 'CLOSE', success: false, details: 'Unknown asset' };
+      throw new UnSupportedAssetError();
     }
 
     const account = await this.fetchAccountState();
     const position = account.positions.find((p) => p.coin === d.coin);
     if (!position) {
-      return { coin: d.coin, action: 'CLOSE', success: false, details: 'No position to close' };
+      throw new PositionNotFound();
     }
 
     const isBuy = position.side === 'short';
@@ -92,9 +83,10 @@ export class HyperliquidExchange implements IExchange {
     const szDecimals = this.converter.getSzDecimals(d.coin);
     const mid = mids[d.coin];
     if (_.isNil(mid) || _.isNil(szDecimals)) {
-      return { coin: d.coin, action: 'CLOSE', success: false, details: 'Unknown asset' };
+      throw new UnSupportedAssetError();
     }
 
+    const size = formatSize(position.size, szDecimals);
     const price = parseFloat(mid) * (isBuy ? 1 + this.slippage : 1 - this.slippage);
     const response = await this.exchange.order({
       orders: [
@@ -102,7 +94,7 @@ export class HyperliquidExchange implements IExchange {
           a: assetId,
           b: isBuy,
           p: formatPrice(price, szDecimals),
-          s: formatSize(position.size, szDecimals),
+          s: size,
           r: true,
           t: { limit: { tif: 'FrontendMarket' } },
         },
@@ -112,14 +104,13 @@ export class HyperliquidExchange implements IExchange {
 
     const status = response.response.data.statuses[0];
     if (typeof status === 'object' && status !== null && 'error' in status) {
-      return { coin: d.coin, action: 'CLOSE', success: false, details: String(status.error) };
+      throw new UnknownError(String(status.error));
     }
 
     return {
       coin: d.coin,
       action: 'CLOSE',
-      success: true,
-      details: `Closed ${position.side} position`,
+      size,
     };
   }
 
@@ -127,7 +118,7 @@ export class HyperliquidExchange implements IExchange {
     const isBuy = d.action === 'LONG';
     const assetId = this.converter.getAssetId(d.coin);
     if (_.isNil(assetId)) {
-      return { coin: d.coin, action: d.action, success: false, details: 'Unknown asset' };
+      throw new UnSupportedAssetError();
     }
 
     await this.exchange.updateLeverage({
@@ -139,44 +130,38 @@ export class HyperliquidExchange implements IExchange {
     const mids = await this.info.allMids();
     const szDecimal = this.converter.getSzDecimals(d.coin);
     if (!(d.coin in mids) || _.isNil(szDecimal)) {
-      return {
-        coin: d.coin,
-        action: d.action,
-        success: false,
-        details: 'Failed to fetch order book',
-      };
+      throw new UnSupportedAssetError();
     }
 
     const mid = parseFloat(mids[d.coin]);
     const entryPrice = mid * (isBuy ? 1 + this.slippage : 1 - this.slippage);
-    const size = d.sizeUsd / entryPrice;
-
-    // Convert PnL % to price move %, accounting for leverage.
-    // PnL% = priceMove% * leverage  =>  priceMove% = PnL% / leverage
-    const slPriceMovePct = !_.isNil(d.sl) ? d.sl / d.leverage / 100 : null;
-    const tpPriceMovePct = !_.isNil(d.tp) ? d.tp / d.leverage / 100 : null;
+    const size = formatSize(d.sizeUsd / entryPrice, szDecimal);
 
     const orders: OrderParameters['orders'] = [
       {
         a: assetId,
         b: isBuy,
         p: formatPrice(entryPrice, szDecimal),
-        s: formatSize(size, szDecimal),
+        s: size,
         r: false,
         t: { limit: { tif: 'FrontendMarket' } },
       },
     ];
 
-    if (!_.isNil(slPriceMovePct)) {
+    let slPrice: string | undefined;
+    let tpPrice: string | undefined;
+
+    if (!_.isNil(d.sl)) {
+      const priceMovePct = d.sl / d.leverage / 100;
       // SL triggers when price moves against the position
-      const triggerPrice = entryPrice * (isBuy ? 1 - slPriceMovePct : 1 + slPriceMovePct);
+      const triggerPrice = entryPrice * (isBuy ? 1 - priceMovePct : 1 + priceMovePct);
       // Limit price is worse than trigger to ensure fill on market trigger
       const limitPrice = triggerPrice * (isBuy ? 1 - this.slippage : 1 + this.slippage);
       orders.push({
         a: assetId,
         b: !isBuy,
         p: formatPrice(limitPrice, szDecimal),
-        s: formatSize(size, szDecimal),
+        s: size,
         r: true,
         t: {
           trigger: {
@@ -188,7 +173,10 @@ export class HyperliquidExchange implements IExchange {
       });
     }
 
-    if (!_.isNil(tpPriceMovePct)) {
+    if (!_.isNil(d.tp)) {
+      // Convert PnL % to price move %, accounting for leverage.
+      // PnL% = priceMove% * leverage  =>  priceMove% = PnL% / leverage
+      const tpPriceMovePct = d.tp / d.leverage / 100;
       // TP triggers when price moves in favor of the position
       const triggerPrice = entryPrice * (isBuy ? 1 + tpPriceMovePct : 1 - tpPriceMovePct);
       // Limit price is worse than trigger to ensure fill
@@ -197,7 +185,7 @@ export class HyperliquidExchange implements IExchange {
         a: assetId,
         b: !isBuy,
         p: formatPrice(limitPrice, szDecimal),
-        s: formatSize(size, szDecimal),
+        s: size,
         r: true,
         t: {
           trigger: {
@@ -216,14 +204,15 @@ export class HyperliquidExchange implements IExchange {
 
     const status = response.response.data.statuses[0];
     if (typeof status === 'object' && status !== null && 'error' in status) {
-      return { coin: d.coin, action: d.action, success: false, details: String(status.error) };
+      throw new UnknownError(String(status.error));
     }
 
     return {
       coin: d.coin,
       action: d.action,
-      success: true,
-      details: `Opened ${isBuy ? 'long' : 'short'} ~$${d.sizeUsd} at ${d.leverage}x (SL ${d.sl ?? '-'}% / TP ${d.tp ?? '-'}% PnL)`,
+      size,
+      slPrice,
+      tpPrice,
     };
   }
 
