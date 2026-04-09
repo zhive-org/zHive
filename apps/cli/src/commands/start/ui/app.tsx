@@ -9,6 +9,7 @@ import { formatTime } from '../../../shared/megathread/utils';
 import { useChat } from '../hooks/useChat';
 import { activityFormatter } from '../hooks/utils';
 import { ColoredStats } from '../../../components/ColoredStats';
+import { PositionsView } from '../../../components/PositionsView';
 
 const TIMEFRAME_COLOR: Record<string, string> = {
   '4h': colors.sprint,
@@ -34,7 +35,16 @@ export function App(): React.ReactElement {
     statsUpdatedAt,
   } = useAgent();
 
-  const { input, chatActivity, chatBuffer, chatStreaming, handleChatSubmit, setInput } = useChat();
+  const {
+    input,
+    chatActivity,
+    chatBuffer,
+    chatStreaming,
+    overlay,
+    handleChatSubmit,
+    setInput,
+    closeOverlay,
+  } = useChat();
 
   // When stdin is not a TTY (piped by hive-cli start), skip interactive input
   const isInteractive = process.stdin.isTTY === true;
@@ -139,8 +149,23 @@ export function App(): React.ReactElement {
           })}
         </Box>
 
+        {/* Overlay (e.g. /positions) - takes over chat area & input when active */}
+        {overlay?.type === 'positions' && (
+          <>
+            <Box>
+              <Text color={colors.gray}>
+                {border.teeLeft}
+                {`${border.horizontal.repeat(2)} positions `}
+                {border.horizontal.repeat(Math.max(0, boxWidth - 14))}
+                {border.teeRight}
+              </Text>
+            </Box>
+            <PositionsView positions={overlay.positions} onClose={closeOverlay} />
+          </>
+        )}
+
         {/* Chat section - visible after first message */}
-        {(chatActivity.length > 0 || chatStreaming) && (
+        {!overlay && (chatActivity.length > 0 || chatStreaming) && (
           <>
             <Box>
               <Text color={colors.gray}>
@@ -214,7 +239,7 @@ export function App(): React.ReactElement {
             {isInteractive ? border.teeRight : border.bottomRight}
           </Text>
         </Box>
-        {isInteractive && (
+        {isInteractive && !overlay && (
           <>
             <Box paddingLeft={1}>
               <CommandInput

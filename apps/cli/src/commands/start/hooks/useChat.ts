@@ -9,11 +9,15 @@ import { fetchRulesTool } from '../../../shared/tools/fetch-rules';
 import { extractErrorMessage } from '../../../shared/megathread/utils';
 import { getModel } from '../../../shared/config/ai-providers';
 import { styled } from '../../shared/theme';
+import { positionsSlashCommand } from '../commands/positions';
 import { predictionSlashCommand } from '../commands/prediction';
 import { skillsSlashCommand } from '../commands/skills';
 import { SLASH_COMMANDS } from '../services/command-registry';
+import type { DetailedPosition } from '../../../shared/trading/types';
 import { ChatActivityItem } from './types';
 import { useAgentRuntime } from './useAgentRuntime';
+
+export type ChatOverlay = { type: 'positions'; positions: DetailedPosition[] } | null;
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 
@@ -22,11 +26,13 @@ export interface UseChatState {
   input: string;
   chatStreaming: boolean;
   chatBuffer: string;
+  overlay: ChatOverlay;
 }
 
 export interface UseChatActions {
   setInput: (value: string) => void;
   handleChatSubmit: (message: string) => Promise<void>;
+  closeOverlay: () => void;
 }
 
 export function useChat(): UseChatState & UseChatActions {
@@ -35,6 +41,11 @@ export function useChat(): UseChatState & UseChatActions {
   const [input, setInput] = useState('');
   const [chatStreaming, setChatStreaming] = useState(false);
   const [chatBuffer, setChatBuffer] = useState('');
+  const [overlay, setOverlay] = useState<ChatOverlay>(null);
+
+  const closeOverlay = useCallback(() => {
+    setOverlay(null);
+  }, []);
 
   const sessionMessagesRef = useRef<ChatMessage[]>([]);
   const memoryRef = useRef<string>('');
@@ -99,6 +110,25 @@ export function useChat(): UseChatState & UseChatActions {
           '/memory': () => {
             const memoryOutput = memoryRef.current || 'No memory stored yet.';
             addChatActivity({ type: 'chat-agent', text: memoryOutput });
+          },
+          '/positions': async () => {
+            await positionsSlashCommand({
+              onFetchStart: () => {
+                addChatActivity({
+                  type: 'chat-agent',
+                  text: 'Fetching positions...',
+                });
+              },
+              onSuccess: (positions) => {
+                setOverlay({ type: 'positions', positions });
+              },
+              onError: (error: string) => {
+                addChatActivity({
+                  type: 'chat-error',
+                  text: `Failed to fetch positions: ${error}`,
+                });
+              },
+            });
           },
           '/prediction': async () => {
             await predictionSlashCommand(runtime.config.name, {
@@ -286,7 +316,9 @@ export function useChat(): UseChatState & UseChatActions {
     input,
     chatStreaming,
     chatBuffer,
+    overlay,
     setInput,
     handleChatSubmit,
+    closeOverlay,
   };
 }

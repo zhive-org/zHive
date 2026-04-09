@@ -10,6 +10,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   { name: '/memory', description: 'Show current memory state' },
   // { name: '/backtest', description: 'Run agent against test set (/backtest <num> fetches from API)' },
   { name: '/prediction', description: 'Show your last 10 resolved predictions' },
+  { name: '/positions', description: 'Show your Hyperliquid perp positions' },
 ];
 
 export function filterCommands(prefix: string): SlashCommand[] {

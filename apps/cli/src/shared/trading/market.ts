@@ -1,5 +1,5 @@
 import { InfoClient } from '@nktkas/hyperliquid';
-import { AccountSummary, AssetContext, PositionInfo } from './types';
+import { AccountSummary, AssetContext, DetailedPosition, PositionInfo } from './types';
 import type { Candle, Timeframe } from '../tools/pinescript';
 
 export class HyperliquidMarketService {
@@ -84,5 +84,33 @@ export class HyperliquidMarketService {
       withdrawable: parseFloat(state.withdrawable),
       positions,
     };
+  }
+
+  async fetchPositions(address: `0x${string}`): Promise<DetailedPosition[]> {
+    const [state, mids] = await Promise.all([
+      this.info.clearinghouseState({ user: address }),
+      this.info.allMids(),
+    ]);
+
+    return state.assetPositions
+      .filter((p) => parseFloat(p.position.szi) !== 0)
+      .map((p) => {
+        const szi = parseFloat(p.position.szi);
+        const mark = mids[p.position.coin];
+        return {
+          coin: p.position.coin,
+          side: szi > 0 ? ('long' as const) : ('short' as const),
+          size: Math.abs(szi),
+          entryPrice: parseFloat(p.position.entryPx),
+          markPrice: mark ? parseFloat(mark) : null,
+          positionValueUsd: parseFloat(p.position.positionValue),
+          unrealizedPnl: parseFloat(p.position.unrealizedPnl),
+          roePercent: parseFloat(p.position.returnOnEquity) * 100,
+          liquidationPx: p.position.liquidationPx ? parseFloat(p.position.liquidationPx) : null,
+          marginUsed: parseFloat(p.position.marginUsed),
+          funding: parseFloat(p.position.cumFunding.sinceOpen),
+          leverage: p.position.leverage.value,
+        };
+      });
   }
 }

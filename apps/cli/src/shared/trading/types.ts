@@ -23,6 +23,21 @@ export interface PositionInfo {
   liquidationPx: number | null;
 }
 
+export interface DetailedPosition {
+  coin: string;
+  side: 'long' | 'short';
+  size: number;
+  entryPrice: number;
+  markPrice: number | null;
+  positionValueUsd: number;
+  unrealizedPnl: number;
+  roePercent: number;
+  liquidationPx: number | null;
+  marginUsed: number;
+  funding: number;
+  leverage: number;
+}
+
 export interface SpotBalance {
   coin: string;
   token: number;
