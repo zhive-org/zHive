@@ -188,7 +188,7 @@ Rules
 
     const memory = await loadMemory('trade-decisions.md');
 
-    const availableUsdc = account.spotBalances.find((b) => b.coin === 'USDC')?.total ?? '0';
+    const availableUsdc = account.spotBalances.find((b) => b.coin === 'USDC')?.hold ?? '0';
     const prompt = `Analyze the following ${assetEntries.length} assets and provide a trading decision for each.
 
 Account: value=$${account.accountValue.toFixed(2)}, marginUsed=$${account.marginUsed.toFixed(2)}
