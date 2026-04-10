@@ -1,3 +1,5 @@
+import { initializeAgentRuntime } from '../../../shared/agent';
+import { loadAgentConfig } from '../../../shared/config/agent';
 import { ZhiveExchange } from '../../../shared/trading/exchange/zhive';
 import type { DetailedPosition } from '../../../shared/trading/types';
 
@@ -9,7 +11,10 @@ export async function positionsSlashCommand(callbacks: {
   callbacks.onFetchStart?.();
 
   try {
-    const exchange = await ZhiveExchange.create();
+    const config = await loadAgentConfig();
+    const exchange = await ZhiveExchange.create({
+      apiKey: config.apiKey,
+    });
     const positions = await exchange.fetchPositions();
     callbacks.onSuccess?.(positions);
   } catch (err) {
