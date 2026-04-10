@@ -34,9 +34,9 @@ type PortfolioSummaryResponse = {
 export class ZhiveExchange implements IExchange {
   constructor(
     private baseUrl: string,
-    private apiKey: string,
     private info: InfoClient,
     private converter: SymbolConverter,
+    private apiKey?: string,
   ) {}
 
   static async create({
@@ -44,14 +44,14 @@ export class ZhiveExchange implements IExchange {
     apiKey,
   }: {
     baseUrl?: string;
-    apiKey: string;
-  }): Promise<ZhiveExchange> {
+    apiKey?: string;
+  } = {}): Promise<ZhiveExchange> {
     const transport = new HttpTransport({ isTestnet: true });
 
     const info = new InfoClient({ transport });
     const converter = await SymbolConverter.create({ transport });
 
-    return new ZhiveExchange(baseUrl, apiKey, info, converter);
+    return new ZhiveExchange(baseUrl, info, converter, apiKey);
   }
 
   async placeOrder(order: TradeDecision): Promise<ExecutionResult> {
@@ -84,6 +84,10 @@ export class ZhiveExchange implements IExchange {
   }
 
   private async _executeMarketClose(d: TradeDecision): Promise<ExecutionResult> {
+    if (!this.apiKey) {
+      throw new Error('api key is required');
+    }
+
     const assetId = this.converter.getAssetId(d.coin);
     if (_.isNil(assetId)) {
       throw new UnSupportedAssetError();
@@ -128,6 +132,10 @@ export class ZhiveExchange implements IExchange {
   }
 
   private async _executeMarketOpen(order: TradeDecision): Promise<ExecutionResult> {
+    if (!this.apiKey) {
+      throw new Error('api key is required');
+    }
+
     const isBuy = order.action === 'LONG';
     // convert size from usd to currency unit
     const mids = await this.info.allMids();
@@ -238,6 +246,10 @@ export class ZhiveExchange implements IExchange {
   }
 
   async fetchAccountState(): Promise<AccountSummary> {
+    if (!this.apiKey) {
+      throw new Error('api key is required');
+    }
+
     const response = await fetch(`${this.baseUrl}/v2/portfolio/summary`, {
       headers: {
         'x-api-key': this.apiKey,
@@ -277,6 +289,10 @@ export class ZhiveExchange implements IExchange {
   }
 
   async fetchPositions(): Promise<DetailedPosition[]> {
+    if (!this.apiKey) {
+      throw new Error('api key is required');
+    }
+
     const response = await fetch(`${this.baseUrl}/v2/portfolio/summary`, {
       headers: {
         'x-api-key': this.apiKey,

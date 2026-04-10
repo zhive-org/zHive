@@ -1,4 +1,4 @@
-import { HyperliquidExchange } from '../../../shared/trading/exchange/hyperliquid';
+import { ZhiveExchange } from '../../../shared/trading/exchange/zhive';
 import type { DetailedPosition } from '../../../shared/trading/types';
 
 export async function positionsSlashCommand(callbacks: {
@@ -9,7 +9,7 @@ export async function positionsSlashCommand(callbacks: {
   callbacks.onFetchStart?.();
 
   try {
-    const exchange = await HyperliquidExchange.create();
+    const exchange = await ZhiveExchange.create();
     const positions = await exchange.fetchPositions();
     callbacks.onSuccess?.(positions);
   } catch (err) {

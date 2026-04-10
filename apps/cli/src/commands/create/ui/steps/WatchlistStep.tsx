@@ -2,7 +2,7 @@ import { Box, Text } from 'ink';
 import React, { useCallback, useEffect, useState } from 'react';
 import { SearchSelect, type SearchSelectItem } from '../../../../components/SearchSelect.js';
 import { Spinner } from '../../../../components/Spinner.js';
-import { HyperliquidExchange } from '../../../../shared/trading/exchange/hyperliquid.js';
+import { ZhiveExchange } from '../../../../shared/trading/exchange/zhive.js';
 import { colors, symbols } from '../../../shared/theme.js';
 import { useWizard } from '../wizard-context.js';
 
@@ -14,7 +14,7 @@ export function WatchlistStep(): React.ReactElement {
   const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
-    HyperliquidExchange.create()
+    ZhiveExchange.create()
       .then((exchange) => exchange.getAvailableTradingPairs())
       .then()
       .then((assets) => {
