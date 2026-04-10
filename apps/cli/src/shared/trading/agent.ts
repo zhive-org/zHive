@@ -8,6 +8,7 @@ import { loadMemory, saveMemory } from './memory';
 import { RiskEngine } from './risk';
 import { TradeDecision } from './types';
 import { PositionNotFound, UnknownError, UnSupportedAssetError } from './exchange/error';
+import { ZhiveExchange } from './exchange/zhive';
 
 export type TradingAgentCallbacks = {
   onError?: (err: string) => void;
@@ -42,7 +43,9 @@ export class TradingAgent {
       maxLeverage: 1,
       maxTotalExposureQuote: 1000,
     });
-    const exchange = await HyperliquidExchange.create();
+    const exchange = await ZhiveExchange.create({
+      apiKey: runtime.config.apiKey,
+    });
     const evaluator = new AssetEvaluator(exchange, riskEngine, runtime);
 
     return new TradingAgent(
@@ -83,12 +86,11 @@ export class TradingAgent {
 
     for (let i = 0; i < decisions.length; i++) {
       decisions[i] = this.riskEngine.validate(decisions[i], account);
-
       const decision = decisions[i];
+      this.callbacks?.onEvalCompleted?.(decision);
       if (decision.action !== 'HOLD') {
         try {
           await this.exchange.placeOrder(decision);
-          this.callbacks?.onEvalCompleted?.(decision);
         } catch (e) {
           let message = 'Failed to execute order';
           if (e instanceof UnSupportedAssetError) {
