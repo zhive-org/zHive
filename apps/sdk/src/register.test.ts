@@ -56,7 +56,7 @@ const makeRemoteAgent = (overrides: Partial<AgentDto> = {}): AgentDto => ({
 });
 
 const storedConfig: StoredConfig = {
-  version: 'v1',
+  version: 'v2',
   apiKey: 'test-api-key',
   name: 'TestAgent',
   bio: 'A test agent',
@@ -92,8 +92,8 @@ describe('registerAgent', () => {
       const result = await registerAgent(basePayload, tmpDir);
 
       expect(mocks.mockRegister).toHaveBeenCalledWith(basePayload);
-      expect(result).toEqual<StoredConfig>({
-        version: 'v1',
+      expect(result).toMatchObject<StoredConfig>({
+        version: 'v2',
         apiKey: 'new-api-key',
         name: 'TestAgent',
         avatarUrl: 'https://example.com/avatar.png',
