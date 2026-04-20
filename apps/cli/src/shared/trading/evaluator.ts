@@ -2,7 +2,7 @@ import * as ai from 'ai';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { traceable } from 'langsmith/traceable';
 import { z } from 'zod';
-import type { AgentRuntime } from '../agent';
+import { cacheableSystem, type AgentRuntime } from '../agent';
 import { formatToolError } from '../megathread/utils.js';
 import { AssetAnalyzer } from './analyzer.js';
 import { IExchange } from './exchange/types';
@@ -94,7 +94,7 @@ export class AssetEvaluator {
         try {
           const { output } = await generateText({
             model: this.runtime.model,
-            system: systemPrompt,
+            system: cacheableSystem(systemPrompt),
             prompt: userPrompt,
             output: Output.object({ schema: TradeDecisionArraySchema }),
           });

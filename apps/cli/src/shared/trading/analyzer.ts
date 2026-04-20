@@ -4,6 +4,7 @@ import { AgentRuntime } from '../agent/runtime';
 import { createPineScriptTool } from '../tools/pinescript';
 import { IExchange } from './exchange/types';
 import { AssetContext } from './types';
+import { cacheableSystem } from '../agent';
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 
@@ -22,7 +23,7 @@ export class AssetAnalyzer {
   async analyze(coin: string, ctx: AssetContext): Promise<string> {
     const agent = new ToolLoopAgent({
       model: this.runtime.model,
-      instructions: SYSTEM_PROMPT,
+      instructions: cacheableSystem(SYSTEM_PROMPT),
       tools: {
         pineScriptTool: createPineScriptTool(this.exchange.fetchCandles.bind(this.exchange)),
       },
