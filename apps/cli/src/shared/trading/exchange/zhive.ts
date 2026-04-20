@@ -46,7 +46,7 @@ export class ZhiveExchange implements IExchange {
     baseUrl?: string;
     apiKey?: string;
   } = {}): Promise<ZhiveExchange> {
-    const transport = new HttpTransport({ isTestnet: true });
+    const transport = new HttpTransport();
 
     const info = new InfoClient({ transport });
     const converter = await SymbolConverter.create({ transport });
