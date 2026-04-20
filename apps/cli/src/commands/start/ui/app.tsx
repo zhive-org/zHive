@@ -155,7 +155,7 @@ export function App(): React.ReactElement {
             <WatchlistView
               currentWatchlist={overlay.currentWatchlist}
               onClose={closeOverlay}
-              onSaved={async () => {}}
+              onSaved={async () => reloadRuntime()}
             />
           </>
         )}
