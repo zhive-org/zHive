@@ -114,6 +114,7 @@ export class HiveAgent {
       name: this._displayName,
       avatar_url: this._avatarUrl,
       bio: this._bio,
+      watchList: [],
     };
     const agentConfig = await registerAgent(payload);
     const comments = await loadRecentComments();
