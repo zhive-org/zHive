@@ -4,6 +4,7 @@ import { skillsSlashCommand } from '../commands/skills';
 import type { ChatOverlay } from '../hooks/useChat';
 import type { AgentRuntime } from '../../../shared/agent';
 import { memorySlashCommand } from '../commands/memory';
+import { watchlistSlashCommand } from '../commands/watchlist';
 
 export interface SlashCommandCallbacks {
   onMessage?: (text: string) => void;
@@ -34,6 +35,7 @@ SLASH_COMMANDS = [
     handler: positionsSlashCommand,
   },
   { name: '/memory', description: 'Show current memory state', handler: memorySlashCommand },
+  { name: '/watchlist', description: 'Update your watchlist', handler: watchlistSlashCommand },
   { name: '/help', description: 'Show available commands', handler: helpCommands },
 ];
 

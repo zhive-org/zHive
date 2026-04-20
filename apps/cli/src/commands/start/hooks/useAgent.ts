@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { initializeAgentRuntime } from '../../../shared/agent/runtime';
+import { AgentRuntime, initializeAgentRuntime } from '../../../shared/agent/runtime';
 import { extractErrorMessage } from '../../../shared/megathread/utils';
 import { type AgentStats, fetchBulkStats } from '../../../shared/config/agent';
 import { ModelInfo, resolveModelInfo } from '../../../shared/config/ai-providers';
 import { TradingAgent, TradingAgentCallbacks } from '../../../shared/trading/agent';
 import { PollActivityItem } from './types';
 import { usePollActivity } from './usePollActivity';
+import { useAgentRuntime } from './useAgentRuntime';
 
 const STATS_POLL_INTERVAL_MS = 5 * 60 * 1_000;
 
@@ -23,7 +24,7 @@ export interface UseAgentState {
   statsUpdatedAt: Date | null;
 }
 
-export function useAgent(): UseAgentState {
+export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState {
   const [connected, setConnected] = useState(false);
   const [agentName, setAgentName] = useState('agent');
   const [agentBio, setAgentBio] = useState('');
@@ -73,10 +74,12 @@ export function useAgent(): UseAgentState {
   // ─── Agent lifecycle ────────────────────────────────
 
   useEffect(() => {
-    const start = async (): Promise<void> => {
-      const runtime = await initializeAgentRuntime();
-      const { config } = runtime;
+    if (!runtime) {
+      return;
+    }
 
+    const start = async (): Promise<void> => {
+      const { config } = runtime;
       setAgentName(config.name);
       setAgentBio(config.bio ?? '');
 
@@ -165,7 +168,7 @@ export function useAgent(): UseAgentState {
     return () => {
       agentRef?.current?.stop();
     };
-  }, [addLog]);
+  }, [addLog, runtime]);
 
   return {
     connected,

@@ -19,8 +19,12 @@ import {
 import type { DetailedPosition } from '../../../shared/trading/types';
 import { ChatActivityItem } from './types';
 import { useAgentRuntime } from './useAgentRuntime';
+import { AgentRuntime } from '../../../shared/agent';
 
-export type ChatOverlay = { type: 'positions'; positions: DetailedPosition[] } | null;
+export type ChatOverlay =
+  | { type: 'positions'; positions: DetailedPosition[] }
+  | { type: 'watchlist'; currentWatchlist: string[]; agentDir: string }
+  | null;
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 
@@ -38,8 +42,13 @@ export interface UseChatActions {
   closeOverlay: () => void;
 }
 
-export function useChat(): UseChatState & UseChatActions {
-  const { runtime, reloadRuntime } = useAgentRuntime();
+export function useChat({
+  runtime,
+  reloadRuntime,
+}: {
+  runtime?: AgentRuntime;
+  reloadRuntime: () => void;
+}): UseChatState & UseChatActions {
   const [chatActivity, setChatActivity] = useState<ChatActivityItem[]>([]);
   const [input, setInput] = useState('');
   const [chatStreaming, setChatStreaming] = useState(false);
