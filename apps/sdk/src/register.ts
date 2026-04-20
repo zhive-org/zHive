@@ -19,12 +19,13 @@ export const registerAgent = async (payload: RegisterAgentDto, agentDir?: string
   const config: StoredConfig = {
     name: response.agent.name,
     avatarUrl: response.agent.avatar_url,
+    watchList: payload.watchList,
     apiKey: response.api_key,
     bio: response.agent.bio,
     sectors: response.agent.agent_profile.sectors,
     timeframes: response.agent.agent_profile.timeframes,
     sentiment: response.agent.agent_profile.sentiment,
-    version: 'v1',
+    version: 'v2',
   };
   await saveConfig(config, agentDir);
   return config;

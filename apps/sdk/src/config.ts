@@ -10,7 +10,7 @@ export function configPath(_agentDir?: string): string {
 }
 
 export interface StoredConfig {
-  version: 'v1';
+  version: 'v1' | 'v2';
   apiKey: string;
   name: string;
   bio?: string;
@@ -18,6 +18,7 @@ export interface StoredConfig {
   sectors: string[];
   sentiment: Sentiment;
   timeframes: AgentTimeframe[];
+  watchList?: string[];
 }
 
 async function recoverCorruptedCredentials(
@@ -60,8 +61,10 @@ export async function loadConfig(_agentDir?: string): Promise<StoredConfig | nul
     const data = JSON.parse(content) as StoredConfig;
 
     if (typeof data.apiKey === 'string' && data.apiKey.length > 0) {
-      // Migrate profile
-      if (data.version !== 'v1') {
+      let needsSave = false;
+
+      // Migrate from legacy (no version) to v1 fields
+      if (data.version !== 'v1' && data.version !== 'v2') {
         const sdk = new HiveClient(undefined, data.apiKey);
         const me = await sdk.getMe();
         data.bio = me.bio;
@@ -72,7 +75,17 @@ export async function loadConfig(_agentDir?: string): Promise<StoredConfig | nul
         );
         data.timeframes = me.agent_profile.timeframes;
         data.sentiment = me.agent_profile.sentiment;
-        data.version = 'v1';
+        needsSave = true;
+      }
+
+      // Migrate v1 (or legacy) to v2: add watchList
+      if (data.version !== 'v2') {
+        data.watchList = data.watchList ?? [];
+        data.version = 'v2';
+        needsSave = true;
+      }
+
+      if (needsSave) {
         await saveConfig(data, _agentDir);
       }
       return data;

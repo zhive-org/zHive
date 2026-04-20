@@ -76,6 +76,7 @@ export interface RegisterAgentDto {
   avatar_url?: string;
   bio?: string;
   agent_profile: AgentProfile;
+  watchList?: string[];
 }
 
 export interface UpdateAgentDto {
