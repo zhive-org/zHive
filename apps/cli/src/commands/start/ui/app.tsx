@@ -9,10 +9,14 @@ import { formatTime } from '../../../shared/megathread/utils';
 import { useChat } from '../hooks/useChat';
 import { activityFormatter } from '../hooks/utils';
 import { PositionsView } from '../../../components/PositionsView';
+import { WatchlistView } from '../../../components/WatchlistView';
+import { useAgentRuntime } from '../hooks/useAgentRuntime';
 
 // ─── Main TUI App ────────────────────────────────────
 
 export function App(): React.ReactElement {
+  const { runtime, reloadRuntime } = useAgentRuntime();
+
   const {
     connected,
     agentName,
@@ -20,7 +24,7 @@ export function App(): React.ReactElement {
     activePollActivities,
     settledPollActivities,
     termWidth,
-  } = useAgent();
+  } = useAgent({ runtime });
 
   const {
     input,
@@ -31,7 +35,7 @@ export function App(): React.ReactElement {
     handleChatSubmit,
     setInput,
     closeOverlay,
-  } = useChat();
+  } = useChat({ runtime, reloadRuntime });
 
   // When stdin is not a TTY (piped by hive-cli start), skip interactive input
   const isInteractive = process.stdin.isTTY === true;
@@ -135,6 +139,24 @@ export function App(): React.ReactElement {
               </Text>
             </Box>
             <PositionsView positions={overlay.positions} onClose={closeOverlay} />
+          </>
+        )}
+
+        {overlay?.type === 'watchlist' && (
+          <>
+            <Box>
+              <Text color={colors.gray}>
+                {border.teeLeft}
+                {`${border.horizontal.repeat(2)} watchlist `}
+                {border.horizontal.repeat(Math.max(0, boxWidth - 13))}
+                {border.teeRight}
+              </Text>
+            </Box>
+            <WatchlistView
+              currentWatchlist={overlay.currentWatchlist}
+              onClose={closeOverlay}
+              onSaved={async () => {}}
+            />
           </>
         )}
 

@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Box, Text } from 'ink';
-import fs from 'fs-extra';
-import path from 'path';
+import { Box, Text, useInput } from 'ink';
 import { SearchSelect, type SearchSelectItem } from './SearchSelect';
 import { Spinner } from './Spinner';
 import { ZhiveExchange } from '../shared/trading/exchange/zhive';
@@ -23,6 +21,12 @@ export function WatchlistView({
   const [saving, setSaving] = useState(false);
   const [assets, setAssets] = useState<SearchSelectItem[]>([]);
   const [error, setError] = useState('');
+
+  useInput((_input, key) => {
+    if (key.escape && (loading || saving || error)) {
+      onClose();
+    }
+  });
 
   useEffect(() => {
     ZhiveExchange.create()

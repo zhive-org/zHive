@@ -95,65 +95,94 @@ export function SearchSelect({
   const windowEnd = Math.min(windowStart + maxVisible, filtered.length);
   const visibleItems = filtered.slice(windowStart, windowEnd);
 
+  const selectedItems = useMemo(
+    () => items.filter((i) => selected.has(i.value)),
+    [items, selected],
+  );
+
   return (
-    <Box flexDirection="column">
-      <Box>
-        <Text color={colors.honey}>{symbols.arrow} </Text>
-        <Text color={colors.white} bold>
-          {label}
-        </Text>
-        <Text color={colors.grayDim}> ({selected.size} selected)</Text>
-      </Box>
+    <Box flexDirection="row" columnGap={4}>
+      <Box flexDirection="column">
+        <Box>
+          <Text color={colors.honey}>{symbols.arrow} </Text>
+          <Text color={colors.white} bold>
+            {label}
+          </Text>
+          <Text color={colors.grayDim}> ({selected.size} selected)</Text>
+        </Box>
 
-      <Box marginLeft={2} marginTop={1}>
-        <Text color={colors.honey}>&gt; </Text>
-        <Text color={colors.white}>{query}</Text>
-        {!query && <Text color={colors.grayDim}>Type to search...</Text>}
-      </Box>
+        <Box marginLeft={2} marginTop={1}>
+          <Text color={colors.honey}>&gt; </Text>
+          <Text color={colors.white}>{query}</Text>
+          {!query && <Text color={colors.grayDim}>Type to search...</Text>}
+        </Box>
 
-      {filtered.length === 0 ? (
-        <Box marginLeft={4} marginTop={1}>
-          <Text color={colors.grayDim} italic>
-            No matches found
+        {filtered.length === 0 ? (
+          <Box marginLeft={4} marginTop={1}>
+            <Text color={colors.grayDim} italic>
+              No matches found
+            </Text>
+          </Box>
+        ) : (
+          <Box flexDirection="column" marginLeft={2} marginTop={1}>
+            {windowStart > 0 && <Text color={colors.grayDim}> ↑ {windowStart} more</Text>}
+            {visibleItems.map((item, i) => {
+              const actualIndex = windowStart + i;
+              const isCursor = actualIndex === cursor;
+              const isSelected = selected.has(item.value);
+              const checkbox = isSelected ? '◆' : '◇';
+
+              return (
+                <Box key={item.value}>
+                  <Text color={colors.honey}>{isCursor ? symbols.arrow : ' '} </Text>
+                  <Text color={isSelected ? colors.honey : colors.grayDim}>{checkbox} </Text>
+                  <Text color={isCursor ? colors.white : colors.gray} bold={isCursor}>
+                    {item.label}
+                  </Text>
+                </Box>
+              );
+            })}
+            {windowEnd < filtered.length && (
+              <Text color={colors.grayDim}> ↓ {filtered.length - windowEnd} more</Text>
+            )}
+          </Box>
+        )}
+
+        <Box marginLeft={2} marginTop={1}>
+          <Text color={colors.grayDim}>
+            <Text color={colors.honey}>↑↓</Text> navigate{' '}
+            <Text color={colors.honey}>space</Text> toggle{' '}
+            <Text color={colors.honey}>enter</Text> confirm
+            {onBack && (
+              <Text>
+                {' '}
+                <Text color={colors.honey}>esc</Text> back
+              </Text>
+            )}
           </Text>
         </Box>
-      ) : (
-        <Box flexDirection="column" marginLeft={2} marginTop={1}>
-          {windowStart > 0 && <Text color={colors.grayDim}> ↑ {windowStart} more</Text>}
-          {visibleItems.map((item, i) => {
-            const actualIndex = windowStart + i;
-            const isCursor = actualIndex === cursor;
-            const isSelected = selected.has(item.value);
-            const checkbox = isSelected ? '◆' : '◇';
+      </Box>
 
-            return (
+      {selectedItems.length > 0 && (
+        <Box flexDirection="column">
+          <Text color={colors.white} bold>
+            Selected ({selectedItems.length})
+          </Text>
+          <Box flexDirection="column" marginTop={1}>
+            {selectedItems.slice(0, maxVisible).map((item) => (
               <Box key={item.value}>
-                <Text color={colors.honey}>{isCursor ? symbols.arrow : ' '} </Text>
-                <Text color={isSelected ? colors.honey : colors.grayDim}>{checkbox} </Text>
-                <Text color={isCursor ? colors.white : colors.gray} bold={isCursor}>
-                  {item.label}
-                </Text>
+                <Text color={colors.honey}>◆ </Text>
+                <Text color={colors.honey}>{item.label}</Text>
               </Box>
-            );
-          })}
-          {windowEnd < filtered.length && (
-            <Text color={colors.grayDim}> ↓ {filtered.length - windowEnd} more</Text>
-          )}
+            ))}
+            {selectedItems.length > maxVisible && (
+              <Text color={colors.grayDim}>
+                +{selectedItems.length - maxVisible} more
+              </Text>
+            )}
+          </Box>
         </Box>
       )}
-
-      <Box marginLeft={2} marginTop={1}>
-        <Text color={colors.grayDim}>
-          <Text color={colors.honey}>↑↓</Text> navigate <Text color={colors.honey}>space</Text>{' '}
-          toggle <Text color={colors.honey}>enter</Text> confirm
-          {onBack && (
-            <Text>
-              {' '}
-              <Text color={colors.honey}>esc</Text> back
-            </Text>
-          )}
-        </Text>
-      </Box>
     </Box>
   );
 }
