@@ -1,7 +1,7 @@
 import * as ai from 'ai';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { AgentRuntime } from '../agent/runtime';
-import { createPineScriptTool } from '../tools/pinescript';
+import { createPineScriptTool, createPineScriptToolForAsset } from '../tools/pinescript';
 import { IExchange } from './exchange/types';
 import { AssetContext } from './types';
 import { cacheableSystem } from '../agent';
@@ -25,7 +25,10 @@ export class AssetAnalyzer {
       model: this.runtime.model,
       instructions: cacheableSystem(SYSTEM_PROMPT),
       tools: {
-        pineScriptTool: createPineScriptTool(this.exchange.fetchCandles.bind(this.exchange)),
+        pineScriptTool: createPineScriptToolForAsset(
+          coin,
+          this.exchange.fetchCandles.bind(this.exchange),
+        ),
       },
     });
     const prompt = `## Asset
