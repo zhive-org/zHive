@@ -20,13 +20,11 @@ const TradeDecisionSchema = z.object({
   leverage: z.number(),
   sl: z
     .number()
-    .int()
     .describe(
       'Stop loss as % PnL on margin (leverage-adjusted). Example: 10 at 10x leverage triggers on a 1% adverse price move. Must be < 100 to avoid liquidation.',
     ),
   tp: z
     .number()
-    .int()
     .describe(
       'Take profit as % PnL on margin. Example: 20 at 10x leverage triggers on a 2% favorable price move.',
     ),
@@ -114,7 +112,8 @@ export class AssetEvaluator {
               holdDecision(coin, 'No decision returned by LLM — defaulting to HOLD'),
           );
         } catch (err) {
-          return coins.map((c) => holdDecision(c, 'Analysis failed — defaulting to HOLD'));
+          const msg = err instanceof Error ? err.message : String(err);
+          return coins.map((c) => holdDecision(c, `Analysis failed ${msg}`));
         }
       },
       { name: 'trading-loop', tracingEnabled: process.env.LANGSMITH_TRACING === 'true' },
