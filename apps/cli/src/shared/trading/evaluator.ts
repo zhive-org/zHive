@@ -143,7 +143,6 @@ Total Exposure Limit: $${this.riskEngine.limits.maxTotalExposureQuote.toLocaleSt
 
 Rules
 - Make decision based on given analysis.
-- Capital preservation is the foundation of successful crypto trading—your primary goal is to protect what you have so you can continue trading and growing.  
 - Don't open leveraged position more than max leverage.
 - Don't exceed total exposure limit across all positions.
 - Avoid overtrading; patience and discipline preserve capital.
