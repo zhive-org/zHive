@@ -10,9 +10,12 @@ import { extractErrorMessage } from '../../../shared/megathread/utils';
 import { getModel } from '../../../shared/config/ai-providers';
 import { styled } from '../../shared/theme';
 import { positionsSlashCommand } from '../commands/positions';
-import { predictionSlashCommand } from '../commands/prediction';
 import { skillsSlashCommand } from '../commands/skills';
-import { SLASH_COMMANDS } from '../services/command-registry';
+import {
+  executeSlashCommand,
+  SLASH_COMMANDS,
+  SlashCommandCallbacks,
+} from '../services/command-registry';
 import type { DetailedPosition } from '../../../shared/trading/types';
 import { ChatActivityItem } from './types';
 import { useAgentRuntime } from './useAgentRuntime';
@@ -54,9 +57,9 @@ export function useChat(): UseChatState & UseChatActions {
   const recentPredictionsRef = useRef<string[]>([]);
 
   // ─── Activity helpers ───────────────────────────────
-  const addChatActivity = useCallback((item: Omit<ChatActivityItem, 'timestamp'>) => {
+  const addChatActivity = useCallback((item: ChatActivityItem) => {
     setChatActivity((prev) => {
-      const updated = [...prev, { ...item, timestamp: new Date() }];
+      const updated = [...prev, { timestamp: new Date(), ...item }];
       const maxItems = 50;
       if (updated.length > maxItems) {
         return updated.slice(updated.length - maxItems);
@@ -83,82 +86,24 @@ export function useChat(): UseChatState & UseChatActions {
         const parts = trimmedMessage.split(/\s+/);
         const baseCommand = parts[0];
 
-        const commandHandlers: Record<string, () => void | Promise<void>> = {
-          '/skills': async () => {
-            await skillsSlashCommand(runtime.config.name, {
-              onSuccess: (output: string) => {
-                addChatActivity({ type: 'chat-agent', text: output });
-              },
-              onError: (error: string) => {
-                addChatActivity({
-                  type: 'chat-error',
-                  text: `Failed to load skills: ${error}`,
-                });
-              },
+        const callbacks: SlashCommandCallbacks = {
+          onMessage: (text: string) => addChatActivity({ type: 'chat-agent', text }),
+          onError: (error: string) => {
+            addChatActivity({
+              type: 'chat-error',
+              text: `Failed to load skills: ${error}`,
             });
           },
-          '/help': () => {
-            const helpText = SLASH_COMMANDS.map((cmd) => `${cmd.name} - ${cmd.description}`).join(
-              '\n',
-            );
-            addChatActivity({ type: 'chat-agent', text: helpText });
-          },
-          '/clear': () => {
+          onClear: () => {
             setChatActivity([]);
             sessionMessagesRef.current = [];
           },
-          '/memory': () => {
-            const memoryOutput = memoryRef.current || 'No memory stored yet.';
-            addChatActivity({ type: 'chat-agent', text: memoryOutput });
-          },
-          '/positions': async () => {
-            await positionsSlashCommand({
-              onFetchStart: () => {
-                addChatActivity({
-                  type: 'chat-agent',
-                  text: 'Fetching positions...',
-                });
-              },
-              onSuccess: (positions) => {
-                setOverlay({ type: 'positions', positions });
-              },
-              onError: (error: string) => {
-                addChatActivity({
-                  type: 'chat-error',
-                  text: `Failed to fetch positions: ${error}`,
-                });
-              },
-            });
-          },
-          '/prediction': async () => {
-            await predictionSlashCommand(runtime.config.name, {
-              onFetchStart: () => {
-                addChatActivity({
-                  type: 'chat-agent',
-                  text: 'Fetching your predictions...',
-                });
-              },
-              onSuccess: (output: string) => {
-                addChatActivity({ type: 'chat-agent', text: output });
-              },
-              onError: (error: string) => {
-                addChatActivity({
-                  type: 'chat-error',
-                  text: `Failed to fetch predictions: ${error}`,
-                });
-              },
-            });
+          onOverlayOpen: (overlay: ChatOverlay) => {
+            setOverlay(overlay);
           },
         };
 
-        const handler = commandHandlers[baseCommand];
-        if (handler) {
-          await handler();
-          return;
-        }
-
-        // Unknown command
-        addChatActivity({ type: 'chat-error', text: `Unknown command: ${message}` });
+        await executeSlashCommand(baseCommand, runtime, callbacks);
         return;
       }
 

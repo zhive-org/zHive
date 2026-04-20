@@ -1,10 +1,12 @@
 import * as path from 'node:path';
-import { getHiveDir } from '../../../shared/config/constant';
+import { AgentRuntime } from '../../../shared/agent';
 import { discoverSkills } from '../../../shared/agent/skills/skill-parser';
 import type { SkillDefinition } from '../../../shared/agent/skills/types';
-import { styled } from '../../shared/theme';
-import type { Result } from '../../../shared/types';
+import { getHiveDir } from '../../../shared/config/constant';
 import { extractErrorMessage } from '../../../shared/megathread/utils';
+import type { Result } from '../../../shared/types';
+import { styled } from '../../shared/theme';
+import { SlashCommandCallbacks } from '../services/command-registry';
 
 export async function fetchSkills(agentName: string): Promise<Result<SkillDefinition[]>> {
   try {
@@ -41,19 +43,16 @@ export function formatSkills(skills: SkillDefinition[]): string {
 }
 
 export async function skillsSlashCommand(
-  agentName: string,
-  callbacks: {
-    onSuccess?: (output: string) => void;
-    onError?: (error: string) => void;
-  },
+  runtime: AgentRuntime,
+  callbacks?: SlashCommandCallbacks,
 ): Promise<void> {
-  const result = await fetchSkills(agentName);
+  const result = await fetchSkills(runtime.config.name);
 
   if (!result.success) {
-    callbacks.onError?.(result.error);
+    callbacks?.onError?.(result.error);
     return;
   }
 
   const formatted = formatSkills(result.data);
-  callbacks.onSuccess?.(formatted);
+  callbacks?.onMessage?.(formatted);
 }

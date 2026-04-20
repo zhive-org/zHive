@@ -8,7 +8,7 @@ export type ChatActivityType =
 export interface ChatActivityItem {
   type: ChatActivityType;
   text: string;
-  timestamp: Date;
+  timestamp?: Date;
 }
 
 type BasePollActivityItem = {

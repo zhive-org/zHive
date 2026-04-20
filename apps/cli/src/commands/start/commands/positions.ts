@@ -1,23 +1,18 @@
-import { initializeAgentRuntime } from '../../../shared/agent';
 import { loadAgentConfig } from '../../../shared/config/agent';
 import { ZhiveExchange } from '../../../shared/trading/exchange/zhive';
-import type { DetailedPosition } from '../../../shared/trading/types';
+import type { SlashCommandCallbacks } from '../services/command-registry';
+import type { AgentRuntime } from '../../../shared/agent';
 
-export async function positionsSlashCommand(callbacks: {
-  onFetchStart?: () => void;
-  onSuccess?: (positions: DetailedPosition[]) => void;
-  onError?: (error: string) => void;
-}): Promise<void> {
-  callbacks.onFetchStart?.();
+export async function positionsSlashCommand(
+  _: AgentRuntime,
+  callbacks?: SlashCommandCallbacks,
+): Promise<void> {
+  callbacks?.onMessage?.('Fetching positions...');
 
-  try {
-    const config = await loadAgentConfig();
-    const exchange = await ZhiveExchange.create({
-      apiKey: config.apiKey,
-    });
-    const positions = await exchange.fetchPositions();
-    callbacks.onSuccess?.(positions);
-  } catch (err) {
-    callbacks.onError?.(err instanceof Error ? err.message : String(err));
-  }
+  const config = await loadAgentConfig();
+  const exchange = await ZhiveExchange.create({
+    apiKey: config.apiKey,
+  });
+  const positions = await exchange.fetchPositions();
+  callbacks?.onOverlayOpen?.({ type: 'positions', positions });
 }

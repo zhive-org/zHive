@@ -68,7 +68,7 @@ export class TradingAgent {
 
   async run() {
     this.runOnce()
-      .catch((e) => this.callbacks.onError?.(e))
+      .catch((err) => this.callbacks.onError?.(err instanceof Error ? err.message : String(err)))
       .finally(() => this._scheduleNextRun());
   }
 
