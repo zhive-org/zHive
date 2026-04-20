@@ -81,8 +81,16 @@ export class TradingAgent {
   private async runOnce() {
     const account = await this.exchange.fetchAccountState();
 
-    this.callbacks.onEvalStarted?.(this.watchList);
-    const decisions = await this.evaluator.evaluate(this.watchList, account);
+    const assetSet = new Set([...this.watchList]);
+
+    // Evaluate all the asset that has opened position even if asset is not in the watchlist
+    for (const position of account.positions) {
+      assetSet.add(position.coin);
+    }
+
+    const assets = Array.from(assetSet);
+    this.callbacks.onEvalStarted?.(assets);
+    const decisions = await this.evaluator.evaluate(assets, account);
 
     for (let i = 0; i < decisions.length; i++) {
       decisions[i] = this.riskEngine.validate(decisions[i], account);
