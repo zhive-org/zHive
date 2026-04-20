@@ -8,18 +8,7 @@ import { HIVE_FRONTEND_URL } from '../../../shared/config/constant';
 import { formatTime } from '../../../shared/megathread/utils';
 import { useChat } from '../hooks/useChat';
 import { activityFormatter } from '../hooks/utils';
-import { ColoredStats } from '../../../components/ColoredStats';
 import { PositionsView } from '../../../components/PositionsView';
-
-const TIMEFRAME_COLOR: Record<string, string> = {
-  '4h': colors.sprint,
-  '24h': colors.controversial,
-  '7d': colors.cyan,
-};
-
-function timeframeColor(tf: string): string {
-  return TIMEFRAME_COLOR[tf] ?? colors.white;
-}
 
 // ─── Main TUI App ────────────────────────────────────
 
@@ -31,8 +20,6 @@ export function App(): React.ReactElement {
     activePollActivities,
     settledPollActivities,
     termWidth,
-    stats,
-    statsUpdatedAt,
   } = useAgent();
 
   const {
@@ -92,19 +79,6 @@ export function App(): React.ReactElement {
             <Text color={colors.cyan}>{modelInfo.modelId}</Text>
             <Text color={colors.gray}> {'\u00d7'} </Text>
             <Text color={colors.purple}>zData</Text>
-          </Box>
-        )}
-        {stats && (
-          <Box paddingLeft={1}>
-            <Text color={colors.gray}>{symbols.hive} </Text>
-            <ColoredStats stats={stats} />
-            {statsUpdatedAt && (
-              <Text color={colors.grayDim}>
-                {' '}
-                {'\u00b7'} updated {statsUpdatedAt.toLocaleDateString()}{' '}
-                {formatTime(statsUpdatedAt)}
-              </Text>
-            )}
           </Box>
         )}
         {connected && (
