@@ -114,7 +114,7 @@ export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState
 
           addLog({
             type: 'message',
-            text: `[${actionText}]${size} - ${decision.reasoning}`,
+            text: `[${actionText}] ${decision.coin}${size} - ${decision.reasoning}`,
             timestamp: new Date(),
           });
         },
