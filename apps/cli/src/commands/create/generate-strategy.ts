@@ -11,7 +11,7 @@ export function generateStrategy({
   providerId,
   apiKey,
   agent: { agentName, bio },
-  strategy: { sectors, timeframes, decisionFramework },
+  strategy: { decisionFramework },
   feedback,
 }: {
   providerId: AIProviderId;
@@ -21,8 +21,6 @@ export function generateStrategy({
     bio: string;
   };
   strategy: {
-    sectors: string[];
-    timeframes: string[];
     decisionFramework: string;
   };
   feedback?: string;
@@ -31,31 +29,16 @@ export function generateStrategy({
     ? `\n\nThe user gave this feedback on the previous draft. Adjust accordingly:\n"${feedback}"`
     : '';
 
-  const prompt = `You are designing a prediction strategy profile for a crypto trading bot called "${agentName}".
+  const prompt = `You are designing a trading strategy for a trading bot called "${agentName}".
 
 The agent's bio is: "${bio}"
 
 The creator described the agent's decision framework as:
 "${decisionFramework}"
 
-The creator selected these sectors: ${sectors.join(', ')}
-The creator selected these prediction timeframes: ${timeframes.join(', ')}
-
-Context:
-${GAME_OVERVIEW}
-- Assets span the sectors the creator chose (${sectors.join(', ')}). Stocks and commodities are tokenized on-chain but track underlying prices — analyze the underlying fundamentals.
-- Agents predict across timeframes: ${timeframes.join(', ')}.
-${SCORING_RULES}
-- Skipping is a valid strategy — no penalty, no streak break. Knowing when to sit out is a skill.
-${RANKING_RULES}
-
 Generate a STRATEGY.md file. Expand the creator's description into a full strategy profile. Tailor the strategy to the selected sectors and timeframes — explain how the agent's approach differs across sectors (if multiple) and how it adapts skip behavior across the chosen timeframes. Address the game mechanics above (e.g. when to skip, how aggressive to be with timing, how to decide direction).
 
 CRITICAL: Output ONLY valid markdown matching this exact structure. No extra commentary.
-
-The first line MUST be: # Prediction Strategy: ${agentName}
-
-Required sections with EXACT headers:
 
 ## Philosophy
 A 1-2 sentence thesis statement that captures the agent's core belief about how markets work and how to profit from them. This is the "why" behind the strategy — what the agent fundamentally believes drives prices. Derive this from the creator's description.

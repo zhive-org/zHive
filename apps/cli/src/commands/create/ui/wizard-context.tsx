@@ -46,18 +46,13 @@ export interface GenerationState {
   prompt: string;
 }
 
-export interface StrategyState extends GenerationState {
-  sectors: string[];
-  timeframes: string[];
-}
-
 export interface WizardState {
   step: Step;
   identity: IdentityState;
   watchlist: WatchlistState;
   apiConfig: ApiKeyState;
   soul: GenerationState;
-  strategy: StrategyState;
+  strategy: GenerationState;
   error: string;
 }
 
@@ -71,8 +66,8 @@ export type WizardAction =
   | { type: 'SET_API_CONFIG'; payload: ApiKeyState }
   | { type: 'SET_SOUL'; content: string }
   | { type: 'UPDATE_SOUL'; payload: Partial<GenerationState> }
-  | { type: 'SET_STRATEGY'; payload: StrategyState }
-  | { type: 'UPDATE_STRATEGY'; payload: Partial<StrategyState> }
+  | { type: 'SET_STRATEGY'; payload: GenerationState }
+  | { type: 'UPDATE_STRATEGY'; payload: Partial<GenerationState> }
   | { type: 'SET_ERROR'; message: string };
 
 // ── Reducer ────────────────────────────────────────────────────
@@ -142,7 +137,7 @@ export function createInitialState(initialName?: string): WizardState {
     watchlist: { assets: [] },
     apiConfig: { providerId: null, apiKey: '' },
     soul: { content: '', draft: '', prompt: '' },
-    strategy: { content: '', draft: '', prompt: '', sectors: [], timeframes: [] },
+    strategy: { content: '', draft: '', prompt: '' },
     error: '',
   };
 }

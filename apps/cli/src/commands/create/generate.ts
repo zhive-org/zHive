@@ -23,9 +23,6 @@ export async function scaffoldProject({
     name: string;
     bio: string;
     avatarUrl: string;
-    sectors: string[];
-    sentiment: string;
-    timeframes: string[];
   };
   provider: AIProvider;
   apiKey: string;
@@ -93,9 +90,9 @@ export async function scaffoldProject({
   await registerAgent(
     {
       agent_profile: {
-        sectors: agent.sectors,
-        sentiment: agent.sentiment as Sentiment,
-        timeframes: agent.timeframes as Timeframe[],
+        sentiment: 'neutral',
+        timeframes: [],
+        sectors: [],
       },
       watchList,
       name: agent.name,

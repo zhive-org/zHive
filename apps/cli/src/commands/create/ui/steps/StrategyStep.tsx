@@ -1,40 +1,23 @@
-import React, { useState, useCallback } from 'react';
-import { Box, Text } from 'ink';
-import type { MultiSelectItem } from '../../../../components/MultiSelectPrompt';
-import { MultiSelectPrompt } from '../../../../components/MultiSelectPrompt';
-import { StreamingGenerationStep } from './StreamingGenerationStep';
-import { generateStrategy } from '../../generate-strategy';
-import { SECTOR_OPTIONS, TIMEFRAME_OPTIONS, DEFAULT_SECTOR_VALUES } from '../../presets/options';
-import { colors, symbols } from '../../../shared/theme';
-import { useWizard } from '../wizard-context';
+import { Box } from 'ink';
+import React, { useCallback, useState } from 'react';
 import { SelectPrompt } from '../../../../components/SelectPrompt';
+import { generateStrategy } from '../../generate-strategy';
 import { STRATEGY_PRESETS } from '../../presets/data';
+import { useWizard } from '../wizard-context';
+import { StreamingGenerationStep } from './StreamingGenerationStep';
 
 export interface StrategyStepResult {
   strategyContent: string;
-  sectors: string[];
-  timeframes: string[];
 }
 
-type SubStep = 'sectors' | 'timeframes' | 'select' | 'generate';
-
-const ALL_TIMEFRAME_VALUES = new Set(TIMEFRAME_OPTIONS.map((t) => t.value));
+type SubStep = 'preset' | 'generate';
 
 export function StrategyStep(): React.ReactElement {
   const { state, dispatch } = useWizard();
   const { apiConfig, identity, strategy } = state;
 
-  const hasSectors = strategy.sectors.length > 0;
-  const hasTimeframes = strategy.timeframes.length > 0;
-
   const [subStep, setSubStep] = useState<SubStep>(
-    hasSectors && hasTimeframes
-      ? strategy.content || strategy.draft
-        ? 'generate'
-        : 'select'
-      : hasSectors
-        ? 'timeframes'
-        : 'sectors',
+    strategy.content || strategy.draft ? 'generate' : 'preset',
   );
   const [autoGenerate, setAutoGenerate] = useState(false);
 
@@ -47,28 +30,7 @@ export function StrategyStep(): React.ReactElement {
     { label: 'Custom', value: '__custom__', description: 'Write your own prompt from scratch' },
   ];
 
-  const defaultSectors =
-    strategy.sectors.length > 0 ? new Set(strategy.sectors) : DEFAULT_SECTOR_VALUES;
-  const defaultTimeframes =
-    strategy.timeframes.length > 0 ? new Set(strategy.timeframes) : ALL_TIMEFRAME_VALUES;
   const initialContent = strategy.content || strategy.draft || undefined;
-  const initialContentExists = Boolean(initialContent);
-
-  const handleSectorsSubmit = useCallback(
-    (selected: MultiSelectItem[]) => {
-      dispatch({ type: 'UPDATE_STRATEGY', payload: { sectors: selected.map((s) => s.value) } });
-      setSubStep('timeframes');
-    },
-    [dispatch],
-  );
-
-  const handleTimeframesSubmit = useCallback(
-    (selected: MultiSelectItem[]) => {
-      dispatch({ type: 'UPDATE_STRATEGY', payload: { timeframes: selected.map((t) => t.value) } });
-      setSubStep(initialContentExists ? 'generate' : 'select');
-    },
-    [dispatch, initialContentExists],
-  );
 
   const handleSelect = useCallback(
     (item: { value: string }) => {
@@ -96,19 +58,17 @@ export function StrategyStep(): React.ReactElement {
           content: strategyContent,
           draft: '',
           prompt: '',
-          sectors: strategy.sectors,
-          timeframes: strategy.timeframes,
         },
       });
     },
-    [dispatch, strategy.sectors, strategy.timeframes],
+    [dispatch],
   );
 
   const handleGenerateBack = useCallback(
     (draft?: string, prompt?: string) => {
       if (draft) dispatch({ type: 'UPDATE_STRATEGY', payload: { draft } });
       if (prompt) dispatch({ type: 'UPDATE_STRATEGY', payload: { prompt } });
-      setSubStep('timeframes');
+      dispatch({ type: 'GO_BACK' });
     },
     [dispatch],
   );
@@ -123,69 +83,22 @@ export function StrategyStep(): React.ReactElement {
         },
         apiKey: apiConfig.apiKey,
         strategy: {
-          sectors: strategy.sectors,
-          timeframes: strategy.timeframes,
           decisionFramework: prompt,
         },
         feedback,
       }),
-    [
-      apiConfig.providerId,
-      apiConfig.apiKey,
-      identity.name,
-      identity.bio,
-      strategy.sectors,
-      strategy.timeframes,
-    ],
+    [apiConfig.providerId, apiConfig.apiKey, identity.name, identity.bio],
   );
 
   return (
     <Box flexDirection="column">
-      {/* Summary card */}
-      {(strategy.sectors.length > 0 || strategy.timeframes.length > 0) && (
-        <Box flexDirection="column" marginLeft={2} marginBottom={1}>
-          {strategy.sectors.length > 0 && (
-            <Text color={colors.gray}>
-              {symbols.check} Sectors:{' '}
-              <Text color={colors.honey}>{strategy.sectors.join(', ')}</Text>
-            </Text>
-          )}
-          {strategy.timeframes.length > 0 && (
-            <Text color={colors.gray}>
-              {symbols.check} Timeframes:{' '}
-              <Text color={colors.honey}>{strategy.timeframes.join(', ')}</Text>
-            </Text>
-          )}
-        </Box>
-      )}
-
-      {subStep === 'sectors' && (
-        <MultiSelectPrompt
-          label="Select sectors to cover"
-          items={SECTOR_OPTIONS}
-          defaultSelected={defaultSectors}
-          onSubmit={handleSectorsSubmit}
-          onBack={() => dispatch({ type: 'GO_BACK' })}
-        />
-      )}
-
-      {subStep === 'timeframes' && (
-        <MultiSelectPrompt
-          label="Select prediction timeframes"
-          items={TIMEFRAME_OPTIONS}
-          defaultSelected={defaultTimeframes}
-          onSubmit={handleTimeframesSubmit}
-          onBack={() => setSubStep('sectors')}
-        />
-      )}
-
       {/* once user generated first draft, user can edit the prompt though feedback so no need to comeback at this step */}
-      {subStep === 'select' && !initialContent && (
+      {subStep === 'preset' && !initialContent && (
         <SelectPrompt
           label="Choose a strategy preset or write your own"
           items={selectItems}
           onSelect={handleSelect}
-          onBack={() => setSubStep('timeframes')}
+          onBack={() => setSubStep('generate')}
         />
       )}
 

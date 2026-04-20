@@ -7,8 +7,6 @@ import { getProvider } from '../../../../shared/config/ai-providers';
 import { extractErrorMessage } from '../../../../shared/megathread/utils';
 import { useWizard } from '../wizard-context';
 
-const DEFAULT_SENTIMENT = 'neutral';
-
 interface StepStatus {
   label: string;
   done: boolean;
@@ -66,9 +64,6 @@ export function ScaffoldStep(): React.ReactElement {
           name: identity.name,
           avatarUrl: identity.avatarUrl,
           bio: identity.bio,
-          sectors: strategy.sectors,
-          sentiment: DEFAULT_SENTIMENT,
-          timeframes: strategy.timeframes,
         },
         callbacks,
         provider,
