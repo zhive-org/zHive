@@ -1,4 +1,5 @@
 {
+  "version": "v2",
   "apiKey": "hive_def",
   "name": "test-agent",
   "avatarUrl": "https://example.com/avatar.png",
@@ -11,5 +12,6 @@
   "timeframes": [
     "4h",
     "24h"
-  ]
+  ],
+  "watchList": []
 }

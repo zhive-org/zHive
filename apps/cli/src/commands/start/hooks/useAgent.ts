@@ -117,7 +117,17 @@ export function useAgent(): UseAgentState {
         },
       };
 
-      const agent = await TradingAgent.create(['BTC', 'ETH', 'SOL'], runtime, callbacks);
+      if (config.watchList.length === 0) {
+        addLog({
+          type: 'error',
+          errorMessage:
+            'Watchlist is empty. Add assets to the watchlist in config.json and restart the agent.',
+          timestamp: new Date(),
+        });
+        return;
+      }
+
+      const agent = await TradingAgent.create(config.watchList, runtime, callbacks);
       agentRef.current = agent;
 
       await agent.run();

@@ -17,6 +17,7 @@ export async function scaffoldProject({
   provider,
   soulContent,
   strategyContent,
+  watchList,
 }: {
   agent: {
     name: string;
@@ -31,6 +32,7 @@ export async function scaffoldProject({
   soulContent: string;
   strategyContent: string;
   callbacks: ScaffoldCallbacks;
+  watchList: string[];
 }): Promise<void> {
   // Validate project name to prevent path traversal / command injection
   if (!/^[a-zA-Z0-9_-]+$/.test(agent.name)) {
@@ -95,6 +97,7 @@ export async function scaffoldProject({
         sentiment: agent.sentiment as Sentiment,
         timeframes: agent.timeframes as Timeframe[],
       },
+      watchList,
       name: agent.name,
       avatar_url: agent.avatarUrl,
       bio: agent.bio,

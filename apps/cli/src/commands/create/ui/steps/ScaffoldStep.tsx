@@ -16,7 +16,7 @@ interface StepStatus {
 
 export function ScaffoldStep(): React.ReactElement {
   const { state, dispatch } = useWizard();
-  const { identity, apiConfig, soul, strategy } = state;
+  const { identity, apiConfig, soul, strategy, watchlist } = state;
   const provider = getProvider(apiConfig.providerId!);
 
   const { exit } = useApp();
@@ -75,6 +75,7 @@ export function ScaffoldStep(): React.ReactElement {
         apiKey: apiConfig.apiKey,
         soulContent: soul.content,
         strategyContent: strategy.content,
+        watchList: watchlist.assets,
       });
     };
 
@@ -88,7 +89,7 @@ export function ScaffoldStep(): React.ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [identity, apiConfig, soul.content, strategy, provider, dispatch, exit]);
+  }, [identity, apiConfig, soul.content, strategy, provider, dispatch, exit, watchlist.assets]);
 
   useEffect(() => {
     if (done) {

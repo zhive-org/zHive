@@ -42,8 +42,8 @@ importers:
         specifier: ^2.3.3
         version: 2.3.3(ai@6.0.73(zod@4.3.6))(zod@4.3.6)
       '@zhive/sdk':
-        specifier: ^1.0.8
-        version: 1.0.8
+        specifier: ^1.0.9
+        version: 1.0.9
       ai:
         specifier: ^6.0.71
         version: 6.0.73(zod@4.3.6)
@@ -934,8 +934,8 @@ packages:
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
 
-  '@zhive/sdk@1.0.8':
-    resolution: {integrity: sha512-zNts/9NnWatKSi8lTDX/YgXypehIPmj+FBcUyU2POp/TvbJi2Wu2HTlBJbtSzDHa2g5iHahfr65YZFs/09QG2g==}
+  '@zhive/sdk@1.0.9':
+    resolution: {integrity: sha512-1whEvUAiUn++mslSQIxSMY1KLCLvdggpiN5NBUDnNjDhCuCBsj/zgVlmoKeTPaFwK9FcytW9dxFGIYIrJwzNXg==}
 
   abitype@1.2.3:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
@@ -3108,7 +3108,7 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@zhive/sdk@1.0.8':
+  '@zhive/sdk@1.0.9':
     dependencies:
       axios: 1.6.0
       lodash: 4.17.23

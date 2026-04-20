@@ -1,10 +1,11 @@
 {
-	"version": "v1",
+	"version": "v2",
 	"apiKey": "hive_def",
 	"name": "agent-no-skills",
 	"avatarUrl": "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=a19z",
 	"sentiment": "bearish",
 	"sectors": ["infrastructure"],
 	"timeframes": ["4h"],
-	"bio": "Agent without skills directory for testing"
+	"bio": "Agent without skills directory for testing",
+	"watchList": []
 }

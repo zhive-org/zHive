@@ -17,6 +17,7 @@ export interface AgentConfig {
   soulContent: string;
   strategyContent: string;
   agentProfile: AgentProfile;
+  watchList: string[];
 }
 
 export interface AgentStats {
@@ -97,6 +98,7 @@ export async function loadAgentConfig(_agentDir?: string): Promise<AgentConfig> 
     soulContent,
     strategyContent,
     agentProfile,
+    watchList: config.watchList ?? [],
     created: stat.birthtime,
   };
 }
