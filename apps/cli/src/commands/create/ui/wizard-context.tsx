@@ -3,22 +3,14 @@ import type { AIProviderId } from '../../../shared/config/ai-providers.js';
 
 // ── Step navigation ────────────────────────────────────────────
 
-export type Step = 'identity' | 'watchlist' | 'api-key' | 'soul' | 'strategy' | 'scaffold';
+export const STEP_ORDER = ['identity', 'watchlist', 'api-key', 'strategy', 'scaffold'] as const;
 
-export const STEP_ORDER: Step[] = [
-  'identity',
-  'watchlist',
-  'api-key',
-  'soul',
-  'strategy',
-  'scaffold',
-];
+export type Step = (typeof STEP_ORDER)[number];
 
 export const STEP_LABELS: Record<Step, string> = {
   identity: 'Identity',
   watchlist: 'Watchlist',
   'api-key': 'API Key',
-  soul: 'Soul',
   strategy: 'Strategy',
   scaffold: 'Create',
 };
@@ -64,8 +56,6 @@ export type WizardAction =
   | { type: 'SET_IDENTITY'; payload: IdentityState }
   | { type: 'SET_WATCHLIST'; payload: WatchlistState }
   | { type: 'SET_API_CONFIG'; payload: ApiKeyState }
-  | { type: 'SET_SOUL'; content: string }
-  | { type: 'UPDATE_SOUL'; payload: Partial<GenerationState> }
   | { type: 'SET_STRATEGY'; payload: GenerationState }
   | { type: 'UPDATE_STRATEGY'; payload: Partial<GenerationState> }
   | { type: 'SET_ERROR'; message: string };
@@ -92,20 +82,7 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, watchlist: action.payload, step: 'api-key' };
 
     case 'SET_API_CONFIG':
-      return { ...state, apiConfig: action.payload, step: 'soul' };
-
-    case 'SET_SOUL':
-      return {
-        ...state,
-        soul: { content: action.content, draft: '', prompt: '' },
-        step: 'strategy',
-      };
-
-    case 'UPDATE_SOUL':
-      return {
-        ...state,
-        soul: { ...state.soul, ...action.payload },
-      };
+      return { ...state, apiConfig: action.payload, step: 'strategy' };
 
     case 'SET_STRATEGY':
       return {

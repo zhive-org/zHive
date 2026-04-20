@@ -5,7 +5,6 @@ import { StepIndicator } from '../../../components/StepIndicator';
 import { AgentIdentityStep } from './steps/AgentIdentityStep';
 import { WatchlistStep } from './steps/WatchlistStep';
 import { ApiKeyStep } from './steps/ApiKeyStep';
-import { SoulStep } from './steps/SoulStep';
 import { StrategyStep } from './steps/StrategyStep';
 import { ScaffoldStep } from './steps/ScaffoldStep';
 import { colors, symbols } from '../../shared/theme';
@@ -31,8 +30,6 @@ function CreateAppInner(): React.ReactElement {
       {state.step === 'watchlist' && <WatchlistStep />}
 
       {state.step === 'api-key' && <ApiKeyStep />}
-
-      {state.step === 'soul' && state.apiConfig.providerId && <SoulStep />}
 
       {state.step === 'strategy' && state.apiConfig.providerId && <StrategyStep />}
 
