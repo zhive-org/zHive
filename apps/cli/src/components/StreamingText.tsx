@@ -65,6 +65,11 @@ export function StreamingText({
 
   const termWidth = process.stdout.columns || 60;
   const boxWidth = Math.min(termWidth - 4, 76);
+  const termRows = process.stdout.rows || 30;
+  const maxContentLines = Math.max(5, termRows - 10);
+  const allLines = text.split('\n');
+  const visibleLines =
+    allLines.length > maxContentLines ? allLines.slice(-maxContentLines) : allLines;
 
   return (
     <Box flexDirection="column" marginLeft={2}>
@@ -78,10 +83,16 @@ export function StreamingText({
           </Text>
         </Box>
       )}
-      <Box paddingLeft={1} paddingRight={1} width={boxWidth}>
-        <Text color={colors.white} wrap="wrap">
-          {text || ' '}
-        </Text>
+      <Box paddingLeft={1} paddingRight={1} width={boxWidth} flexDirection="column">
+        {visibleLines.length === 0 ? (
+          <Text color={colors.white}> </Text>
+        ) : (
+          visibleLines.map((line, i) => (
+            <Text key={i} color={colors.white} wrap="truncate-end">
+              {line || ' '}
+            </Text>
+          ))
+        )}
       </Box>
       {title && (
         <Box>

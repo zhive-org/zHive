@@ -29,7 +29,7 @@ export function StreamingGenerationStep({
   const [draft, setDraft] = useState(initialContent);
   const [errorMessage, setErrorMessage] = useState('');
   const [feedbackCount, setFeedbackCount] = useState(0);
-  const [currentStream, setCurrentStream] = useState<AsyncIterable<string> | null>(
+  const [currentStream, setCurrentStream] = useState<AsyncIterable<string> | null>(() =>
     !draft ? createStream(input) : null,
   );
 
