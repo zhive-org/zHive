@@ -33,9 +33,12 @@ export interface ApiKeyState {
 }
 
 export interface GenerationState {
+  /** Generated md file */
   content: string;
+  /** Draft md file */
   draft: string;
-  prompt: string;
+  /** User input */
+  input: string;
 }
 
 export interface WizardState {
@@ -87,7 +90,7 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
     case 'SET_STRATEGY':
       return {
         ...state,
-        strategy: { ...action.payload, draft: '', prompt: '' },
+        strategy: { ...action.payload, draft: '' },
         step: 'scaffold',
       };
 

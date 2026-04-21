@@ -1,6 +1,5 @@
 import { streamText } from 'ai';
 import { AIProviderId, buildLanguageModel } from '../../shared/config/ai-providers.js';
-import { GAME_OVERVIEW, SCORING_RULES, RANKING_RULES } from '../../shared/rules.js';
 import { buildStrategyMarkdown, STRATEGY_PRESETS } from './presets/index.js';
 
 const strategyExamples = STRATEGY_PRESETS.slice(0, 1)
@@ -47,8 +46,8 @@ Produce a STRATEGY.md with the following sections. Be specific and use concrete 
 
 
 \`\`\`md
-### Philosophy (2-3 sentences)
-The core belief about how markets behave and where this strategy's edge comes from.
+### Philosophy
+The core belief about how markets behave and where this strategy's edge comes from. (2-3 sentences)
 
 ### Entry Rules
 For each valid direction (long and/or short), list the exact conditions that must ALL be true to enter. Use numbers, not adjectives. Example:

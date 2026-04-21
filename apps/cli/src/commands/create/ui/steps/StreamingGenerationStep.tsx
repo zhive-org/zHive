@@ -9,49 +9,28 @@ import { colors, symbols } from '../../../shared/theme';
 interface StreamingGenerationStepProps {
   title: string;
   initialContent?: string;
-  initialPrompt?: string;
-  autoGenerate?: boolean;
-  promptLabel: string;
-  promptPlaceholder: string;
-  validate?: (value: string) => string | true;
+  input: string;
   createStream: (initialPrompt: string, feedback?: string) => AsyncIterable<string>;
-  onBack?: (draft?: string, prompt?: string) => void;
+  onBack?: (draft?: string) => void;
   onComplete: (content: string) => void;
 }
 
-type Phase = 'prompt-input' | 'streaming' | 'review' | 'error';
+type Phase = 'streaming' | 'review' | 'error';
 
 export function StreamingGenerationStep({
   title,
-  initialContent,
-  initialPrompt: savedPrompt,
-  autoGenerate,
-  promptLabel,
-  promptPlaceholder,
-  validate,
   createStream,
-  onBack,
+  input,
   onComplete,
+  initialContent,
+  onBack,
 }: StreamingGenerationStepProps): React.ReactElement {
-  const shouldAutoGenerate = !initialContent && !!savedPrompt && autoGenerate;
-  const [phase, setPhase] = useState<Phase>(
-    initialContent ? 'review' : shouldAutoGenerate ? 'streaming' : 'prompt-input',
-  );
-  const [prompt, setPrompt] = useState(savedPrompt ?? '');
-  const [draft, setDraft] = useState(initialContent ?? '');
+  const [phase, setPhase] = useState<Phase>(initialContent ? 'review' : 'streaming');
+  const [draft, setDraft] = useState(initialContent);
   const [errorMessage, setErrorMessage] = useState('');
   const [feedbackCount, setFeedbackCount] = useState(0);
   const [currentStream, setCurrentStream] = useState<AsyncIterable<string> | null>(
-    shouldAutoGenerate ? createStream(savedPrompt) : null,
-  );
-
-  const handlePromptSubmit = useCallback(
-    (value: string) => {
-      setPrompt(value);
-      setPhase('streaming');
-      setCurrentStream(createStream(value));
-    },
-    [createStream],
+    !draft ? createStream(input) : null,
   );
 
   const handleStreamComplete = useCallback((fullText: string) => {
@@ -71,45 +50,27 @@ export function StreamingGenerationStep({
   }, []);
 
   const handleAccept = useCallback(() => {
+    if (!draft) {
+      return;
+    }
+
     onComplete(draft);
   }, [draft, onComplete]);
 
-  const handleRetry = useCallback(() => {
-    setFeedbackCount((prev) => prev + 1);
-    setPhase('streaming');
-    setDraft('');
-    setErrorMessage('');
-    const newStream = createStream(prompt);
-    setCurrentStream(newStream);
-  }, [createStream, prompt]);
-
-  const handleFeedback = useCallback(
-    (feedback: string) => {
+  const handleRetry = useCallback(
+    (feedback?: string) => {
       setFeedbackCount((prev) => prev + 1);
       setPhase('streaming');
       setDraft('');
       setErrorMessage('');
-      const newStream = createStream(prompt, feedback);
+      const newStream = createStream(input, feedback);
       setCurrentStream(newStream);
     },
-    [createStream, prompt],
+    [createStream, input],
   );
 
   return (
     <Box flexDirection="column">
-      {phase === 'prompt-input' && (
-        <Box flexDirection="column">
-          <TextPrompt
-            label={promptLabel}
-            placeholder={promptPlaceholder}
-            defaultValue={prompt || undefined}
-            onBack={() => onBack?.(draft, prompt)}
-            onSubmit={handlePromptSubmit}
-            validate={validate}
-          />
-        </Box>
-      )}
-
       {phase === 'streaming' && currentStream && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
@@ -149,7 +110,7 @@ export function StreamingGenerationStep({
               label=""
               placeholder="Enter to retry..."
               onSubmit={() => handleRetry()}
-              onBack={() => onBack?.(draft, prompt)}
+              onBack={() => onBack?.(draft)}
             />
           </Box>
         </Box>
@@ -161,7 +122,7 @@ export function StreamingGenerationStep({
             <Text color={colors.green}>{symbols.check} </Text>
             <Text color={colors.white}>{title} draft ready</Text>
           </Box>
-          <CodeBlock title={title}>{draft}</CodeBlock>
+          <CodeBlock title={title}>{draft ?? ''}</CodeBlock>
           <Box marginTop={1}>
             <Text color={colors.gray}>
               Press{' '}
@@ -175,12 +136,12 @@ export function StreamingGenerationStep({
             <TextPrompt
               label=""
               placeholder="Enter to accept, or type feedback..."
-              onBack={() => onBack?.(draft, prompt)}
+              onBack={() => onBack?.(draft)}
               onSubmit={(val) => {
                 if (!val) {
                   handleAccept();
                 } else {
-                  handleFeedback(val);
+                  handleRetry(val);
                 }
               }}
             />

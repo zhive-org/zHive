@@ -3,61 +3,75 @@ import React, { useCallback, useState } from 'react';
 import { SelectPrompt } from '../../../../components/SelectPrompt';
 import { generateStrategy } from '../../generate-strategy';
 import { STRATEGY_PRESETS } from '../../presets/data';
-import { useWizard } from '../wizard-context';
+import { GenerationState, useWizard } from '../wizard-context';
 import { StreamingGenerationStep } from './StreamingGenerationStep';
+import { TextPrompt } from '../../../../components/TextPrompt';
 
 export interface StrategyStepResult {
   strategyContent: string;
 }
 
-type SubStep = 'preset' | 'generate';
+type SubStep = 'preset' | 'custom' | 'generate';
+
+const selectItems = [
+  ...STRATEGY_PRESETS.map((p) => ({
+    label: p.name,
+    value: p.name,
+    description: p.philosophy,
+  })),
+  { label: 'Custom', value: '__custom__', description: 'Write your own prompt from scratch' },
+];
 
 export function StrategyStep(): React.ReactElement {
   const { state, dispatch } = useWizard();
   const { apiConfig, identity, strategy } = state;
+  const [subStep, setSubStep] = useState<SubStep>('preset');
 
-  const [subStep, setSubStep] = useState<SubStep>(
-    strategy.content || strategy.draft ? 'generate' : 'preset',
-  );
-  const [autoGenerate, setAutoGenerate] = useState(false);
+  const defaultPreset = selectItems.find((item) => item.value === strategy.input);
 
-  const selectItems = [
-    ...STRATEGY_PRESETS.map((p) => ({
-      label: p.name,
-      value: p.name,
-      description: p.philosophy,
-    })),
-    { label: 'Custom', value: '__custom__', description: 'Write your own prompt from scratch' },
-  ];
-
-  const initialContent = strategy.content || strategy.draft || undefined;
-
-  const handleSelect = useCallback(
+  const handlePreset = useCallback(
     (item: { value: string }) => {
       if (item.value === '__custom__') {
-        dispatch({ type: 'UPDATE_STRATEGY', payload: { prompt: '', draft: '' } });
-        setAutoGenerate(false);
-        setSubStep('generate');
+        setSubStep('custom');
         return;
       }
       const preset = STRATEGY_PRESETS.find((p) => p.name === item.value);
       if (!preset) return;
-      const prompt = `${preset.philosophy} ${preset.decisionSteps.map((s, i) => `${i + 1}. ${s}`).join(' ')}`;
-      dispatch({ type: 'UPDATE_STRATEGY', payload: { prompt, draft: '' } });
-      setAutoGenerate(true);
+
+      const input = preset.name;
+
+      const payload: Partial<GenerationState> = { input: preset.name };
+      if (input !== strategy.input) {
+        payload.draft = '';
+        payload.content = '';
+      }
+
+      dispatch({ type: 'UPDATE_STRATEGY', payload });
       setSubStep('generate');
     },
-    [dispatch],
+    [dispatch, strategy.input],
+  );
+
+  const handleCustom = useCallback(
+    (value: string) => {
+      const payload: Partial<GenerationState> = { input: value };
+      if (value !== strategy.input) {
+        payload.draft = '';
+        payload.content = '';
+      }
+      dispatch({ type: 'UPDATE_STRATEGY', payload });
+      setSubStep('generate');
+    },
+    [dispatch, strategy.input],
   );
 
   const handleComplete = useCallback(
     (strategyContent: string) => {
       dispatch({
-        type: 'SET_STRATEGY',
+        type: 'UPDATE_STRATEGY',
         payload: {
           content: strategyContent,
           draft: '',
-          prompt: '',
         },
       });
     },
@@ -65,10 +79,9 @@ export function StrategyStep(): React.ReactElement {
   );
 
   const handleGenerateBack = useCallback(
-    (draft?: string, prompt?: string) => {
+    (draft?: string) => {
       if (draft) dispatch({ type: 'UPDATE_STRATEGY', payload: { draft } });
-      if (prompt) dispatch({ type: 'UPDATE_STRATEGY', payload: { prompt } });
-      dispatch({ type: 'GO_BACK' });
+      setSubStep('preset');
     },
     [dispatch],
   );
@@ -87,23 +100,30 @@ export function StrategyStep(): React.ReactElement {
 
   return (
     <Box flexDirection="column">
-      {/* once user generated first draft, user can edit the prompt though feedback so no need to comeback at this step */}
-      {subStep === 'preset' && !initialContent && (
+      {subStep === 'preset' && (
         <SelectPrompt
           label="Choose a strategy preset or write your own"
           items={selectItems}
-          onSelect={handleSelect}
-          onBack={() => setSubStep('generate')}
+          defaultValue={defaultPreset?.value}
+          onSelect={handlePreset}
+          onBack={() => dispatch({ type: 'GO_BACK' })}
+        />
+      )}
+      {subStep === 'custom' && (
+        <TextPrompt
+          label="Describe your agent's decision framework and trading approach"
+          placeholder="e.g. technical analysis focused, uses RSI and MACD, conservative with short timeframes"
+          defaultValue={strategy.input || undefined}
+          onSubmit={handleCustom}
+          onBack={() => setSubStep('preset')}
         />
       )}
 
       {subStep === 'generate' && (
         <StreamingGenerationStep
           title="STRATEGY.md"
-          initialContent={initialContent}
-          autoGenerate={autoGenerate}
-          promptLabel="Describe your agent's decision framework and trading approach"
-          promptPlaceholder="e.g. technical analysis focused, uses RSI and MACD, conservative with short timeframes"
+          input={strategy.input}
+          initialContent={strategy.draft || strategy.content}
           createStream={createStream}
           onBack={handleGenerateBack}
           onComplete={handleComplete}
