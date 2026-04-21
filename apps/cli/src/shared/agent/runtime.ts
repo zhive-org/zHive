@@ -9,9 +9,9 @@ import { loadSkills } from './skills/loader';
 import { marketTools } from '../tools/market';
 import { createPineScriptTool } from '../tools/pinescript';
 import { getHiveClient } from '../config/hive-client';
-import { Timeframe } from '../tools/pinescript/types';
 import { mindshareTools } from '../tools/mindshare';
 import { convertTimeframeToInterval, getOHLC } from '../ta/service';
+import { HiveDataProvider } from '../tools/pinescript/providers/zhive/provider';
 
 export interface AgentRuntime {
   config: AgentConfig;
@@ -43,27 +43,8 @@ function createBuiltinTools(): Record<string, Tool> {
   const tools: Record<string, Tool> = {};
 
   if (process.env.EXPERIMENTAL_FETCH_RULES_TOOL === 'true') {
-    const pinescriptTools = createPineScriptTool(
-      async (coin, timeframe, startDate, endDate) => {
-        const interval = convertTimeframeToInterval(timeframe);
-        const ohlcData = await getOHLC({
-          project: coin,
-          from: new Date(startDate),
-          to: new Date(endDate),
-          interval,
-        });
-
-        return ohlcData.map(([timestamp, open, high, low, close]) => ({
-          openTime: timestamp,
-          open,
-          high,
-          low,
-          close,
-          volume: 0, // hive api doesn't support volume
-        }));
-      },
-      [Timeframe['1h'], Timeframe['1d']],
-    );
+    const provider = new HiveDataProvider(getHiveClient());
+    const pinescriptTools = createPineScriptTool(provider, ['60', 'D']);
     tools['market_executePinescript'] = pinescriptTools;
   } else {
     for (const [name, tool] of Object.entries(marketTools)) {

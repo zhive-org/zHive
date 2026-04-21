@@ -1,6 +1,6 @@
-import { Timeframe } from './types';
+import { HyperLiquidTimeframe } from './timeframe';
 
-export function timeframeToMs(tf: Timeframe): number {
+export function timeframeToMs(tf: HyperLiquidTimeframe): number {
   const match = tf.match(/^(\d+)(m|h|d|w|M)$/);
   if (!match) throw new Error(`Invalid timeframe: ${tf}`);
 

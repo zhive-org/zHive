@@ -38,9 +38,12 @@ export function formatPineResult({ plots, marketData }: PineResult, returnedCand
   // Determine slice window: only return the most-recent return_candle_count candles
   const startIdx = Math.max(0, marketData.length - returnedCandleCount);
 
-  // Extract plot data in a serializable format (sliced to return window)
+  // Extract plot data in a serializable format (sliced to return window).
+  // PineTS exposes drawing-primitive collections (labels/lines/boxes/...) under
+  // __double-underscore__ keys in the same map — skip those so callers only see plots.
   const plotData: Record<string, Array<number | boolean | null>> = {};
   for (const [plotName, plot] of Object.entries(plots)) {
+    if (plotName.startsWith('__') && plotName.endsWith('__')) continue;
     plotData[plotName] = plot.data.slice(startIdx).map((d) => d.value);
   }
 

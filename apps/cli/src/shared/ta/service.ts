@@ -1,9 +1,9 @@
 import { rsi, sma, ema, macd, bb } from 'indicatorts';
 import type { MarketInterval } from '@zhive/sdk';
 import { getHiveClient } from '../config/hive-client';
-import { InsufficientDataError, PriceUnavailableError } from './error';
+import { InsufficientDataError } from './error';
 import { adjustFromDate } from './utils';
-import { Timeframe } from '../tools/pinescript/types';
+import { PineTsTimeframe } from '../tools/pinescript/types';
 
 export type IndicatorValue = {
   timestamp: string;
@@ -25,9 +25,8 @@ export type BollingerBandsValue = {
 };
 
 const INTERVAL_MS: Record<string, number> = {
-  '1h': 3_600_000,
-  '24h': 86_400_000,
-  '1d': 86_400_000,
+  hourly: 3_600_000,
+  daily: 86_400_000,
 };
 
 export const getPrice = async ({ project, at }: { project: string; at?: string | Date }) => {
@@ -36,10 +35,10 @@ export const getPrice = async ({ project, at }: { project: string; at?: string |
   return priceData.price ?? undefined;
 };
 
-export const convertTimeframeToInterval = (tf: Timeframe): MarketInterval => {
-  const intervalMap: Partial<Record<string, MarketInterval>> = {
-    '1h': 'hourly',
-    '1d': 'daily',
+export const convertTimeframeToInterval = (tf: PineTsTimeframe): MarketInterval => {
+  const intervalMap: Partial<Record<PineTsTimeframe, MarketInterval>> = {
+    '60': 'hourly',
+    D: 'daily',
   };
   const interval = intervalMap[tf];
   if (!interval) {

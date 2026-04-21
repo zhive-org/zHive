@@ -116,8 +116,8 @@ export function createInitialState(initialName?: string): WizardState {
     identity: { name: initialName ?? '', bio: '', avatarUrl: '' },
     watchlist: { assets: [] },
     apiConfig: { providerId: null, apiKey: '' },
-    soul: { content: '', draft: '', prompt: '' },
-    strategy: { content: '', draft: '', prompt: '' },
+    soul: { content: '', draft: '', input: '' },
+    strategy: { content: '', draft: '', input: '' },
     error: '',
   };
 }

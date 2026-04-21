@@ -42,7 +42,7 @@ export class AssetEvaluator {
     private riskEngine: RiskEngine,
     private runtime: AgentRuntime,
   ) {
-    this.analyzer = new AssetAnalyzer(runtime, exchange);
+    this.analyzer = new AssetAnalyzer(runtime);
   }
 
   async evaluate(

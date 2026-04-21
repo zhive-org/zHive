@@ -1,18 +1,17 @@
 import { ExchangeClient, HttpTransport, InfoClient, OrderParameters } from '@nktkas/hyperliquid';
-import { IExchange } from './types';
 import { formatPrice, formatSize, SymbolConverter } from '@nktkas/hyperliquid/utils';
-import { Timeframe, Candle } from '../../tools/pinescript';
-import {
-  TradeDecision,
-  ExecutionResult,
-  PairInfo,
-  AccountSummary,
-  DetailedPosition,
-  PositionInfo,
-} from '../types';
 import _ from 'lodash';
 import { privateKeyToAccount } from 'viem/accounts';
+import type {
+  AccountSummary,
+  DetailedPosition,
+  ExecutionResult,
+  PairInfo,
+  PositionInfo,
+  TradeDecision,
+} from '../types';
 import { PositionNotFound, UnknownError, UnSupportedAssetError } from './error';
+import type { IExchange } from './types';
 
 const DEFAULT_SLIPPAGE = 0.03;
 
@@ -24,6 +23,27 @@ export class HyperliquidExchange implements IExchange {
     private converter: SymbolConverter,
     private slippage: number = DEFAULT_SLIPPAGE,
   ) {}
+
+  async getPairInfo(pair: string): Promise<PairInfo | null> {
+    const parts = pair.split(':');
+    let dex: string | undefined;
+    if (parts.length === 2) {
+      dex = parts[0];
+    }
+
+    const [meta, assetCtxs] = await this.info.metaAndAssetCtxs({ dex });
+
+    const assetIndex = meta.universe.findIndex((u) => u.name === pair);
+    if (assetIndex === -1) {
+      return null;
+    }
+
+    const ctx = assetCtxs[assetIndex];
+    return {
+      coin: pair,
+      ...ctx,
+    };
+  }
 
   static async create({
     walletAddress,
@@ -232,51 +252,6 @@ export class HyperliquidExchange implements IExchange {
     return pairs;
   }
 
-  async getPairInfo(pair: string): Promise<PairInfo | null> {
-    const parts = pair.split(':');
-    let dex: string | undefined;
-    if (parts.length === 2) {
-      dex = parts[0];
-    }
-
-    const [meta, assetCtxs] = await this.info.metaAndAssetCtxs({ dex });
-
-    const assetIndex = meta.universe.findIndex((u) => u.name === pair);
-    if (assetIndex === -1) {
-      return null;
-    }
-
-    const ctx = assetCtxs[assetIndex];
-    return {
-      coin: pair,
-      ...ctx,
-    };
-  }
-
-  async fetchCandles(
-    pair: string,
-    interval: Timeframe,
-    sDate: number | Date,
-    eDate: number | Date,
-  ): Promise<Candle[]> {
-    const raw = await this.info.candleSnapshot({
-      coin: pair,
-      interval,
-      startTime: sDate instanceof Date ? sDate.getTime() : sDate,
-      endTime: eDate instanceof Date ? eDate.getTime() : eDate,
-    });
-
-    const candles: Candle[] = raw.map((c) => ({
-      openTime: c.t,
-      open: parseFloat(c.o),
-      high: parseFloat(c.h),
-      low: parseFloat(c.l),
-      close: parseFloat(c.c),
-      volume: parseFloat(c.v),
-    }));
-
-    return candles;
-  }
   async fetchAccountState(): Promise<AccountSummary> {
     const [state, spot] = await Promise.all([
       this.info.clearinghouseState({ user: this.walletAddress }),

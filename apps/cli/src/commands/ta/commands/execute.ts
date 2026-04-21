@@ -5,9 +5,9 @@ import { styled } from '../../shared/theme';
 import { printZodError } from '../../shared/utils';
 import path from 'node:path';
 import { lstat, readFile } from 'node:fs/promises';
-import { timeframeToMs } from '../../../shared/tools/pinescript/utils';
-import { Timeframe } from '../../../shared/tools/pinescript/types';
+import { timeframeToMs } from '../../../shared/tools/pinescript/providers/hyperliquid/utils';
 import { convertTimeframeToInterval, getIntervalMs, getOHLC } from '../../../shared/ta/service';
+import { PINETSTIMEFRAME_TO_MS } from '../../../shared/tools/pinescript';
 
 const ALLOWED_EXTENSIONS = ['.pine', '.ps', '.txt'];
 const MAX_SCRIPT_SIZE_BYTES = 512 * 1024; // 512 KB
@@ -52,7 +52,7 @@ const schema = z
     script: z.string().optional(),
     file: z.string().optional(),
     project: z.string(),
-    timeframe: z.enum([Timeframe['1h'], Timeframe['1d']]).default(Timeframe['1h']),
+    timeframe: z.enum(['60', 'D']).default('60'),
     fetchCandleCount: z.coerce.number().int().min(1).max(1500).default(100),
     returnCandleCount: z.coerce.number().int().min(1).max(100).default(10),
   })
@@ -100,7 +100,7 @@ export const createTaExecuteCommand = () => {
       }
 
       const endTime = Date.now();
-      const startTime = endTime - input.fetchCandleCount * timeframeToMs(input.timeframe);
+      const startTime = endTime - input.fetchCandleCount * PINETSTIMEFRAME_TO_MS[input.timeframe];
 
       const interval = convertTimeframeToInterval(input.timeframe);
       const intervalMs = getIntervalMs(interval);

@@ -1,15 +1,14 @@
 import { tool } from 'ai';
-import { PineTS } from 'pinets';
+import { IProvider, PineTS } from 'pinets';
 import z from 'zod';
 import { formatToolError } from '../../megathread/utils';
 import { PineResult, formatPineResult } from '../../ta/utils';
-import { Candle, Timeframe } from './types';
-import { timeframeToMs } from './utils';
+import { PineTsTimeframe, pinetsTimeframes } from './types';
 
 const inputSchema = z.object({
   asset: z.string().describe('The asset symbol to analyze, e.g. BTC, ETH'),
   script: z.string().describe('Inline Pine Script v5 source code'),
-  timeframe: z.enum(Timeframe).describe('Candle interval'),
+  timeframe: z.enum(pinetsTimeframes).describe('Candle interval'),
   fetchCandleCount: z
     .number()
     .int()
@@ -29,13 +28,8 @@ const inputSchema = z.object({
 });
 
 export const createPineScriptTool = (
-  fetchCandles: (
-    symbol: string,
-    timeframe: Timeframe,
-    startTime: number,
-    endTime: number,
-  ) => Promise<Candle[]>,
-  supportedTimeframes: Timeframe[] = Object.values(Timeframe),
+  provider: IProvider,
+  supportedTimeframes: PineTsTimeframe[] = [...pinetsTimeframes],
 ) => {
   return tool({
     description:
@@ -44,59 +38,27 @@ export const createPineScriptTool = (
       timeframe: z.enum(supportedTimeframes).describe('Candle interval'),
     }),
     execute: async (input) => {
-      return executePinescript(input, fetchCandles);
+      return executePinescript(input, provider);
     },
   });
 };
 
-export const createPineScriptToolForAsset = (
-  asset: string,
-  fetchCandles: (
-    asset: string,
-    timeframe: Timeframe,
-    startTime: number,
-    endTime: number,
-  ) => Promise<Candle[]>,
-) => {
+export const createPineScriptToolForAsset = (asset: string, provider: IProvider) => {
   return tool({
     description:
       'Execute a TradingView Pine Script v5/v6 against OHLC market data for an asset and return indicator values',
     inputSchema: inputSchema.omit({ asset: true }),
     execute: async (input) => {
-      return executePinescript({ ...input, asset }, fetchCandles);
+      return executePinescript({ ...input, asset }, provider);
     },
   });
 };
 
 async function executePinescript(
   { asset, script, timeframe, fetchCandleCount, returnBars }: z.infer<typeof inputSchema>,
-  fetchCandles: (
-    symbol: string,
-    timeframe: Timeframe,
-    startTime: number,
-    endTime: number,
-  ) => Promise<Candle[]>,
+  provider: IProvider,
 ) {
-  const endTime = Date.now();
-  const startTime = endTime - fetchCandleCount * timeframeToMs(timeframe);
-  const candles = await fetchCandles(asset, timeframe, startTime, endTime);
-  if (candles.length === 0) {
-    return {
-      error: 'No candle data available for the requested range',
-    };
-  }
-
-  const klines = candles.map((c) => ({
-    openTime: c.openTime,
-    open: c.open,
-    high: c.high,
-    low: c.low,
-    close: c.close,
-    volume: c.volume,
-    closeTime: c.openTime,
-  }));
-
-  const pineTS = new PineTS(klines);
+  const pineTS = new PineTS(provider, asset, timeframe, fetchCandleCount);
   try {
     const result = (await pineTS.run(script)) as PineResult;
     return formatPineResult(result, returnBars);

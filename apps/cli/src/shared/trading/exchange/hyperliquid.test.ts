@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ExchangeClient, InfoClient } from '@nktkas/hyperliquid';
 import type { SymbolConverter } from '@nktkas/hyperliquid/utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountSummary, PositionInfo, TradeDecision } from '../types';
+import { PositionNotFound, UnSupportedAssetError } from './error';
 import { HyperliquidExchange } from './hyperliquid';
-import { PositionNotFound, UnknownError, UnSupportedAssetError } from './error';
 
 const SLIPPAGE = 0.03;
 const BTC_MID = 50_000;

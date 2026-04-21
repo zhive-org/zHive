@@ -1,9 +1,8 @@
-import { Candle, Timeframe } from '../../tools/pinescript';
-import {
+import type {
   AccountSummary,
-  PairInfo,
   DetailedPosition,
   ExecutionResult,
+  PairInfo,
   TradeDecision,
 } from '../types';
 
@@ -12,16 +11,9 @@ export interface IExchange {
 
   getAvailableTradingPairs(): Promise<string[]>;
 
-  getPairInfo(pair: string): Promise<PairInfo | null>;
-
-  fetchCandles(
-    pair: string,
-    interval: Timeframe,
-    sDate: number | Date,
-    eDate: number | Date,
-  ): Promise<Candle[]>;
-
   fetchAccountState(): Promise<AccountSummary>;
 
   fetchPositions(): Promise<DetailedPosition[]>;
+
+  getPairInfo(pair: string): Promise<PairInfo | null>;
 }
