@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import * as path from 'node:path';
 import { fetchSkills, formatSkills, skillsSlashCommand } from './skills';
 import type { SkillDefinition } from '../../../shared/agent/skills/types';
+import { getHiveDir } from '../../../shared/config/constant';
+import { AgentRuntime, initializeAgentRuntime } from '../../../shared/agent';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -134,42 +136,51 @@ describe('skillsSlashCommand', () => {
   });
 
   it('calls onSuccess with formatted output on success', async () => {
-    const onSuccess = vi.fn();
+    const onMessage = vi.fn();
     const onError = vi.fn();
 
-    await skillsSlashCommand('test-agent', { onSuccess, onError });
+    await skillsSlashCommand({ config: { name: 'test-agent' } } as AgentRuntime, {
+      onMessage,
+      onError,
+    });
 
-    expect(onSuccess).toHaveBeenCalledTimes(1);
-    expect(onSuccess.mock.calls[0][0]).toContain('Available Skills');
-    expect(onSuccess.mock.calls[0][0]).toContain('Valid Skill');
-    expect(onSuccess.mock.calls[0][0]).toContain('Skill With Compatibility');
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage.mock.calls[0][0]).toContain('Available Skills');
+    expect(onMessage.mock.calls[0][0]).toContain('Valid Skill');
+    expect(onMessage.mock.calls[0][0]).toContain('Skill With Compatibility');
     expect(onError).not.toHaveBeenCalled();
   });
 
   it('handles empty skills list', async () => {
-    const onSuccess = vi.fn();
+    const onMessage = vi.fn();
     const onError = vi.fn();
 
-    await skillsSlashCommand('empty-agent', { onSuccess, onError });
+    await skillsSlashCommand({ config: { name: 'empty-agent' } } as AgentRuntime, {
+      onMessage,
+      onError,
+    });
 
-    expect(onSuccess).toHaveBeenCalledTimes(1);
-    expect(onSuccess.mock.calls[0][0]).toContain('No skills loaded');
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage.mock.calls[0][0]).toContain('No skills loaded');
     expect(onError).not.toHaveBeenCalled();
   });
 
   it('works without callbacks', async () => {
     // Should not throw
-    await skillsSlashCommand('test-agent', {});
+    await skillsSlashCommand({ config: { name: 'test-agent' } } as AgentRuntime, {});
   });
 
   it('works with agent that has no skills directory', async () => {
-    const onSuccess = vi.fn();
+    const onMessage = vi.fn();
     const onError = vi.fn();
 
-    await skillsSlashCommand('agent-no-skills', { onSuccess, onError });
+    await skillsSlashCommand({ config: { name: 'agent-no-skills' } } as AgentRuntime, {
+      onMessage,
+      onError,
+    });
 
-    expect(onSuccess).toHaveBeenCalledTimes(1);
-    expect(onSuccess.mock.calls[0][0]).toContain('No skills loaded');
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage.mock.calls[0][0]).toContain('No skills loaded');
     expect(onError).not.toHaveBeenCalled();
   });
 });
