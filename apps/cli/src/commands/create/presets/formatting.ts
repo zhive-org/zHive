@@ -58,11 +58,22 @@ ${preset.background}
 }
 
 export function buildStrategyMarkdown(agentName: string, preset: StrategyPreset): string {
-  return `# Prediction Strategy: ${agentName}
+  return `# Trading Strategy
 
 ## Philosophy
-
 ${preset.philosophy}
+
+## Entry Rules
+${preset.entryRules}
+
+## Exit Rules
+${preset.exitRules}
+
+## Position Sizing
+${preset.positionSizing}
+
+## Anti-Patterns
+${preset.antiPattern.map((p) => `- ${p}`).join('\n')}
 
 ## Decision Framework
 ${preset.decisionSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}

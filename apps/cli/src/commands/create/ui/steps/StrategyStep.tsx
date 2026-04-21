@@ -77,17 +77,12 @@ export function StrategyStep(): React.ReactElement {
     (prompt: string, feedback?: string) =>
       generateStrategy({
         providerId: apiConfig.providerId!,
-        agent: {
-          agentName: identity.name,
-          bio: identity.bio,
-        },
+        agentName: identity.name,
         apiKey: apiConfig.apiKey,
-        strategy: {
-          decisionFramework: prompt,
-        },
+        strategy: prompt,
         feedback,
       }),
-    [apiConfig.providerId, apiConfig.apiKey, identity.name, identity.bio],
+    [apiConfig.providerId, apiConfig.apiKey, identity.name],
   );
 
   return (
@@ -106,7 +101,6 @@ export function StrategyStep(): React.ReactElement {
         <StreamingGenerationStep
           title="STRATEGY.md"
           initialContent={initialContent}
-          initialPrompt={strategy.prompt || undefined}
           autoGenerate={autoGenerate}
           promptLabel="Describe your agent's decision framework and trading approach"
           promptPlaceholder="e.g. technical analysis focused, uses RSI and MACD, conservative with short timeframes"

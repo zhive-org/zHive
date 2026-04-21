@@ -13,6 +13,11 @@ export interface SoulPreset {
 export interface StrategyPreset {
   name: string;
   philosophy: string;
+  entryRules: string;
+  exitRules: string;
+  positionSizing: string;
+  riskLimit: string;
+  antiPattern: string[];
   decisionSteps: string[];
 }
 
