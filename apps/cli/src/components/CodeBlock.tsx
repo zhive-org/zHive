@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Text } from 'ink';
+import React, { useState } from 'react';
+import { Box, Text, useInput } from 'ink';
 import { colors, border } from '../commands/shared/theme';
 
 interface CodeBlockProps {
@@ -19,22 +19,49 @@ export function CodeBlock({
   const termRows = process.stdout.rows || 30;
   const maxLines = Math.max(5, termRows - reserveRows);
   const allLines = children.split('\n');
-  const truncated = allLines.length > maxLines;
-  const lines = truncated ? allLines.slice(0, maxLines) : allLines;
-  const hiddenCount = allLines.length - lines.length;
+  const scrollable = allLines.length > maxLines;
+  const maxScroll = Math.max(0, allLines.length - maxLines);
+
+  const [scroll, setScroll] = useState(0);
+  const clampedScroll = Math.min(scroll, maxScroll);
+
+  useInput((_input, key) => {
+    if (!scrollable) return;
+    if (key.upArrow) {
+      setScroll((s) => Math.max(0, Math.min(s, maxScroll) - 1));
+    } else if (key.downArrow) {
+      setScroll((s) => Math.min(maxScroll, s + 1));
+    } else if (key.pageUp) {
+      setScroll((s) => Math.max(0, Math.min(s, maxScroll) - maxLines));
+    } else if (key.pageDown) {
+      setScroll((s) => Math.min(maxScroll, s + maxLines));
+    }
+  });
+
+  const visibleLines = allLines.slice(clampedScroll, clampedScroll + maxLines);
+  const hiddenAbove = clampedScroll;
+  const hiddenBelow = Math.max(0, allLines.length - clampedScroll - maxLines);
+
+  const upHint = hiddenAbove > 0 ? ` \u2191${hiddenAbove}` : '';
+  const downHint = hiddenBelow > 0 ? ` \u2193${hiddenBelow}` : '';
+
+  const topLabel = title ? `${border.horizontal} ${title}${upHint} ` : '';
+  const topFill = border.horizontal.repeat(Math.max(0, boxWidth - topLabel.length - 2));
+
+  const bottomLabel = downHint ? `${border.horizontal}${downHint} ` : '';
+  const bottomFill = border.horizontal.repeat(Math.max(0, boxWidth - bottomLabel.length - 2));
 
   return (
     <Box flexDirection="column" marginLeft={2}>
       <Box>
         <Text color={colors.grayDim}>
           {border.topLeft}
-          {title
-            ? `${border.horizontal} ${title} ${border.horizontal.repeat(Math.max(0, boxWidth - title.length - 5))}`
-            : border.horizontal.repeat(Math.max(0, boxWidth - 2))}
+          {topLabel}
+          {topFill}
           {border.topRight}
         </Text>
       </Box>
-      {lines.map((line, i) => (
+      {visibleLines.map((line, i) => (
         <Box key={i} width={boxWidth}>
           <Text color={colors.grayDim}>{border.vertical}</Text>
           <Box flexGrow={1} paddingX={1}>
@@ -45,21 +72,11 @@ export function CodeBlock({
           <Text color={colors.grayDim}>{border.vertical}</Text>
         </Box>
       ))}
-      {truncated && (
-        <Box width={boxWidth}>
-          <Text color={colors.grayDim}>{border.vertical}</Text>
-          <Box flexGrow={1} paddingX={1}>
-            <Text color={colors.grayDim}>
-              … +{hiddenCount} more {hiddenCount === 1 ? 'line' : 'lines'}
-            </Text>
-          </Box>
-          <Text color={colors.grayDim}>{border.vertical}</Text>
-        </Box>
-      )}
       <Box>
         <Text color={colors.grayDim}>
           {border.bottomLeft}
-          {border.horizontal.repeat(Math.max(0, boxWidth - 2))}
+          {bottomLabel}
+          {bottomFill}
           {border.bottomRight}
         </Text>
       </Box>

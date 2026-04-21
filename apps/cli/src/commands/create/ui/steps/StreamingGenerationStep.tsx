@@ -129,7 +129,11 @@ export function StreamingGenerationStep({
               <Text color={colors.honey} bold>
                 Enter
               </Text>{' '}
-              to accept {symbols.dot} Type feedback to regenerate
+              to accept {symbols.dot} Type feedback to regenerate {symbols.dot}{' '}
+              <Text color={colors.honey} bold>
+                ↑↓
+              </Text>{' '}
+              to scroll
             </Text>
           </Box>
           <Box marginTop={1}>
