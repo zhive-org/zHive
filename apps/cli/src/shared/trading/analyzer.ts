@@ -511,7 +511,7 @@ export class AssetAnalyzer {
     coin: string,
     pairInfo: PairInfo,
   ): Promise<string> {
-    const dex = coin.includes(':') ? coin.split(':')[1] : undefined;
+    const dex = coin.includes(':') ? coin.split(':')[0] : undefined;
 
     const hyperliquidProvider = await HyperliquidProvider.create({ dex });
     const pineScriptTool = createPineScriptToolForAsset(coin, hyperliquidProvider);
