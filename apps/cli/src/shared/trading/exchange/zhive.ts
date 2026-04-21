@@ -101,12 +101,15 @@ export class ZhiveExchange implements IExchange {
 
     const isBuy = position.side === 'short';
 
+    const reasoning = d.reasoning?.trim() || undefined;
     const req: {
       token_id: string;
       position_delta: number;
+      reasoning?: string;
     } = {
       token_id: d.coin,
       position_delta: position.size * (isBuy ? 1 : -1),
+      reasoning,
     };
 
     const url = `${this.baseUrl}/v2/order/close`;
@@ -147,14 +150,17 @@ export class ZhiveExchange implements IExchange {
     const entryPrice = parseFloat(mids[order.coin]);
     const size = formatSize((order.sizeUsd / entryPrice) * (isBuy ? 1 : -1), szDecimal);
 
+    const reasoning = order.reasoning?.trim() || undefined;
     const req: {
       token_id: string;
       position_delta: string;
       stop_loss?: string;
       take_profit?: string;
+      reasoning?: string;
     } = {
       token_id: order.coin,
       position_delta: size,
+      reasoning,
     };
 
     let slPrice: string | undefined;
