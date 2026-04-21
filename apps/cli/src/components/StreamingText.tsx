@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
 import { colors, border } from '../commands/shared/theme';
 import { extractErrorMessage } from '../shared/megathread/utils';
+import { wrapText } from './wrap-text';
 
 interface StreamingTextProps {
   stream: AsyncIterable<string> | null;
@@ -64,12 +65,13 @@ export function StreamingText({
   }, [stream]);
 
   const termWidth = process.stdout.columns || 60;
-  const boxWidth = Math.min(termWidth - 4, 76);
+  const boxWidth = Math.max(20, termWidth - 4);
+  const innerWidth = Math.max(10, boxWidth - 2);
   const termRows = process.stdout.rows || 30;
   const maxContentLines = Math.max(5, termRows - 10);
-  const allLines = text.split('\n');
+  const displayLines = wrapText(text, innerWidth);
   const visibleLines =
-    allLines.length > maxContentLines ? allLines.slice(-maxContentLines) : allLines;
+    displayLines.length > maxContentLines ? displayLines.slice(-maxContentLines) : displayLines;
 
   return (
     <Box flexDirection="column" marginLeft={2}>

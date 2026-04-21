@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { colors, border } from '../commands/shared/theme';
+import { wrapText } from './wrap-text';
 
 interface CodeBlockProps {
   title?: string;
@@ -15,12 +16,14 @@ export function CodeBlock({
   reserveRows = 20,
 }: CodeBlockProps): React.ReactElement {
   const termWidth = process.stdout.columns || 60;
-  const boxWidth = Math.min(termWidth - 4, 76);
+  const boxWidth = Math.max(20, termWidth - 4);
+  const innerWidth = Math.max(10, boxWidth - 4);
   const termRows = process.stdout.rows || 30;
   const maxLines = Math.max(5, termRows - reserveRows);
-  const allLines = children.split('\n');
-  const scrollable = allLines.length > maxLines;
-  const maxScroll = Math.max(0, allLines.length - maxLines);
+
+  const displayLines = wrapText(children, innerWidth);
+  const scrollable = displayLines.length > maxLines;
+  const maxScroll = Math.max(0, displayLines.length - maxLines);
 
   const [scroll, setScroll] = useState(0);
   const clampedScroll = Math.min(scroll, maxScroll);
@@ -38,9 +41,9 @@ export function CodeBlock({
     }
   });
 
-  const visibleLines = allLines.slice(clampedScroll, clampedScroll + maxLines);
+  const visibleLines = displayLines.slice(clampedScroll, clampedScroll + maxLines);
   const hiddenAbove = clampedScroll;
-  const hiddenBelow = Math.max(0, allLines.length - clampedScroll - maxLines);
+  const hiddenBelow = Math.max(0, displayLines.length - clampedScroll - maxLines);
 
   const upHint = hiddenAbove > 0 ? ` \u2191${hiddenAbove}` : '';
   const downHint = hiddenBelow > 0 ? ` \u2193${hiddenBelow}` : '';
