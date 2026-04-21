@@ -81,8 +81,8 @@ importers:
         specifier: ^4.17.23
         version: 4.17.23
       pinets:
-        specifier: ^0.9.7
-        version: 0.9.7
+        specifier: ^0.9.13
+        version: 0.9.13
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1842,8 +1842,8 @@ packages:
     resolution: {integrity: sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==}
     engines: {node: '>=12'}
 
-  pinets@0.9.7:
-    resolution: {integrity: sha512-hgqSmHdz7Ss99Fy3kgiin2L6g8Z/E6bZihCC7jKCdNPJHyDfrJcZwIzLV6C1WkkyjidOJVu2h/aQjmQlwFKGgA==}
+  pinets@0.9.13:
+    resolution: {integrity: sha512-l9KXhYwUfEcg7a3o6/rBcFp6wJ4Vc91TOOMp43WengcFlM/cpmyTnumVp2BMHYF0OVGqpeibpvrQvL66SFA40g==}
 
   pirates@4.0.7:
     resolution: {integrity: sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==}
@@ -4001,7 +4001,7 @@ snapshots:
 
   picomatch@4.0.3: {}
 
-  pinets@0.9.7:
+  pinets@0.9.13:
     dependencies:
       acorn: 8.15.0
       acorn-walk: 8.3.4
