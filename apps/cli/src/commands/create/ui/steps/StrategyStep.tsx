@@ -68,10 +68,11 @@ export function StrategyStep(): React.ReactElement {
   const handleComplete = useCallback(
     (strategyContent: string) => {
       dispatch({
-        type: 'UPDATE_STRATEGY',
+        type: 'SET_STRATEGY',
         payload: {
           content: strategyContent,
           draft: '',
+          input: '',
         },
       });
     },
