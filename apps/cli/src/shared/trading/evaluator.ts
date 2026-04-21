@@ -8,7 +8,7 @@ import { AssetAnalyzer } from './analyzer.js';
 import { IExchange } from './exchange/types';
 import { loadMemory } from './memory';
 import { RiskEngine } from './risk';
-import type { AccountSummary, AssetContext, TradeDecision } from './types.js';
+import type { AccountSummary, PairInfo, TradeDecision } from './types.js';
 
 const { Output, generateText } = wrapAISDK(ai);
 
@@ -45,31 +45,35 @@ export class AssetEvaluator {
     this.analyzer = new AssetAnalyzer(runtime, exchange);
   }
 
-  async evaluate(coins: string[], account: AccountSummary): Promise<TradeDecision[]> {
+  async evaluate(
+    ctx: { abortSignal?: AbortSignal },
+    coins: string[],
+    account: AccountSummary,
+  ): Promise<TradeDecision[]> {
     return traceable(
       async () => {
         const assetEntries: Array<{
           coin: string;
-          ctx: AssetContext;
+          ctx: PairInfo;
           position?: AccountSummary['positions'][number];
           analysis?: string;
         }> = [];
 
         const analysisPromises: Promise<string>[] = [];
         for (const coin of coins) {
-          const ctx = await this.exchange.getPairInfo(coin);
-          if (!ctx) {
+          const pairInfo = await this.exchange.getPairInfo(coin);
+          if (!pairInfo) {
             continue;
           }
           analysisPromises.push(
             this.analyzer
-              .analyze(coin, ctx)
+              .analyze(ctx, coin, pairInfo)
               .catch((e) => `Analysis failed: ${formatToolError('Technical Analysis', e)}`),
           );
 
           assetEntries.push({
             coin,
-            ctx,
+            ctx: pairInfo,
             position: account.positions.find((p) => p.coin === coin),
           });
         }
@@ -95,6 +99,7 @@ export class AssetEvaluator {
           const { output } = await generateText({
             model: this.runtime.model,
             system: cacheableSystem(systemPrompt),
+            abortSignal: ctx.abortSignal,
             prompt: userPrompt,
             output: Output.object({ schema: TradeDecisionArraySchema }),
           });
@@ -151,7 +156,7 @@ Rules
   private async buildUserPrompt(
     assetEntries: Array<{
       coin: string;
-      ctx: AssetContext;
+      ctx: PairInfo;
       analysis?: string;
       position?: {
         side: string;

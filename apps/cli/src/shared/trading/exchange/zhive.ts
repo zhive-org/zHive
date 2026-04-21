@@ -5,7 +5,7 @@ import { HIVE_API_URL } from '../../config/constant';
 import { Candle, Timeframe } from '../../tools/pinescript';
 import {
   AccountSummary,
-  AssetContext,
+  PairInfo,
   DetailedPosition,
   ExecutionResult,
   TradeDecision,
@@ -205,7 +205,7 @@ export class ZhiveExchange implements IExchange {
     };
   }
 
-  async getPairInfo(pair: string): Promise<AssetContext | null> {
+  async getPairInfo(pair: string): Promise<PairInfo | null> {
     const parts = pair.split(':');
     let dex: string | undefined;
     if (parts.length === 2) {

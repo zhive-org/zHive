@@ -3,7 +3,7 @@ import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { AgentRuntime } from '../agent/runtime';
 import { createPineScriptTool, createPineScriptToolForAsset } from '../tools/pinescript';
 import { IExchange } from './exchange/types';
-import { AssetContext } from './types';
+import { PairInfo } from './types';
 import { cacheableSystem } from '../agent';
 
 const { ToolLoopAgent } = wrapAISDK(ai);
@@ -20,7 +20,11 @@ export class AssetAnalyzer {
     private exchange: IExchange,
   ) {}
 
-  async analyze(coin: string, ctx: AssetContext): Promise<string> {
+  async analyze(
+    ctx: { abortSignal?: AbortSignal },
+    coin: string,
+    pairInfo: PairInfo,
+  ): Promise<string> {
     const agent = new ToolLoopAgent({
       model: this.runtime.model,
       instructions: cacheableSystem(SYSTEM_PROMPT),
@@ -33,18 +37,18 @@ export class AssetAnalyzer {
     });
     const prompt = `## Asset
 Asset: ${coin}
-Mark price: ${ctx.markPx}
-Mid price: ${ctx.midPx ? `$${ctx.midPx}` : 'N/A'}
-Funding rate: ${ctx.funding}
-Open interest: $${ctx.openInterest.toLocaleString()}
-Prev day price: $${ctx.prevDayPx}
-24h volume: $${ctx.dayNtlVlm.toLocaleString()}
+Mark price: ${pairInfo.markPx}
+Mid price: ${pairInfo.midPx ? `$${pairInfo.midPx}` : 'N/A'}
+Funding rate: ${pairInfo.funding}
+Open interest: $${pairInfo.openInterest.toLocaleString()}
+Prev day price: $${pairInfo.prevDayPx}
+24h volume: $${pairInfo.dayNtlVlm.toLocaleString()}
 
 
 ## Strategy
 ${this.runtime.config.strategyContent}`;
 
-    const res = await agent.generate({ prompt });
+    const res = await agent.generate({ prompt, abortSignal: ctx.abortSignal });
     return res.text;
   }
 }

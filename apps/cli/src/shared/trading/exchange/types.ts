@@ -1,7 +1,7 @@
 import { Candle, Timeframe } from '../../tools/pinescript';
 import {
   AccountSummary,
-  AssetContext,
+  PairInfo,
   DetailedPosition,
   ExecutionResult,
   TradeDecision,
@@ -12,7 +12,7 @@ export interface IExchange {
 
   getAvailableTradingPairs(): Promise<string[]>;
 
-  getPairInfo(pair: string): Promise<AssetContext | null>;
+  getPairInfo(pair: string): Promise<PairInfo | null>;
 
   fetchCandles(
     pair: string,

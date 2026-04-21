@@ -5,7 +5,7 @@ import { Timeframe, Candle } from '../../tools/pinescript';
 import {
   TradeDecision,
   ExecutionResult,
-  AssetContext,
+  PairInfo,
   AccountSummary,
   DetailedPosition,
   PositionInfo,
@@ -232,7 +232,7 @@ export class HyperliquidExchange implements IExchange {
     return pairs;
   }
 
-  async getPairInfo(pair: string): Promise<AssetContext | null> {
+  async getPairInfo(pair: string): Promise<PairInfo | null> {
     const parts = pair.split(':');
     let dex: string | undefined;
     if (parts.length === 2) {

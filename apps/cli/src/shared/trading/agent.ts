@@ -21,6 +21,7 @@ const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // 1 hr
 
 export class TradingAgent {
   private _timeoutId: ReturnType<typeof setTimeout> | null = null;
+  private abortController?: AbortController | null = null;
 
   private constructor(
     private runtime: AgentRuntime,
@@ -76,10 +77,16 @@ export class TradingAgent {
     if (this._timeoutId) {
       clearTimeout(this._timeoutId);
     }
+    if (this.abortController) {
+      this.abortController.abort();
+    }
+    this._timeoutId = null;
+    this.abortController = null;
   }
 
   private async runOnce() {
     const account = await this.exchange.fetchAccountState();
+    this.abortController = new AbortController();
 
     const assetSet = new Set([...this.watchList]);
 
@@ -90,7 +97,9 @@ export class TradingAgent {
 
     const assets = Array.from(assetSet);
     this.callbacks.onEvalStarted?.(assets);
-    const decisions = await this.evaluator.evaluate(assets, account);
+    const ctx = { abortSignal: this.abortController.signal };
+
+    const decisions = await this.evaluator.evaluate(ctx, assets, account);
 
     for (let i = 0; i < decisions.length; i++) {
       decisions[i] = this.riskEngine.validate(decisions[i], account);
@@ -115,6 +124,7 @@ export class TradingAgent {
     }
 
     await this.saveDecisions(decisions);
+    this.abortController = null;
   }
 
   private async saveDecisions(decisions: TradeDecision[]): Promise<void> {

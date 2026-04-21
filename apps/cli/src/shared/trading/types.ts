@@ -3,7 +3,7 @@ export interface StrategyConfig {
   description: string;
 }
 
-export interface AssetContext {
+export interface PairInfo {
   coin: string;
   markPx: string;
   funding: string;
