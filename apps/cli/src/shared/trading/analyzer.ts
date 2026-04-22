@@ -9,7 +9,7 @@ import { HyperliquidProvider } from '../tools/pinescript/providers/hyperliquid/p
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 
-const ANALYZER_MAX_OUTPUT_TOKENS = 4096;
+const ANALYZER_MAX_OUTPUT_TOKENS = 50000;
 
 const pinescriptGuide = `# PineScript Usage Guide for PineTS Runtime
 

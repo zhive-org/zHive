@@ -12,7 +12,7 @@ import type { AccountSummary, PairInfo, TradeDecision } from './types.js';
 
 const { Output, generateText } = wrapAISDK(ai);
 
-const EVALUATOR_MAX_OUTPUT_TOKENS = 4096;
+const EVALUATOR_MAX_OUTPUT_TOKENS = 50000;
 
 const TradeDecisionSchema = z.object({
   coin: z.string(),
