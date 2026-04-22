@@ -10,6 +10,7 @@ import type {
   PositionInfo,
   TradeDecision,
 } from '../types';
+import { HyperliquidService } from '../../hyperliquid/service';
 import { PositionNotFound, UnknownError, UnSupportedAssetError } from './error';
 import type { IExchange } from './types';
 
@@ -19,7 +20,7 @@ export class HyperliquidExchange implements IExchange {
   constructor(
     private walletAddress: `0x${string}`,
     private exchange: ExchangeClient,
-    private info: InfoClient,
+    private hl: HyperliquidService,
     private converter: SymbolConverter,
     private slippage: number = DEFAULT_SLIPPAGE,
   ) {}
@@ -31,7 +32,7 @@ export class HyperliquidExchange implements IExchange {
       dex = parts[0];
     }
 
-    const [meta, assetCtxs] = await this.info.metaAndAssetCtxs({ dex });
+    const [meta, assetCtxs] = await this.hl.metaAndAssetCtxs({ dex });
 
     const assetIndex = meta.universe.findIndex((u) => u.name === pair);
     if (assetIndex === -1) {
@@ -67,10 +68,11 @@ export class HyperliquidExchange implements IExchange {
     const wallet = privateKeyToAccount(privateKey);
 
     const info = new InfoClient({ transport });
+    const hl = new HyperliquidService(info);
     const exchange = new ExchangeClient({ transport, wallet });
     const converter = await SymbolConverter.create({ transport, dexs: true });
 
-    return new HyperliquidExchange(walletAddress, exchange, info, converter, slippage);
+    return new HyperliquidExchange(walletAddress, exchange, hl, converter, slippage);
   }
 
   async placeOrder(order: TradeDecision): Promise<ExecutionResult> {
@@ -100,7 +102,7 @@ export class HyperliquidExchange implements IExchange {
 
     const isBuy = position.side === 'short';
     const dex = d.coin.includes(':') ? d.coin.split(':')[0] : undefined;
-    const mids = await this.info.allMids(dex ? { dex } : undefined);
+    const mids = await this.hl.allMids(dex ? { dex } : undefined);
     const szDecimals = this.converter.getSzDecimals(d.coin);
     const mid = mids[d.coin];
     if (_.isNil(mid) || _.isNil(szDecimals)) {
@@ -149,7 +151,7 @@ export class HyperliquidExchange implements IExchange {
     });
 
     const dex = d.coin.includes(':') ? d.coin.split(':')[0] : undefined;
-    const mids = await this.info.allMids(dex ? { dex } : undefined);
+    const mids = await this.hl.allMids(dex ? { dex } : undefined);
     const szDecimal = this.converter.getSzDecimals(d.coin);
     if (!(d.coin in mids) || _.isNil(szDecimal)) {
       throw new UnSupportedAssetError();
@@ -240,8 +242,8 @@ export class HyperliquidExchange implements IExchange {
 
   async getAvailableTradingPairs(): Promise<string[]> {
     const results = await Promise.all([
-      this.info.metaAndAssetCtxs(),
-      this.info.metaAndAssetCtxs({ dex: 'xyz' }),
+      this.hl.metaAndAssetCtxs(),
+      this.hl.metaAndAssetCtxs({ dex: 'xyz' }),
     ]);
 
     const pairs: string[] = [];
@@ -256,8 +258,8 @@ export class HyperliquidExchange implements IExchange {
 
   async fetchAccountState(): Promise<AccountSummary> {
     const [state, spot] = await Promise.all([
-      this.info.clearinghouseState({ user: this.walletAddress }),
-      this.info.spotClearinghouseState({ user: this.walletAddress }),
+      this.hl.info.clearinghouseState({ user: this.walletAddress }),
+      this.hl.info.spotClearinghouseState({ user: this.walletAddress }),
     ]);
 
     const positions: PositionInfo[] = state.assetPositions
@@ -286,8 +288,8 @@ export class HyperliquidExchange implements IExchange {
 
   async fetchPositions(): Promise<DetailedPosition[]> {
     const [state, mids] = await Promise.all([
-      this.info.clearinghouseState({ user: this.walletAddress }),
-      this.info.allMids(),
+      this.hl.info.clearinghouseState({ user: this.walletAddress }),
+      this.hl.info.allMids(),
     ]);
 
     return state.assetPositions

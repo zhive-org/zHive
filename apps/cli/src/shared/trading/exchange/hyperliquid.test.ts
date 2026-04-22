@@ -1,6 +1,7 @@
-import type { ExchangeClient, InfoClient } from '@nktkas/hyperliquid';
+import type { ExchangeClient } from '@nktkas/hyperliquid';
 import type { SymbolConverter } from '@nktkas/hyperliquid/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { HyperliquidService } from '../../hyperliquid/service';
 import { AccountSummary, PositionInfo, TradeDecision } from '../types';
 import { PositionNotFound, UnSupportedAssetError } from './error';
 import { HyperliquidExchange } from './hyperliquid';
@@ -79,7 +80,7 @@ describe('HyperliquidExchange', () => {
     hyperliquid = new HyperliquidExchange(
       '0x123',
       exchange as unknown as ExchangeClient,
-      info as unknown as InfoClient,
+      { info } as unknown as HyperliquidService,
       converter as unknown as SymbolConverter,
     );
   });

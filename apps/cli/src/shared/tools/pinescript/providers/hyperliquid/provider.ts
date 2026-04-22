@@ -5,10 +5,11 @@ import _ from 'lodash';
 import { PINETS_TO_HYPERLIQUID_TF } from './timeframe';
 import { PineTsTimeframe } from '../../types';
 import { timeframeToMs } from './utils';
+import { HyperliquidService } from '../../../../hyperliquid/service';
 
 export class HyperliquidProvider implements IProvider {
   private constructor(
-    private info: InfoClient,
+    private hl: HyperliquidService,
     private converter: SymbolConverter,
     private dex?: string,
   ) {}
@@ -22,9 +23,10 @@ export class HyperliquidProvider implements IProvider {
   static async create({ dex }: { dex?: string } = {}) {
     const transport = new HttpTransport();
     const info = new InfoClient({ transport });
+    const hl = new HyperliquidService(info);
     const converter = await SymbolConverter.create({ transport, dexs: true });
 
-    return new HyperliquidProvider(info, converter, dex);
+    return new HyperliquidProvider(hl, converter, dex);
   }
 
   async getMarketData(
@@ -45,7 +47,7 @@ export class HyperliquidProvider implements IProvider {
 
     const symbol = this.getSymbol(tickerId);
 
-    const raw = await this.info.candleSnapshot({
+    const raw = await this.hl.candleSnapshot({
       coin: symbol,
       interval: hyperliquidTF,
       startTime: sDate,
@@ -80,7 +82,7 @@ export class HyperliquidProvider implements IProvider {
     return candles;
   }
   async getSymbolInfo(tickerId: string): Promise<ISymbolInfo> {
-    const [meta, assetCtxs] = await this.info.metaAndAssetCtxs({ dex: this.dex });
+    const [meta, assetCtxs] = await this.hl.metaAndAssetCtxs({ dex: this.dex });
 
     const symbol = this.getSymbol(tickerId);
     const assetIndex = meta.universe.findIndex((u) => u.name === symbol);

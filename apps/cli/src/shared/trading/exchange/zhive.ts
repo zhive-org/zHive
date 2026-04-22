@@ -2,6 +2,7 @@ import { HttpTransport, InfoClient } from '@nktkas/hyperliquid';
 import { formatPrice, formatSize, SymbolConverter } from '@nktkas/hyperliquid/utils';
 import _ from 'lodash';
 import { HIVE_API_URL } from '../../config/constant';
+import { HyperliquidService } from '../../hyperliquid/service';
 import {
   AccountSummary,
   DetailedPosition,
@@ -33,7 +34,7 @@ type PortfolioSummaryResponse = {
 export class ZhiveExchange implements IExchange {
   constructor(
     private baseUrl: string,
-    private info: InfoClient,
+    private hl: HyperliquidService,
     private converter: SymbolConverter,
     private apiKey?: string,
   ) {}
@@ -48,9 +49,10 @@ export class ZhiveExchange implements IExchange {
     const transport = new HttpTransport();
 
     const info = new InfoClient({ transport });
+    const hl = new HyperliquidService(info);
     const converter = await SymbolConverter.create({ transport, dexs: true });
 
-    return new ZhiveExchange(baseUrl, info, converter, apiKey);
+    return new ZhiveExchange(baseUrl, hl, converter, apiKey);
   }
 
   async getPairInfo(pair: string): Promise<PairInfo | null> {
@@ -60,7 +62,7 @@ export class ZhiveExchange implements IExchange {
       dex = parts[0];
     }
 
-    const [meta, assetCtxs] = await this.info.metaAndAssetCtxs({ dex });
+    const [meta, assetCtxs] = await this.hl.metaAndAssetCtxs({ dex });
 
     const assetIndex = meta.universe.findIndex((u) => u.name === pair);
     if (assetIndex === -1) {
@@ -89,8 +91,8 @@ export class ZhiveExchange implements IExchange {
 
   async getAvailableTradingPairs(): Promise<string[]> {
     const results = await Promise.all([
-      this.info.metaAndAssetCtxs(),
-      this.info.metaAndAssetCtxs({ dex: 'xyz' }),
+      this.hl.metaAndAssetCtxs(),
+      this.hl.metaAndAssetCtxs({ dex: 'xyz' }),
     ]);
 
     const pairs: string[] = [];
@@ -162,7 +164,7 @@ export class ZhiveExchange implements IExchange {
     const isBuy = order.action === 'LONG';
     // convert size from usd to currency unit
     const dex = order.coin.includes(':') ? order.coin.split(':')[0] : undefined;
-    const mids = await this.info.allMids(dex ? { dex } : undefined);
+    const mids = await this.hl.allMids(dex ? { dex } : undefined);
     const szDecimal = this.converter.getSzDecimals(order.coin);
     if (!(order.coin in mids) || _.isNil(szDecimal)) {
       throw new UnSupportedAssetError();
