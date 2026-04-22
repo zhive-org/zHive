@@ -80,7 +80,7 @@ describe('HyperliquidExchange', () => {
     hyperliquid = new HyperliquidExchange(
       '0x123',
       exchange as unknown as ExchangeClient,
-      { info } as unknown as HyperliquidService,
+      { info, allMids: info.allMids } as unknown as HyperliquidService,
       converter as unknown as SymbolConverter,
     );
   });
