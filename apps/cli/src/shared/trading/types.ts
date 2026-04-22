@@ -58,7 +58,7 @@ export interface AccountSummary {
  * If action is CLOSE, sizeUsd, tp, sl and leverage won't be used.
  */
 export interface TradeDecision {
-  coin: string;
+  asset: string;
   action: 'LONG' | 'SHORT' | 'CLOSE' | 'HOLD';
   sizeUsd: number;
   leverage: number;

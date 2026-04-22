@@ -76,7 +76,7 @@ export class HyperliquidExchange implements IExchange {
   }
 
   async placeOrder(order: TradeDecision): Promise<ExecutionResult> {
-    const assetId = this.converter.getAssetId(order.coin);
+    const assetId = this.converter.getAssetId(order.asset);
     if (_.isNil(assetId)) {
       throw new UnSupportedAssetError();
     }
@@ -89,22 +89,22 @@ export class HyperliquidExchange implements IExchange {
   }
 
   private async _executeMarketClose(d: TradeDecision): Promise<ExecutionResult> {
-    const assetId = this.converter.getAssetId(d.coin);
+    const assetId = this.converter.getAssetId(d.asset);
     if (_.isNil(assetId)) {
       throw new UnSupportedAssetError();
     }
 
     const account = await this.fetchAccountState();
-    const position = account.positions.find((p) => p.coin === d.coin);
+    const position = account.positions.find((p) => p.coin === d.asset);
     if (!position) {
       throw new PositionNotFound();
     }
 
     const isBuy = position.side === 'short';
-    const dex = d.coin.includes(':') ? d.coin.split(':')[0] : undefined;
+    const dex = d.asset.includes(':') ? d.asset.split(':')[0] : undefined;
     const mids = await this.hl.allMids(dex ? { dex } : undefined);
-    const szDecimals = this.converter.getSzDecimals(d.coin);
-    const mid = mids[d.coin];
+    const szDecimals = this.converter.getSzDecimals(d.asset);
+    const mid = mids[d.asset];
     if (_.isNil(mid) || _.isNil(szDecimals)) {
       throw new UnSupportedAssetError();
     }
@@ -131,7 +131,7 @@ export class HyperliquidExchange implements IExchange {
     }
 
     return {
-      coin: d.coin,
+      coin: d.asset,
       action: 'CLOSE',
       size,
     };
@@ -139,7 +139,7 @@ export class HyperliquidExchange implements IExchange {
 
   private async _executeMarketOpen(d: TradeDecision): Promise<ExecutionResult> {
     const isBuy = d.action === 'LONG';
-    const assetId = this.converter.getAssetId(d.coin);
+    const assetId = this.converter.getAssetId(d.asset);
     if (_.isNil(assetId)) {
       throw new UnSupportedAssetError();
     }
@@ -150,14 +150,14 @@ export class HyperliquidExchange implements IExchange {
       leverage: d.leverage,
     });
 
-    const dex = d.coin.includes(':') ? d.coin.split(':')[0] : undefined;
+    const dex = d.asset.includes(':') ? d.asset.split(':')[0] : undefined;
     const mids = await this.hl.allMids(dex ? { dex } : undefined);
-    const szDecimal = this.converter.getSzDecimals(d.coin);
-    if (!(d.coin in mids) || _.isNil(szDecimal)) {
+    const szDecimal = this.converter.getSzDecimals(d.asset);
+    if (!(d.asset in mids) || _.isNil(szDecimal)) {
       throw new UnSupportedAssetError();
     }
 
-    const mid = parseFloat(mids[d.coin]);
+    const mid = parseFloat(mids[d.asset]);
     const entryPrice = mid * (isBuy ? 1 + this.slippage : 1 - this.slippage);
     const size = formatSize(d.sizeUsd / entryPrice, szDecimal);
 
@@ -232,7 +232,7 @@ export class HyperliquidExchange implements IExchange {
     }
 
     return {
-      coin: d.coin,
+      coin: d.asset,
       action: d.action,
       size,
       slPrice,

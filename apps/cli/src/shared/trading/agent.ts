@@ -132,7 +132,7 @@ export class TradingAgent {
     const timestamp = new Date().toISOString();
     const newEntry =
       `## ${timestamp}\n\n` +
-      decisions.map((d) => `- ${d.coin}: ${d.action} $${d.sizeUsd} (${d.reasoning})`).join('\n') +
+      decisions.map((d) => `- ${d.asset}: ${d.action} $${d.sizeUsd} (${d.reasoning})`).join('\n') +
       '\n\n';
     let updatedMemory = memory + newEntry;
     const lineCount = getMemoryLineCount(updatedMemory);

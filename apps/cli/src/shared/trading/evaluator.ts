@@ -15,7 +15,7 @@ const { Output, generateText } = wrapAISDK(ai);
 const EVALUATOR_MAX_OUTPUT_TOKENS = 50000;
 
 const TradeDecisionSchema = z.object({
-  coin: z.string(),
+  asset: z.string().describe('Asset to invest. this should match asset input'),
   action: z.enum(['LONG', 'SHORT', 'CLOSE', 'HOLD']),
   reasoning: z.string(),
   sizeUsd: z.number().describe('Position size in USD'),
@@ -110,7 +110,7 @@ export class AssetEvaluator {
           // Build a map of returned decisions
           const decisionMap = new Map<string, TradeDecision>();
           for (const d of output.decisions) {
-            decisionMap.set(d.coin, d);
+            decisionMap.set(d.asset, d);
           }
 
           // Return decisions for all requested coins, defaulting to HOLD if missing
@@ -173,14 +173,14 @@ Rules
   ): Promise<string> {
     const assetLines: string[] = [];
     for (const { coin, ctx, position, analysis } of assetEntries) {
-      assetLines.push(`--- ${coin} ---`);
-      assetLines.push(`  Mark price: $${ctx.markPx}`);
-      assetLines.push(`  Mid price: ${ctx.midPx ? `$${ctx.midPx}` : 'N/A'}`);
-      assetLines.push(`  Funding rate: ${ctx.funding}`);
-      assetLines.push(`  Open interest: $${ctx.openInterest.toLocaleString()}`);
-      assetLines.push(`  Prev day price: $${ctx.prevDayPx}`);
-      assetLines.push(`  24h volume: $${ctx.dayNtlVlm.toLocaleString()}`);
-      assetLines.push(`  Analysis: ${analysis ?? 'No analysis available'}`);
+      assetLines.push(`Asset: ${coin}`);
+      assetLines.push(`Mark price: $${ctx.markPx}`);
+      assetLines.push(`Mid price: ${ctx.midPx ? `$${ctx.midPx}` : 'N/A'}`);
+      assetLines.push(`Funding rate: ${ctx.funding}`);
+      assetLines.push(`Open interest: $${ctx.openInterest.toLocaleString()}`);
+      assetLines.push(`Prev day price: $${ctx.prevDayPx}`);
+      assetLines.push(`24h volume: $${ctx.dayNtlVlm.toLocaleString()}`);
+      assetLines.push(`Analysis: ${analysis ?? 'No analysis available'}`);
 
       if (position) {
         assetLines.push(
@@ -189,7 +189,7 @@ Rules
       } else {
         assetLines.push('  No current position.');
       }
-      assetLines.push('');
+      assetLines.push('---');
     }
 
     const memory = await loadMemory('trade-decisions.md');
@@ -213,6 +213,6 @@ ${memory}`;
   }
 }
 
-function holdDecision(coin: string, reasoning: string): TradeDecision {
-  return { coin, action: 'HOLD', sizeUsd: 0, leverage: 1, reasoning };
+function holdDecision(asset: string, reasoning: string): TradeDecision {
+  return { asset, action: 'HOLD', sizeUsd: 0, leverage: 1, reasoning };
 }

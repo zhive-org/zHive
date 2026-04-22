@@ -77,7 +77,7 @@ export class ZhiveExchange implements IExchange {
   }
 
   async placeOrder(order: TradeDecision): Promise<ExecutionResult> {
-    const assetId = this.converter.getAssetId(order.coin);
+    const assetId = this.converter.getAssetId(order.asset);
     if (_.isNil(assetId)) {
       throw new UnSupportedAssetError();
     }
@@ -110,13 +110,13 @@ export class ZhiveExchange implements IExchange {
       throw new Error('api key is required');
     }
 
-    const assetId = this.converter.getAssetId(d.coin);
+    const assetId = this.converter.getAssetId(d.asset);
     if (_.isNil(assetId)) {
       throw new UnSupportedAssetError();
     }
 
     const account = await this.fetchAccountState();
-    const position = account.positions.find((p) => p.coin === d.coin);
+    const position = account.positions.find((p) => p.coin === d.asset);
     if (!position) {
       throw new PositionNotFound();
     }
@@ -129,7 +129,7 @@ export class ZhiveExchange implements IExchange {
       position_delta: number;
       reasoning?: string;
     } = {
-      token_id: d.coin,
+      token_id: d.asset,
       position_delta: position.size * (isBuy ? 1 : -1),
       reasoning,
     };
@@ -150,7 +150,7 @@ export class ZhiveExchange implements IExchange {
     }
 
     return {
-      coin: d.coin,
+      coin: d.asset,
       action: 'CLOSE',
       size: position.size.toString(),
     };
@@ -163,14 +163,14 @@ export class ZhiveExchange implements IExchange {
 
     const isBuy = order.action === 'LONG';
     // convert size from usd to currency unit
-    const dex = order.coin.includes(':') ? order.coin.split(':')[0] : undefined;
+    const dex = order.asset.includes(':') ? order.asset.split(':')[0] : undefined;
     const mids = await this.hl.allMids(dex ? { dex } : undefined);
-    const szDecimal = this.converter.getSzDecimals(order.coin);
-    if (!(order.coin in mids) || _.isNil(szDecimal)) {
+    const szDecimal = this.converter.getSzDecimals(order.asset);
+    if (!(order.asset in mids) || _.isNil(szDecimal)) {
       throw new UnSupportedAssetError();
     }
 
-    const entryPrice = parseFloat(mids[order.coin]);
+    const entryPrice = parseFloat(mids[order.asset]);
     const size = formatSize((order.sizeUsd / entryPrice) * (isBuy ? 1 : -1), szDecimal);
 
     const reasoning = order.reasoning?.trim() || undefined;
@@ -181,7 +181,7 @@ export class ZhiveExchange implements IExchange {
       take_profit?: string;
       reasoning?: string;
     } = {
-      token_id: order.coin,
+      token_id: order.asset,
       position_delta: size,
       reasoning,
     };
@@ -220,7 +220,7 @@ export class ZhiveExchange implements IExchange {
     }
 
     return {
-      coin: order.coin,
+      coin: order.asset,
       action: order.action,
       size: Math.abs(Number(size)).toString(),
       slPrice,

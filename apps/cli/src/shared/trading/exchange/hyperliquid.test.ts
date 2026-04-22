@@ -30,7 +30,7 @@ const errorStatus = (error: string) => ({
 });
 
 const makeDecision = (overrides: Partial<TradeDecision> = {}): TradeDecision => ({
-  coin: 'BTC',
+  asset: 'BTC',
   action: 'LONG',
   sizeUsd: 1000,
   leverage: 5,
