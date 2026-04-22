@@ -68,7 +68,7 @@ export class HyperliquidExchange implements IExchange {
 
     const info = new InfoClient({ transport });
     const exchange = new ExchangeClient({ transport, wallet });
-    const converter = await SymbolConverter.create({ transport });
+    const converter = await SymbolConverter.create({ transport, dexs: true });
 
     return new HyperliquidExchange(walletAddress, exchange, info, converter, slippage);
   }
@@ -99,7 +99,8 @@ export class HyperliquidExchange implements IExchange {
     }
 
     const isBuy = position.side === 'short';
-    const mids = await this.info.allMids();
+    const dex = d.coin.includes(':') ? d.coin.split(':')[0] : undefined;
+    const mids = await this.info.allMids(dex ? { dex } : undefined);
     const szDecimals = this.converter.getSzDecimals(d.coin);
     const mid = mids[d.coin];
     if (_.isNil(mid) || _.isNil(szDecimals)) {
@@ -147,7 +148,8 @@ export class HyperliquidExchange implements IExchange {
       leverage: d.leverage,
     });
 
-    const mids = await this.info.allMids();
+    const dex = d.coin.includes(':') ? d.coin.split(':')[0] : undefined;
+    const mids = await this.info.allMids(dex ? { dex } : undefined);
     const szDecimal = this.converter.getSzDecimals(d.coin);
     if (!(d.coin in mids) || _.isNil(szDecimal)) {
       throw new UnSupportedAssetError();

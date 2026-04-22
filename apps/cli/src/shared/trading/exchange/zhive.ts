@@ -161,7 +161,8 @@ export class ZhiveExchange implements IExchange {
 
     const isBuy = order.action === 'LONG';
     // convert size from usd to currency unit
-    const mids = await this.info.allMids();
+    const dex = order.coin.includes(':') ? order.coin.split(':')[0] : undefined;
+    const mids = await this.info.allMids(dex ? { dex } : undefined);
     const szDecimal = this.converter.getSzDecimals(order.coin);
     if (!(order.coin in mids) || _.isNil(szDecimal)) {
       throw new UnSupportedAssetError();
