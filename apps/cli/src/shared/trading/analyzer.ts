@@ -9,6 +9,8 @@ import { HyperliquidProvider } from '../tools/pinescript/providers/hyperliquid/p
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 
+const ANALYZER_MAX_OUTPUT_TOKENS = 4096;
+
 const pinescriptGuide = `# PineScript Usage Guide for PineTS Runtime
 
 You will write PineScript v5 to compute and expose the indicators and conditions defined in STRATEGY.md. Follow these rules strictly.
@@ -519,6 +521,7 @@ export class AssetAnalyzer {
     const agent = new ToolLoopAgent({
       model: this.runtime.model,
       instructions: cacheableSystem(SYSTEM_PROMPT),
+      maxOutputTokens: ANALYZER_MAX_OUTPUT_TOKENS,
       tools: {
         pineScriptTool,
       },

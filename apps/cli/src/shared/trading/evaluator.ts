@@ -12,6 +12,8 @@ import type { AccountSummary, PairInfo, TradeDecision } from './types.js';
 
 const { Output, generateText } = wrapAISDK(ai);
 
+const EVALUATOR_MAX_OUTPUT_TOKENS = 4096;
+
 const TradeDecisionSchema = z.object({
   coin: z.string(),
   action: z.enum(['LONG', 'SHORT', 'CLOSE', 'HOLD']),
@@ -101,6 +103,7 @@ export class AssetEvaluator {
             system: cacheableSystem(systemPrompt),
             abortSignal: ctx.abortSignal,
             prompt: userPrompt,
+            maxOutputTokens: EVALUATOR_MAX_OUTPUT_TOKENS,
             output: Output.object({ schema: TradeDecisionArraySchema }),
           });
 
