@@ -99,6 +99,11 @@ export function App(): React.ReactElement {
         <Box flexDirection="column" paddingLeft={1} paddingRight={1} minHeight={2}>
           {!connected && <Spinner label="Initiating neural link..." />}
           {activePollActivities.map((item, i) => {
+            if (item.type !== 'megathread') {
+              const formatted = activityFormatter.format(item);
+              if (formatted.length === 0) return <Box key={`active-${item.id ?? i}`} />;
+              return <Text key={`active-${item.id ?? i}`}>{formatted.join('\n')}</Text>;
+            }
             return (
               <Box key={`active-${item.id ?? i}`} flexDirection="column">
                 <Box>

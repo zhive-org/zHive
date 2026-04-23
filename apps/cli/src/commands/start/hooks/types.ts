@@ -26,6 +26,13 @@ export type PollActivityItem = BasePollActivityItem &
     | { type: 'message'; text: string }
     | { type: 'online'; bio: string; name: string }
     | { type: 'error'; errorMessage: string }
+    | {
+        type: 'decision';
+        action: 'LONG' | 'SHORT' | 'CLOSE' | 'HOLD';
+        asset: string;
+        reasoning: string;
+        sizeUsd?: number;
+      }
   );
 
 type BaseMagathreadResult = {

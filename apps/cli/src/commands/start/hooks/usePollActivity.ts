@@ -12,9 +12,9 @@ export const usePollActivity = () => {
     settled: [],
   });
 
-  // idle, online, error
+  // idle, online, error, decision
   const addLog = useCallback(
-    (item: Extract<PollActivityItem, { type: 'message' | 'online' | 'error' }>) => {
+    (item: Extract<PollActivityItem, { type: 'message' | 'online' | 'error' | 'decision' }>) => {
       setPollActivityQueues((prev) => {
         const { active, settled } = prev;
         let updated = [...active, item];

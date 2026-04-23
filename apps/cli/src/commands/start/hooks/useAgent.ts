@@ -109,12 +109,12 @@ export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState
           });
         },
         onEvalCompleted(decision) {
-          const size = decision.action === 'HOLD' ? '' : ` $${decision.sizeUsd}`;
-          const actionText = decision.action === 'HOLD' ? 'NO_ACTION' : decision.action;
-
           addLog({
-            type: 'message',
-            text: `[${actionText}] ${decision.asset}${size} - ${decision.reasoning}`,
+            type: 'decision',
+            action: decision.action,
+            asset: decision.asset,
+            reasoning: decision.reasoning,
+            sizeUsd: decision.action === 'HOLD' ? undefined : decision.sizeUsd,
             timestamp: new Date(),
           });
         },

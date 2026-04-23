@@ -23,7 +23,7 @@ const onlineActivityFormatter: PollActivityFormatter<
   },
   format(item) {
     const text = this.getText(item);
-    return [` ${time(item)}${chalk.hex(colors.honey)(symbols.hive)} ${chalk.white(text)}`];
+    return [` ${time(item)}${chalk.hex(colors.green)(symbols.dot)} ${chalk.white(text)}`];
   },
 };
 
@@ -37,7 +37,47 @@ const messageActivityFormatter: PollActivityFormatter<
     return undefined;
   },
   format(item) {
-    return [` ${time(item)}${chalk.gray(`${symbols.circle} ${this.getText(item)}`)}`];
+    return [
+      ` ${time(item)}${chalk.hex(colors.green)(symbols.dot)} ${chalk.white(this.getText(item))}`,
+    ];
+  },
+};
+
+const decisionActionColor: Record<
+  Extract<PollActivityItem, { type: 'decision' }>['action'],
+  string
+> = {
+  HOLD: colors.honey,
+  LONG: colors.green,
+  SHORT: colors.red,
+  CLOSE: colors.cyan,
+};
+
+const decisionActivityFormatter: PollActivityFormatter<
+  Extract<PollActivityItem, { type: 'decision' }>
+> = {
+  getText(item) {
+    const tag = item.action === 'HOLD' ? 'NO_ACTION' : item.action;
+    const size = item.sizeUsd !== undefined ? ` $${item.sizeUsd}` : '';
+    return `[${tag}] ${item.asset}${size} \u2014 ${item.reasoning}`;
+  },
+  getDetail(_item) {
+    return undefined;
+  },
+  format(item) {
+    const tag = item.action === 'HOLD' ? 'NO_ACTION' : item.action;
+    const tagColor = decisionActionColor[item.action];
+    const sizeStr = item.sizeUsd !== undefined ? ` $${item.sizeUsd}` : '';
+    const segments = [
+      ` ${time(item)}`,
+      chalk.hex(tagColor)(`[${tag}]`),
+      ' ',
+      chalk.hex(colors.cyan)(item.asset),
+      sizeStr ? chalk.hex(colors.gray)(sizeStr) : '',
+      chalk.gray.dim(' \u2014 '),
+      chalk.gray(item.reasoning),
+    ];
+    return [segments.join('')];
   },
 };
 
@@ -161,6 +201,8 @@ export const activityFormatter: PollActivityFormatter = {
         return megathreadActivityFormatter.getText(item);
       case 'online':
         return onlineActivityFormatter.getText(item);
+      case 'decision':
+        return decisionActivityFormatter.getText(item);
       default:
         return '';
     }
@@ -175,6 +217,8 @@ export const activityFormatter: PollActivityFormatter = {
         return megathreadActivityFormatter.getDetail(item);
       case 'online':
         return onlineActivityFormatter.getDetail(item);
+      case 'decision':
+        return decisionActivityFormatter.getDetail(item);
       default:
         return undefined;
     }
@@ -189,6 +233,8 @@ export const activityFormatter: PollActivityFormatter = {
         return megathreadActivityFormatter.format(item);
       case 'online':
         return onlineActivityFormatter.format(item);
+      case 'decision':
+        return decisionActivityFormatter.format(item);
       default:
         return [];
     }
