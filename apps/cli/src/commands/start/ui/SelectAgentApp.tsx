@@ -12,7 +12,6 @@ import { ColoredStats } from '../../../components/ColoredStats';
 
 interface AgentRow {
   info: AgentConfig;
-  stats: AgentStats | null;
 }
 
 export interface SelectAgentAppProps {
@@ -26,14 +25,6 @@ function formatDate(date: Date): string {
     day: 'numeric',
   });
   return formatted;
-}
-
-function StatsText({ stats }: { stats: AgentStats | null }): React.ReactElement {
-  if (stats === null) {
-    return <Text color={colors.grayDim}>-</Text>;
-  }
-
-  return <ColoredStats stats={stats} />;
 }
 
 export function SelectAgentApp({ onSelect }: SelectAgentAppProps): React.ReactElement {
@@ -50,18 +41,16 @@ export function SelectAgentApp({ onSelect }: SelectAgentAppProps): React.ReactEl
         return;
       }
 
-      const names = agents.map((a) => a.name);
-      const statsMap = await fetchBulkStats(names);
-
       const agentRows: AgentRow[] = agents.map((info) => ({
         info,
-        stats: statsMap.get(info.name) ?? null,
       }));
-      const sortedRows = sortByHoney(agentRows);
+      const sortedRows = agentRows.sort(
+        (a, b) => a.info.created.getTime() - b.info.created.getTime(),
+      );
       setRows(sortedRows);
     };
     void load();
-  }, []);
+  }, [exit]);
 
   useInput((_input, key) => {
     if (rows === null || rows.length === 0) {
@@ -136,7 +125,6 @@ export function SelectAgentApp({ onSelect }: SelectAgentAppProps): React.ReactEl
             <Text color={isSelected ? colors.white : colors.gray} bold={isSelected}>
               {row.info.name.padEnd(nameWidth)}
             </Text>
-            <StatsText stats={row.stats} />
             <Text color={colors.grayDim}> {formatDate(row.info.created)}</Text>
           </Box>
         );
