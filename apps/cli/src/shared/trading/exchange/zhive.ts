@@ -252,10 +252,11 @@ export class ZhiveExchange implements IExchange {
 
     const data = (await response.json()) as PortfolioSummaryResponse;
 
+    const marginUsed = data.positions.reduce((acc, p) => acc + p.position_value, 0);
+
     return {
       accountValue: data.total_equity,
-      marginUsed: data.total_equity, // because zhive currently support 1x so account value = margin
-      withdrawable: 0,
+      marginUsed: marginUsed,
       spotBalances: [
         {
           coin: 'USDC',
