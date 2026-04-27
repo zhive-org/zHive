@@ -109,7 +109,7 @@ export class TradingAgent {
         try {
           await this.exchange.placeOrder(decision);
         } catch (e) {
-          let message = 'Failed to execute order';
+          let message = e instanceof Error ? e.message : String(e);
           if (e instanceof UnSupportedAssetError) {
             message = 'Unknown asset';
           } else if (e instanceof PositionNotFound) {
