@@ -3,7 +3,7 @@ import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { AgentRuntime } from '../agent/runtime';
 import { createPineScriptTool, createPineScriptToolForAsset } from '../tools/pinescript';
 import { IExchange } from './exchange/types';
-import { PairInfo } from './types';
+import { AccountSummary, PairInfo } from './types';
 import { cacheableSystem } from '../agent';
 import { HyperliquidProvider } from '../tools/pinescript/providers/hyperliquid/provider';
 
@@ -16,6 +16,48 @@ const pinescriptGuide = `# PineScript Usage Guide for PineTS Runtime
 You will write PineScript v5 to compute and expose the indicators and conditions defined in STRATEGY.md. Follow these rules strictly.
 
 This guide applies to the **PineTS** runtime (https://luxalgo.github.io/PineTS), not TradingView's native Pine editor. The semantics differ in important ways — follow this guide, not generic PineScript tutorials.
+
+## What PineScript Is For
+
+PineScript is your tool for computing indicator values and evaluating stateless conditions against real market data. Use it for:
+
+- **Indicator math:** EMAs, RSI, ATR, MACD, Bollinger Bands, volume averages, pivots, etc.
+- **Multi-timeframe data:** pulling higher-timeframe values (4h, daily, weekly) while analyzing on a lower one
+- **Cross-asset references:** comparing to BTC, SPY, sector indices, correlated names
+- **Pattern detection:** candle patterns, divergences, structural breaks, pullback zones
+- **Stateless boolean conditions:** "is EMA20 > EMA50", "is price within 1×ATR of EMA20", "is RSI in range"
+
+Do NOT use PineScript for:
+
+- **Position state logic:** PineScript doesn't know your entry price, TP1 status, or time held. These live in your evaluation code.
+- **Exit rules that depend on "after entry" semantics:** trailing stops, invalidation windows, time stops. Compute the underlying indicators in PineScript; evaluate against position state in Step 4.
+- **Risk limit checks:** account drawdown, concurrent position counts, correlation rules. These are portfolio-level and evaluated without PineScript.
+- **Guessing or estimating:** if you don't have a value from a script, you don't have it. Run the script.
+
+## Calling the Script Multiple Times
+
+You are not limited to one PineScript call. Call it as many times as the analysis requires. Good reasons to call more than once:
+
+- **Probe before committing:** if uncertain whether the regime filter passes, run a small script checking only that before writing a full entry-conditions script.
+- **Cross-asset context:** one call for the asset's own indicators, another call with a different "syminfo" to check BTC trend or a sector reference.
+- **Progressive refinement:** first call tells you the signal is borderline, a second call examines additional context (volume profile, higher-timeframe confirmation) to break the tie.
+- **Debugging a failure:** if the first script returns unexpected values, write a smaller isolated script to check the specific indicator that looks off.
+- **Exit analysis:** one script for trailing indicators (4h EMA20), another for invalidation signals (consecutive closes beyond EMA50).
+
+Do not over-call. Each call costs time. Bias toward **one comprehensive script** that returns everything you need, and only split into multiple calls when there is a concrete reason (cross-asset, cross-symbol, or debug).
+
+### Pre-flight checklist (run mentally before every "executePineScript" call)
+
+- [ ] "//@version=5" at the top.
+- [ ] Every multiplication between a number and a variable uses "*" ("0.2 * atr", never "0.2atr").
+- [ ] Every logical op is "and"/"or"/"not", not "&&"/"||"/"!".
+- [ ] Every "plot()" has a unique string name as the 2nd arg.
+- [ ] Every boolean plot is wrapped "cond ? 1 : 0".
+- [ ] Every "request.security" call wraps its own "ta.*" expression and passes "lookahead=barmerge.lookahead_off".
+- [ ] The "timeframe" argument is a numeric-minute string ("'60'", "'240'"), not "'1h'" or "'4h'".
+- [ ] "fetchCandleCount" is ≥ 2× the slowest indicator's lookback on the chart TF.
+- [ ] No unsupported functions ("ta.sum", "request.financial", "fixnan" is OK, "while", "for...in", "library", "import", "alert", "max_bars_back", "runtime.error", strategy.*, etc.).
+- [ ] A "ready" flag guards the final long/short booleans.
 
 ---
 
@@ -364,61 +406,12 @@ Use this as a template — swap indicators, thresholds, and plot names to match 
 
 const SYSTEM_PROMPT = `You are a technical analyst. Your task is to analyze a given asset based on the user's strategy and decide the next action.
 
-## What PineScript Is For
-
-PineScript is your tool for computing indicator values and evaluating stateless conditions against real market data. Use it for:
-
-- **Indicator math:** EMAs, RSI, ATR, MACD, Bollinger Bands, volume averages, pivots, etc.
-- **Multi-timeframe data:** pulling higher-timeframe values (4h, daily, weekly) while analyzing on a lower one
-- **Cross-asset references:** comparing to BTC, SPY, sector indices, correlated names
-- **Pattern detection:** candle patterns, divergences, structural breaks, pullback zones
-- **Stateless boolean conditions:** "is EMA20 > EMA50", "is price within 1×ATR of EMA20", "is RSI in range"
-
-Do NOT use PineScript for:
-
-- **Position state logic:** PineScript doesn't know your entry price, TP1 status, or time held. These live in your evaluation code.
-- **Exit rules that depend on "after entry" semantics:** trailing stops, invalidation windows, time stops. Compute the underlying indicators in PineScript; evaluate against position state in Step 4.
-- **Risk limit checks:** account drawdown, concurrent position counts, correlation rules. These are portfolio-level and evaluated without PineScript.
-- **Guessing or estimating:** if you don't have a value from a script, you don't have it. Run the script.
-
-## Calling the Script Multiple Times
-
-You are not limited to one PineScript call. Call it as many times as the analysis requires. Good reasons to call more than once:
-
-- **Probe before committing:** if uncertain whether the regime filter passes, run a small script checking only that before writing a full entry-conditions script.
-- **Cross-asset context:** one call for the asset's own indicators, another call with a different "syminfo" to check BTC trend or a sector reference.
-- **Progressive refinement:** first call tells you the signal is borderline, a second call examines additional context (volume profile, higher-timeframe confirmation) to break the tie.
-- **Debugging a failure:** if the first script returns unexpected values, write a smaller isolated script to check the specific indicator that looks off.
-- **Exit analysis:** one script for trailing indicators (4h EMA20), another for invalidation signals (consecutive closes beyond EMA50).
-
-Do not over-call. Each call costs time. Bias toward **one comprehensive script** that returns everything you need, and only split into multiple calls when there is a concrete reason (cross-asset, cross-symbol, or debug).
-
-### Pre-flight checklist (run mentally before every "executePineScript" call)
-
-- [ ] "//@version=5" at the top.
-- [ ] Every multiplication between a number and a variable uses "*" ("0.2 * atr", never "0.2atr").
-- [ ] Every logical op is "and"/"or"/"not", not "&&"/"||"/"!".
-- [ ] Every "plot()" has a unique string name as the 2nd arg.
-- [ ] Every boolean plot is wrapped "cond ? 1 : 0".
-- [ ] Every "request.security" call wraps its own "ta.*" expression and passes "lookahead=barmerge.lookahead_off".
-- [ ] The "timeframe" argument is a numeric-minute string ("'60'", "'240'"), not "'1h'" or "'4h'".
-- [ ] "fetchCandleCount" is ≥ 2× the slowest indicator's lookback on the chart TF.
-- [ ] No unsupported functions ("ta.sum", "request.financial", "fixnan" is OK, "while", "for...in", "library", "import", "alert", "max_bars_back", "runtime.error", strategy.*, etc.).
-- [ ] A "ready" flag guards the final long/short booleans.
-
 ## Output
 - Concise summary of the analysis without headings or titles.
 - Be direct and specific: cite the actual indicator values and which rules passed or failed.
 - If the decision is HOLD, briefly state which rule(s) failed or which limits blocked the trade.
 - If the decision is LONG/SHORT/CLOSE, state the rules that supported it and include the proposed order (for entries) or the triggered exit condition (for closes).
 
-## Critical Rules
-
-1. Never output a trade that violates STRATEGY.md — even if the setup looks perfect.
-2. Never invent or estimate indicator values. Missing value → run the script, or HOLD.
-3. Never evaluate entries on an asset with an open position. Position state is checked first, always.
-4. Never act on patterns or ideas not in STRATEGY.md. The strategy is the contract.
-5. Bias toward HOLD when uncertain. HOLD is a valid, often correct output.
 
 ${pinescriptGuide}`;
 
@@ -429,6 +422,14 @@ export class AssetAnalyzer {
     ctx: { abortSignal?: AbortSignal },
     coin: string,
     pairInfo: PairInfo,
+    account: AccountSummary,
+    currentPosition?: {
+      side: string;
+      size: number;
+      entryPrice: number;
+      pnl: number;
+      leverage: number;
+    },
   ): Promise<string> {
     const dex = coin.includes(':') ? coin.split(':')[0] : undefined;
 
@@ -443,6 +444,19 @@ export class AssetAnalyzer {
         pineScriptTool,
       },
     });
+
+    const currentPositionLine = currentPosition
+      ? `## Position 
+side:${currentPosition.side} 
+size:${currentPosition.size}
+entry:$${currentPosition.entryPrice} 
+pnl:$${currentPosition.pnl.toFixed(2)}
+leverage=${currentPosition.leverage}x`
+      : `## Position
+No open position`;
+
+    const availableUsdc = account.spotBalances.find((b) => b.coin === 'USDC')?.hold ?? '0';
+
     const prompt = `## Asset
 Asset: ${coin}
 Mark price: ${pairInfo.markPx}
@@ -452,6 +466,13 @@ Open interest: $${pairInfo.openInterest.toLocaleString()}
 Prev day price: $${pairInfo.prevDayPx}
 24h volume: $${pairInfo.dayNtlVlm.toLocaleString()}
 
+
+${currentPositionLine}
+
+## Account
+Value: $${account.accountValue.toFixed(2)} 
+Margin Used=$${account.marginUsed.toFixed(2)}
+Available Trading Balance: value=${availableUsdc}
 
 ## Strategy
 ${this.runtime.config.strategyContent}`;

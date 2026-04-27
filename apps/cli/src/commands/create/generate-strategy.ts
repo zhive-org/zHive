@@ -42,42 +42,30 @@ ${feedbackLine}
 ## Your Task
 Produce a STRATEGY.md with the following sections. Be specific and use concrete numbers wherever possible — avoid vague phrases like "strong trend" or "good setup" without defining them.
 
+These are the context be provided to LLM on judgement 
+- Current position
+- Account
+- Asset market information (price, funding rate, open interest, 24h volume)
+
+Your strategy must not rely on information outside what are provided
+
 ## Output format
-
-
 \`\`\`md
 ### Philosophy
 The core belief about how markets behave and where this strategy's edge comes from. (2-3 sentences)
 
 ### Entry Rules
-For each valid direction (long and/or short), list the exact conditions that must ALL be true to enter. Use numbers, not adjectives. Example:
-- Long entry requires:
-  - 1h EMA(20) > EMA(50) > EMA(200)
-  - Pullback to EMA(20) with at least one bullish reversal candle
-  - RSI(14) between 40 and 60
-  - 24h volume above 7-day average
+For each valid direction (long and/or short), list the exact conditions to enter
 
 ### Exit Rules
-- Initial stop loss: where and why (e.g. "1.5 × ATR(14) below entry")
-- Take profit: fixed R-multiple, trailing, or condition-based — specify exactly
-- Invalidation: what makes the thesis wrong before hitting SL
-- Time stop: exit if the trade hasn't worked within X bars/hours
+For each valid direction (long and/or short), list the exact conditions to exit
 
 ### Position Sizing
-How to translate the user's capital rule into a concrete order size, including how to scale down if volatility is elevated.
-
+How to translate the user's capital rule into a concrete order size
+ 
 ### Risk Limits
-- Max simultaneous positions
-- Max loss per day/week before pausing
-- Correlation rule (e.g. "don't hold two longs in highly correlated assets")
-- Leverage ceiling
-
-### Anti-Patterns (what NOT to do)
-Explicit list of behaviors the step-3 LLM must never do, e.g.:
-- Never add to a losing position
-- Never enter a long if price is below the 200-EMA on the decision timeframe
-- Never widen a stop loss after entry
-- Never trade during the first 15 minutes of a new daily candle
+- Guardrails to prevent oversized positions
+- Maximum exposure the bot is allowed to take on at any time.
 
 ### Decision Framework
 A numbered checklist the analysis LLM walks through in order. This should be the LAST section and should read like a flowchart. Example:
@@ -88,10 +76,7 @@ A numbered checklist the analysis LLM walks through in order. This should be the
 3. Do ALL long entry conditions pass? If yes, output LONG.
 4. Do ALL short entry conditions pass? If yes, output SHORT.
 5. Otherwise, output HOLD.
-\`\`\`
-
-## Example
-${strategyExamples}`;
+\`\`\``;
 
   const model = buildLanguageModel(providerId, apiKey, 'generation');
 

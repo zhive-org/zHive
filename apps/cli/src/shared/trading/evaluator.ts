@@ -66,16 +66,17 @@ export class AssetEvaluator {
           if (!pairInfo) {
             continue;
           }
+          const position = account.positions.find((p) => p.coin === coin);
           analysisPromises.push(
             this.analyzer
-              .analyze(ctx, coin, pairInfo)
+              .analyze(ctx, coin, pairInfo, account, position)
               .catch((e) => `Analysis failed: ${formatToolError('Technical Analysis', e)}`),
           );
 
           assetEntries.push({
             coin,
             ctx: pairInfo,
-            position: account.positions.find((p) => p.coin === coin),
+            position,
           });
         }
 
