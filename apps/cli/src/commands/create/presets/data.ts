@@ -196,7 +196,7 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
     positionSizing:
       'Risk 1% of account equity per trade based on entry-to-initial-stop distance. Size is intentionally small because win rate is low (35-45%) and drawdowns between winners are expected. Never exceed 2× leverage.',
     riskLimit:
-      'Max 5 concurrent positions. Pause new entries if account drawdown exceeds 15% from peak. Accept that extended drawdowns are normal; do not reduce size reactively after losing streaks. Leverage ceiling: 2×.',
+      'Pause new entries if account drawdown exceeds 15% from peak. Accept that extended drawdowns are normal; do not reduce size reactively after losing streaks',
     antiPattern: [
       'Never exit a winning trade early based on "it looks overbought"',
       'Never take profit at a fixed target — the trailing stop is the only exit',
@@ -222,8 +222,7 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
       'Stop loss at 1 × ATR(14) from entry (tight). Take profit: exit 50% at 1.5R, trail remainder with a 15m EMA(20) stop. Hard exit if the 15m candle closes against the position with volume ≥ entry volume (momentum has clearly flipped). Time stop: exit if the trade has not made progress within 4 hours.',
     positionSizing:
       'Risk 1.5% of account equity per trade. Because momentum trades are fast, size matters more than duration — enter at full size, no scaling in. Never exceed 3× leverage.',
-    riskLimit:
-      'Max 2 concurrent positions (momentum demands attention per trade). Max 3 trades per 24h period to avoid overtrading. Pause new entries if account drawdown exceeds 8% in any 7-day window. Leverage ceiling: 3×.',
+    riskLimit: 'Pause new entries if account drawdown exceeds 8% in any 7-day window',
     antiPattern: [
       'Never chase a move that is already up > 15% on the hour — you are late',
       'Never hold a momentum trade overnight if momentum has faded',
@@ -251,7 +250,7 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
     positionSizing:
       'Allocate a fixed capital pool per grid (e.g. 20% of account per asset grid). Divide evenly across grid levels so each fill is the same size. Never use leverage on grids — unrealized inventory during a breakout can compound losses fast. Spot only.',
     riskLimit:
-      'Max 3 simultaneous grids across different uncorrelated assets. Total capital committed to grids ≤ 60% of account. Shut down all grids if account drawdown exceeds 10% in any 7-day window. No leverage.',
+      'Total capital committed to grids ≤ 60% of account. Shut down all grids if account drawdown exceeds 10% in any 7-day window. No leverage.',
     antiPattern: [
       'Never run a grid on a trending asset — grids bleed in strong trends',
       'Never widen the range to "catch" price that has broken out — accept the loss and reset',
@@ -278,7 +277,7 @@ export const STRATEGY_PRESETS: StrategyPreset[] = [
     positionSizing:
       'Base buy = 1% of current account equity per scheduled interval. Conditional multipliers (0.5× to 4×) apply on top. Cap total allocation to a single asset at 30% of account to prevent over-concentration. Spot only, no leverage.',
     riskLimit:
-      "Max 5 assets being DCA'd simultaneously. Total DCA allocation ≤ 80% of account (keep dry powder for large drawdowns). Pause accelerated buys (multipliers > 1×) if account drawdown exceeds 25% — resume base buys only. No leverage.",
+      'Total DCA allocation ≤ 80% of account (keep dry powder for large drawdowns). Pause accelerated buys (multipliers > 1×) if account drawdown exceeds 25% — resume base buys only. No leverage.',
     antiPattern: [
       'Never stop-loss a DCA position — the whole thesis is accumulation through drawdowns',
       'Never skip scheduled base buys because "the price might go lower"',

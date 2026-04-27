@@ -92,7 +92,10 @@ A numbered checklist the analysis LLM walks through in order. This should be the
 3. Do ALL long entry conditions pass? If yes, output LONG.
 4. Do ALL short entry conditions pass? If yes, output SHORT.
 5. Otherwise, output HOLD.
-\`\`\``;
+\`\`\`
+
+### Example output
+${strategyExamples}`;
 
   const model = buildLanguageModel(providerId, apiKey, 'generation');
 
