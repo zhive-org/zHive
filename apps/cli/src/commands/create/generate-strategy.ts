@@ -27,7 +27,29 @@ export function generateStrategy({
 
   const draftLine = draft ? `## Prev Draft\n\n"${draft}"` : '';
 
-  const prompt = `You are a quantitative trader designing a trading strategy that will be used by another LLM to make real trading decision on behalf of the user.
+  const prompt = `You are a quantitative trader designing a trading strategy that will be used by trading agent to make real trading decision on behalf of the user.
+
+The trading agent will be given
+- Position
+  - side: LONG or SHORT
+  - size: in base currency unit
+  - entry price 
+  - pnl
+  - leverage
+- Account
+  - value
+  - margin used
+  - available trading balance
+- Asset
+  - price
+  - historical price ( fetch on demand )
+  - mark price
+  - mid price
+  - open interest
+  - 24h volume
+Strategy should only  
+
+Then it will use STRATEGY.md to decide the next action.
 
 The quality of every trade depends on how clear, specific and self-consistent this strategy is.
 
@@ -41,13 +63,7 @@ ${feedbackLine}
 
 ## Your Task
 Produce a STRATEGY.md with the following sections. Be specific and use concrete numbers wherever possible — avoid vague phrases like "strong trend" or "good setup" without defining them.
-
-These are the context be provided to LLM on judgement 
-- Current position
-- Account
-- Asset market information (price, funding rate, open interest, 24h volume)
-
-Your strategy must not rely on information outside what are provided
+Make sure that strategy can be evaluated with available data.
 
 ## Output format
 \`\`\`md
