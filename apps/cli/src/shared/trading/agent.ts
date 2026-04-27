@@ -28,7 +28,6 @@ export class TradingAgent {
     private watchList: string[],
     private evaluator: AssetEvaluator,
     private exchange: IExchange,
-    private riskEngine: RiskEngine,
     private callbacks: TradingAgentCallbacks,
     private intervalMs: number = DEFAULT_INTERVAL_MS,
   ) {}
@@ -40,21 +39,16 @@ export class TradingAgent {
       intervalMs?: number;
     },
   ): Promise<TradingAgent> {
-    const riskEngine = new RiskEngine({
-      maxLeverage: 1,
-      maxTotalExposureQuote: 1000,
-    });
     const exchange = await ZhiveExchange.create({
       apiKey: runtime.config.apiKey,
     });
-    const evaluator = new AssetEvaluator(exchange, riskEngine, runtime);
+    const evaluator = new AssetEvaluator(exchange, runtime);
 
     return new TradingAgent(
       runtime,
       watchList,
       evaluator,
       exchange,
-      riskEngine,
       config ?? {},
       config?.intervalMs,
     );
@@ -102,7 +96,6 @@ export class TradingAgent {
     const decisions = await this.evaluator.evaluate(ctx, assets, account);
 
     for (let i = 0; i < decisions.length; i++) {
-      decisions[i] = this.riskEngine.validate(decisions[i], account);
       const decision = decisions[i];
       this.callbacks?.onEvalCompleted?.(decision);
       if (decision.action !== 'HOLD') {

@@ -41,7 +41,6 @@ export class AssetEvaluator {
 
   constructor(
     private exchange: IExchange,
-    private riskEngine: RiskEngine,
     private runtime: AgentRuntime,
   ) {
     this.analyzer = new AssetAnalyzer(runtime);
@@ -143,10 +142,6 @@ ${this.runtime.config.strategyContent}
 
 Consider cross-asset correlations and portfolio-level risk when making decisions.
 Be conservative: prefer HOLD when signals are ambiguous.
-
-Risk Management
-Max Leverage: ${this.riskEngine.limits.maxLeverage}x
-Total Exposure Limit: $${this.riskEngine.limits.maxTotalExposureQuote.toLocaleString()}
 
 Rules
 - Make decision based on given analysis.
