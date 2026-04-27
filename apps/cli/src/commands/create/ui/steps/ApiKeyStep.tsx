@@ -55,7 +55,7 @@ export function ApiKeyStep(): React.ReactElement {
 
   const providerDescriptions: Record<string, string> = {
     'openrouter-free':
-      'Uses arcee-ai/trinity-large-preview:free as default [FREE but still requires an API key]',
+      'Routes to a free model via openrouter/free [FREE but still requires an API key]',
     openrouter: 'Uses openai/gpt-5.4-nano as default',
     openai: 'Uses gpt-5.4-nano as default',
     anthropic: 'Uses claude-haiku-4-5 as default',

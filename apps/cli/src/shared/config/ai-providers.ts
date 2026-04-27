@@ -47,9 +47,9 @@ export const AI_PROVIDERS: AIProvider[] = [
     package: '@openrouter/ai-sdk-provider',
     envVar: 'OPENROUTER_API_KEY',
     models: {
-      validation: 'arcee-ai/trinity-large-preview:free',
-      generation: 'arcee-ai/trinity-large-preview:free',
-      runtime: 'arcee-ai/trinity-large-preview:free',
+      validation: 'openrouter/free',
+      generation: 'openrouter/free',
+      runtime: 'openrouter/free',
     },
     load: async (modelId) => {
       const { createOpenRouter } = await import('@openrouter/ai-sdk-provider');
