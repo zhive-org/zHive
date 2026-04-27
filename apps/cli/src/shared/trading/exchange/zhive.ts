@@ -98,7 +98,9 @@ export class ZhiveExchange implements IExchange {
     const pairs: string[] = [];
     for (const [meta] of results) {
       for (const u of meta.universe) {
-        pairs.push(u.name);
+        if (!u.isDelisted) {
+          pairs.push(u.name);
+        }
       }
     }
 
