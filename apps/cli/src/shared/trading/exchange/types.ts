@@ -6,10 +6,12 @@ import type {
   TradeDecision,
 } from '../types';
 
+export type TradingCategory = 'crypto' | 'stock-commodity';
+
 export interface IExchange {
   placeOrder(order: TradeDecision): Promise<ExecutionResult>;
 
-  getAvailableTradingPairs(): Promise<string[]>;
+  getAvailableTradingPairs(category?: TradingCategory): Promise<string[]>;
 
   fetchAccountState(): Promise<AccountSummary>;
 

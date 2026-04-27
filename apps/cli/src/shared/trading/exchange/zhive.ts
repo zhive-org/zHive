@@ -11,7 +11,7 @@ import {
   TradeDecision,
 } from '../types';
 import { PositionNotFound, UnSupportedAssetError } from './error';
-import { IExchange } from './types';
+import { IExchange, TradingCategory } from './types';
 
 export interface PositionSummary {
   token_id: string;
@@ -89,11 +89,16 @@ export class ZhiveExchange implements IExchange {
     return await this._executeMarketOpen(order);
   }
 
-  async getAvailableTradingPairs(): Promise<string[]> {
-    const results = await Promise.all([
-      this.hl.metaAndAssetCtxs(),
-      this.hl.metaAndAssetCtxs({ dex: 'xyz' }),
-    ]);
+  async getAvailableTradingPairs(category?: TradingCategory): Promise<string[]> {
+    const calls: Array<ReturnType<HyperliquidService['metaAndAssetCtxs']>> = [];
+    if (category === undefined || category === 'crypto') {
+      calls.push(this.hl.metaAndAssetCtxs());
+    }
+    if (category === undefined || category === 'stock-commodity') {
+      calls.push(this.hl.metaAndAssetCtxs({ dex: 'xyz' }));
+    }
+
+    const results = await Promise.all(calls);
 
     const pairs: string[] = [];
     for (const [meta] of results) {

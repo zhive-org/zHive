@@ -12,7 +12,7 @@ import type {
 } from '../types';
 import { HyperliquidService } from '../../hyperliquid/service';
 import { PositionNotFound, UnknownError, UnSupportedAssetError } from './error';
-import type { IExchange } from './types';
+import type { IExchange, TradingCategory } from './types';
 
 const DEFAULT_SLIPPAGE = 0.03;
 
@@ -240,11 +240,16 @@ export class HyperliquidExchange implements IExchange {
     };
   }
 
-  async getAvailableTradingPairs(): Promise<string[]> {
-    const results = await Promise.all([
-      this.hl.metaAndAssetCtxs(),
-      this.hl.metaAndAssetCtxs({ dex: 'xyz' }),
-    ]);
+  async getAvailableTradingPairs(category?: TradingCategory): Promise<string[]> {
+    const calls: Array<ReturnType<HyperliquidService['metaAndAssetCtxs']>> = [];
+    if (category === undefined || category === 'crypto') {
+      calls.push(this.hl.metaAndAssetCtxs());
+    }
+    if (category === undefined || category === 'stock-commodity') {
+      calls.push(this.hl.metaAndAssetCtxs({ dex: 'xyz' }));
+    }
+
+    const results = await Promise.all(calls);
 
     const pairs: string[] = [];
     for (const [meta] of results) {

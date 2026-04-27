@@ -1,43 +1,13 @@
-import { Box, Text } from 'ink';
-import React, { useCallback, useEffect, useState } from 'react';
-import { SearchSelect, type SearchSelectItem } from '../../../../components/SearchSelect.js';
-import { Spinner } from '../../../../components/Spinner.js';
-import { ZhiveExchange } from '../../../../shared/trading/exchange/zhive.js';
-import { colors, symbols } from '../../../shared/theme.js';
+import React, { useCallback } from 'react';
+import { WatchlistSelector } from '../../../../components/WatchlistSelector.js';
 import { useWizard } from '../wizard-context.js';
 
 export function WatchlistStep(): React.ReactElement {
   const { state, dispatch } = useWizard();
-  const [loading, setLoading] = useState(true);
-  const [assets, setAssets] = useState<SearchSelectItem[]>([]);
-  const [fetchError, setFetchError] = useState('');
-  const [validationError, setValidationError] = useState('');
-
-  useEffect(() => {
-    ZhiveExchange.create()
-      .then((exchange) => exchange.getAvailableTradingPairs())
-      .then()
-      .then((assets) => {
-        setAssets(assets.map((n) => ({ label: n, value: n })));
-        setLoading(false);
-      })
-      .catch((err) => {
-        setFetchError(err instanceof Error ? err.message : 'Failed to fetch assets');
-        setLoading(false);
-      });
-  }, []);
 
   const handleSubmit = useCallback(
-    (selected: SearchSelectItem[]) => {
-      if (selected.length === 0) {
-        setValidationError('Please select at least one asset');
-        return;
-      }
-      setValidationError('');
-      dispatch({
-        type: 'SET_WATCHLIST',
-        payload: { assets: selected.map((s) => s.value) },
-      });
+    (assets: string[]) => {
+      dispatch({ type: 'SET_WATCHLIST', payload: { assets } });
     },
     [dispatch],
   );
@@ -46,42 +16,11 @@ export function WatchlistStep(): React.ReactElement {
     dispatch({ type: 'GO_BACK' });
   }, [dispatch]);
 
-  if (loading) {
-    return <Spinner label="Fetching available assets from Hyperliquid..." />;
-  }
-
-  if (fetchError) {
-    return (
-      <Box flexDirection="column" marginLeft={2}>
-        <Text color={colors.red}>
-          {symbols.cross} {fetchError}
-        </Text>
-        <Text color={colors.grayDim}>
-          Press <Text color={colors.honey}>esc</Text> to go back
-        </Text>
-      </Box>
-    );
-  }
-
-  const defaultSelected =
-    state.watchlist.assets.length > 0 ? new Set(state.watchlist.assets) : undefined;
-
   return (
-    <Box flexDirection="column">
-      <SearchSelect
-        label="Select assets for your watchlist"
-        items={assets}
-        defaultSelected={defaultSelected}
-        onSubmit={handleSubmit}
-        onBack={handleBack}
-      />
-      {validationError !== '' && (
-        <Box marginLeft={2}>
-          <Text color={colors.red}>
-            {symbols.cross} {validationError}
-          </Text>
-        </Box>
-      )}
-    </Box>
+    <WatchlistSelector
+      defaultSelected={state.watchlist.assets}
+      onSubmit={handleSubmit}
+      onBack={handleBack}
+    />
   );
 }

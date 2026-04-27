@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { SearchSelect, type SearchSelectItem } from './SearchSelect';
+import { WatchlistSelector } from './WatchlistSelector';
 import { Spinner } from './Spinner';
-import { ZhiveExchange } from '../shared/trading/exchange/zhive';
 import { colors, symbols } from '../commands/shared/theme';
 import { loadConfig, saveConfig } from '@zhive/sdk';
 
@@ -17,39 +16,24 @@ export function WatchlistView({
   onClose,
   onSaved,
 }: WatchlistViewProps): React.ReactElement {
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [assets, setAssets] = useState<SearchSelectItem[]>([]);
   const [error, setError] = useState('');
 
   useInput((_input, key) => {
-    if (key.escape && (loading || saving || error)) {
+    if (key.escape && (saving || error)) {
       onClose();
     }
   });
 
-  useEffect(() => {
-    ZhiveExchange.create()
-      .then((exchange) => exchange.getAvailableTradingPairs())
-      .then((pairs) => {
-        setAssets(pairs.map((p) => ({ label: p, value: p })));
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to fetch assets');
-        setLoading(false);
-      });
-  }, []);
-
   const handleSubmit = useCallback(
-    async (selected: SearchSelectItem[]) => {
+    async (assets: string[]) => {
       setSaving(true);
       try {
         const config = await loadConfig();
         if (!config) {
           throw new Error('config not found');
         }
-        config.watchList = selected.map((s) => s.value);
+        config.watchList = assets;
         await saveConfig(config);
         await onSaved();
         onClose();
@@ -60,14 +44,6 @@ export function WatchlistView({
     },
     [onSaved, onClose],
   );
-
-  if (loading) {
-    return (
-      <Box paddingLeft={1}>
-        <Spinner label="Fetching available assets from Hyperliquid..." />
-      </Box>
-    );
-  }
 
   if (saving) {
     return (
@@ -90,14 +66,10 @@ export function WatchlistView({
     );
   }
 
-  const defaultSelected = currentWatchlist.length > 0 ? new Set(currentWatchlist) : undefined;
-
   return (
     <Box flexDirection="column" paddingLeft={1}>
-      <SearchSelect
-        label="Update your watchlist"
-        items={assets}
-        defaultSelected={defaultSelected}
+      <WatchlistSelector
+        defaultSelected={currentWatchlist}
         onSubmit={handleSubmit}
         onBack={onClose}
       />
