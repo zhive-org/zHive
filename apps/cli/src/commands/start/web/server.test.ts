@@ -1,4 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { buildApp } from './server';
 import { WebEventBus } from './events';
 import type { WebControl, WebState } from './control';
@@ -23,14 +26,14 @@ async function fetch(app: ReturnType<typeof buildApp>, path: string, init?: Requ
 
 describe('buildApp', () => {
   it('serves /healthz regardless of options', async () => {
-    const app = buildApp({});
+    const app = buildApp({ dashboardRoot: null });
     const res = await fetch(app, '/healthz');
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
   });
 
   it('omits /api routes when neither bus nor control supplied', async () => {
-    const app = buildApp({});
+    const app = buildApp({ dashboardRoot: null });
     const events = await fetch(app, '/api/events');
     expect(events.status).toBe(404);
     const state = await fetch(app, '/api/state');
@@ -42,7 +45,7 @@ describe('buildApp', () => {
       const bus = new WebEventBus();
       bus.push({ type: 'message', text: 'a' });
       bus.push({ type: 'message', text: 'b' });
-      const app = buildApp({ eventBus: bus });
+      const app = buildApp({ eventBus: bus, dashboardRoot: null });
 
       const res = await fetch(app, '/api/events?since=1');
       expect(res.status).toBe(200);
@@ -55,7 +58,7 @@ describe('buildApp', () => {
   describe('with control', () => {
     it('POST /api/command dispatches and returns ok', async () => {
       const control = fakeControl();
-      const app = buildApp({ control });
+      const app = buildApp({ control, dashboardRoot: null });
 
       const res = await fetch(app, '/api/command', {
         method: 'POST',
@@ -69,7 +72,7 @@ describe('buildApp', () => {
 
     it('POST /api/command rejects missing name', async () => {
       const control = fakeControl();
-      const app = buildApp({ control });
+      const app = buildApp({ control, dashboardRoot: null });
 
       const res = await fetch(app, '/api/command', {
         method: 'POST',
@@ -82,7 +85,7 @@ describe('buildApp', () => {
 
     it('POST /api/chat dispatches and returns ok', async () => {
       const control = fakeControl();
-      const app = buildApp({ control });
+      const app = buildApp({ control, dashboardRoot: null });
 
       const res = await fetch(app, '/api/chat', {
         method: 'POST',
@@ -95,7 +98,7 @@ describe('buildApp', () => {
 
     it('POST /api/chat rejects empty text', async () => {
       const control = fakeControl();
-      const app = buildApp({ control });
+      const app = buildApp({ control, dashboardRoot: null });
 
       const res = await fetch(app, '/api/chat', {
         method: 'POST',
@@ -108,7 +111,7 @@ describe('buildApp', () => {
 
     it('GET /api/state returns the snapshot', async () => {
       const control = fakeControl();
-      const app = buildApp({ control });
+      const app = buildApp({ control, dashboardRoot: null });
 
       const res = await fetch(app, '/api/state');
       expect(res.status).toBe(200);
@@ -121,12 +124,73 @@ describe('buildApp', () => {
       const control = fakeControl({
         getState: vi.fn().mockRejectedValue(new Error('not ready')),
       });
-      const app = buildApp({ control });
+      const app = buildApp({ control, dashboardRoot: null });
 
       const res = await fetch(app, '/api/state');
       expect(res.status).toBe(503);
       const body = await res.json();
       expect(body.error).toBe('not ready');
+    });
+  });
+
+  describe('dashboard static serving', () => {
+    let tmp: string;
+
+    beforeAll(async () => {
+      tmp = await mkdtemp(path.join(tmpdir(), 'zhive-dashboard-test-'));
+      await mkdir(path.join(tmp, 'assets'), { recursive: true });
+      await writeFile(path.join(tmp, 'index.html'), '<!doctype html><body>hi</body>');
+      await writeFile(path.join(tmp, 'assets', 'index-abc.js'), 'console.log(1)');
+    });
+
+    afterAll(async () => {
+      await rm(tmp, { recursive: true, force: true });
+    });
+
+    it('serves index.html at /', async () => {
+      const app = buildApp({ dashboardRoot: tmp });
+      const res = await fetch(app, '/');
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('text/html');
+      expect(await res.text()).toContain('hi');
+    });
+
+    it('serves nested static assets with the correct mime', async () => {
+      const app = buildApp({ dashboardRoot: tmp });
+      const res = await fetch(app, '/assets/index-abc.js');
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('text/javascript');
+      expect(await res.text()).toBe('console.log(1)');
+    });
+
+    it('returns 404 for missing files', async () => {
+      const app = buildApp({ dashboardRoot: tmp });
+      const res = await fetch(app, '/missing.txt');
+      expect(res.status).toBe(404);
+    });
+
+    it('returns a friendly 503 for / when index.html is missing', async () => {
+      const empty = await mkdtemp(path.join(tmpdir(), 'zhive-empty-'));
+      try {
+        const app = buildApp({ dashboardRoot: empty });
+        const res = await fetch(app, '/');
+        expect(res.status).toBe(503);
+        expect(await res.text()).toContain('not found');
+      } finally {
+        await rm(empty, { recursive: true, force: true });
+      }
+    });
+
+    it('does not intercept /api/* even when those routes are unmounted', async () => {
+      const app = buildApp({ dashboardRoot: tmp });
+      const res = await fetch(app, '/api/state');
+      expect(res.status).toBe(404);
+    });
+
+    it('blocks path traversal', async () => {
+      const app = buildApp({ dashboardRoot: tmp });
+      const res = await fetch(app, '/../package.json');
+      expect(res.status).toBe(404);
     });
   });
 });

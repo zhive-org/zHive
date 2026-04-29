@@ -1,6 +1,6 @@
 # CLI Web Dashboard for Real-World Trading
 
-**Status:** M3 shipped (bidirectional command/chat/state API). Up next: M4 (vanilla JS dashboard UI).
+**Status:** M4 shipped — full dashboard live (panels + Hyperliquid WS + uPlot ROE chart). All four milestones done.
 **Complements:** none
 **Last updated:** 2026-04-29
 
@@ -21,13 +21,69 @@ Scope: `cli start` only. Not `cli run`, not `cli start-all`.
 | 1 | HTTP server skeleton + `--web` flag | `apps/cli/src/commands/start/web/server.ts` | ✅ Done | Hono + @hono/node-server on 127.0.0.1; lifecycle gated on runtime |
 | 2 | Event mirror via polling | `apps/cli/src/commands/start/web/events.ts` | ✅ Done | Ring buffer (cap 200, monotonic seq); `GET /api/events?since=<seq>` |
 | 3 | Bidirectional command API | `apps/cli/src/commands/start/web/server.ts` + `control.ts` | ✅ Done | `POST /api/command`, `POST /api/chat`, `GET /api/state` via `WebControl` |
-| 4 | Vanilla JS dashboard UI | `apps/cli/src/commands/start/web/dashboard/` | ⬜ Queued | Single HTML + JS, browser-side WS to Hyperliquid for live PnL + comparison graph |
+| 4 | React + Vite dashboard UI | `apps/cli/dashboard/` | ✅ Done | scaffold + panels + Hyperliquid WS + uPlot ROE chart |
 
 Status legend: ✅ Done · 🟡 In progress · ⬜ Queued · ❌ Blocked
 
 ---
 
 ## What Was Built
+
+### Milestone 4 — step 3: Hyperliquid WS + live PnL + uPlot ROE chart — shipped 2026-04-29
+
+- `apps/cli/dashboard/src/lib/hyperliquid.ts` — singleton `HyperliquidClient`. Connects to `wss://api.hyperliquid.xyz/ws`, subscribes to `allMids`, parses `{ channel: 'allMids', data: { mids } }` messages and stores them in a `Map<coin, number>`. Status machine: `connecting → live → stalled → reconnecting`. 3s stall threshold; exponential reconnect 1s → 30s cap. Module-level `singleton` so multiple `useMids` callers share one socket.
+- `apps/cli/dashboard/src/lib/useMids.ts` — React hook subscribing to the singleton; emits a fresh `Map` reference + monotonically incrementing `tick` on every WS push so memo invalidation is cheap.
+- `apps/cli/dashboard/src/lib/usePnl.ts` — `computePnl(positions, mids)` does the per-position derivation: `signedSize = side === 'long' ? size : -size`, `pnl = signedSize * (live - entryPrice)`, `cost = |size| * entryPrice`. Aggregates: `roe = (Σ pnl / Σ cost) * 100`. Falls back to server-provided `markPrice`/`entryPrice` when a coin's mid hasn't arrived. Returns enriched positions with `livePnlUsd` + `liveRoePercent`.
+- `apps/cli/dashboard/src/lib/useRoeSeries.ts` — rolling 30s buffer of `(ts, roe)` samples; on each ROE update, trims older than `now - 30s`, caps at 720 points (matches landing page). Outputs two `Float64Array`s: `t` (relative seconds from window start) and `roeDelta` (ROE − window-start ROE). uPlot consumes those directly.
+- `apps/cli/dashboard/src/components/RoeChart.tsx` — uPlot wrapper. Initializes the plot once with amber stroke + transparent fill; updates via `setData` on each series push. `ResizeObserver` keeps width in sync with the container. Tick formatters: x = `${s}s`, y = `${+}${pct}%`.
+- `apps/cli/dashboard/src/components/Header.tsx` — extended with live PnL + ROE inline (color-coded by sign) and a separate WS status line (`mids: live | stalled | reconnecting | connecting`) alongside the existing CLI-stream status.
+- `apps/cli/dashboard/src/components/PositionsTable.tsx` — accepts `ValuedPosition` (DetailedPosition + optional live values); renders `livePnlUsd`/`liveRoePercent` if present, falls back to server values otherwise. Mark price displayed in the row matches the live mid.
+- `apps/cli/dashboard/src/App.tsx` — composes everything. New top-row chart section above the activity feed (left column). Chart, activity, chat stack vertically; positions/watchlist remain on the right.
+- **Verification done:** `tsc --noEmit -p dashboard/tsconfig.json` clean. Bundle: 244 KB / **84 KB gzipped** (+25 KB gz from step 2 — uPlot ~17 KB gz, the rest is the new modules). 145/145 CLI tests still pass.
+- **Locked decisions confirmed during build:**
+  - **Single `Map<coin, number>` for mids, replaced wholesale on every WS push** — *why:* `usePnl` re-runs on a `tick` counter rather than diffing the Map. Cheap, correct, no stale-closure foot-guns.
+  - **`useRoeSeries` writes `Float64Array`s** rather than plain arrays — *why:* uPlot expects typed arrays for its hot path, and we churn one per push.
+  - **Chart re-init only on mount; `setData` on update.** *Why:* re-creating the uPlot instance on every render would tank perf and reset the cursor. Two `useEffect`s — one with empty deps for setup, one keyed on `series` for data — is the canonical uPlot+React shape.
+  - **Live PnL falls back to `markPrice ?? entryPrice` if a mid is missing** — *why:* prevents the whole row from showing "—" while the WS is still subscribing. As soon as mids arrive (~1s), the live values take over.
+  - **Stall detection is timer-based (1Hz check), not message-based.** *Why:* if the WS goes silent without closing, we still flip to `stalled` after 3s; the user sees the warning instead of stale data presented as live.
+
+### Milestone 4 — step 2: Panels + control plane — shipped 2026-04-29
+
+- `apps/cli/dashboard/src/lib/types.ts` — mirrors of the server-side `WebEventPayload`, `WebEvent`, `WebState`, `DetailedPosition`. Hand-mirrored (not imported) — Vite project sits outside the CLI's tsc graph and pulling the server types would drag Node-only code into the browser bundle.
+- `apps/cli/dashboard/src/lib/api.ts` — typed `fetch` wrappers for `GET /api/state`, `GET /api/events?since=`, `POST /api/command`, `POST /api/chat`. All errors funnel through a single `asJsonError` helper that pulls the server's `error` field if present.
+- `apps/cli/dashboard/src/lib/format.ts` — `formatTime(iso)`, `formatUsd(n, {signed?})`, `formatPercent(n)`. Used by ActivityFeed and PositionsTable.
+- `apps/cli/dashboard/src/lib/useEventStream.ts` — central event stream. `useReducer` accumulates events up to 500-cap; `useQuery` polls `/api/events` every 1s with a `sinceRef` (avoids queryKey churn). `applyClearChat` filters chat events older than the latest `system:clear-chat` seq before storing — keeps the dashboard's chat panel in sync with web `/clear`.
+- `apps/cli/dashboard/src/components/Header.tsx` — agent name + status indicator (connecting / live / stalled) driven off `stateQuery.isError` and `events.isError`.
+- `apps/cli/dashboard/src/components/ActivityFeed.tsx` — filters out `chat`/`system` events, renders `message`/`error`/`online`/`decision` with action-color coding (LONG=emerald, SHORT=red, CLOSE=amber, HOLD=zinc). Auto-scrolls to bottom only when the user is near the bottom (preserves scroll-up reads).
+- `apps/cli/dashboard/src/components/ChatPanel.tsx` — filters `chat` events. Roles render with role-specific styles (you / agent / error / tool).
+- `apps/cli/dashboard/src/components/CommandBar.tsx` — single input that auto-routes by leading `/`: slash → `POST /api/command`, anything else → `POST /api/chat`. Inline autocomplete suggestions when typing `/`. Invalidates the `state` query on command success so positions/watchlist refresh after `/positions` or `/watchlist`.
+- `apps/cli/dashboard/src/components/PositionsTable.tsx` — coin/side/leverage row with entry+mark prices and PnL/ROE in green/red.
+- `apps/cli/dashboard/src/components/WatchlistPanel.tsx` — pill list of watched coins.
+- `apps/cli/dashboard/src/App.tsx` — top-level layout: Header → 2-column grid (`lg:grid-cols-[1fr_320px]`, activity+chat left, positions+watchlist right) → CommandBar. `useQuery({ queryKey: ['state'], refetchInterval: 30_000 })` keeps state fresh; `useEventStream` drives the live feed.
+- **Verification done:** dashboard typechecks (`tsc --noEmit -p dashboard/tsconfig.json`). Build is clean: 187 KB / 59 KB gz JS, 12 KB / 3.3 KB gz CSS — +3 KB gz over step 1 for all the panels and Tailwind classes. End-to-end smoke via `tsx`: server with mock control returns 200 on every endpoint, bundled HTML loads, `/api/state` returns the demo positions, `/api/events` returns seeded events. CLI tests still 145/145.
+- **Locked decisions confirmed during build:**
+  - **Layout: side-by-side 2-column on lg+, single column on small screens.** *Why:* mirrors how the existing Ink layout splits agent feed (main) from positions/watchlist (sidebar). Resolves the M4 "tabs vs side-by-side" open question.
+  - **Single combined input for both chat and slash commands**, auto-routed by leading `/`. *Why:* matches the existing Ink CLI behavior (one prompt, slashes route to `executeSlashCommand`); avoids two boxes that share screen real estate. Inline autocomplete suggestions show only when typing a slash with no spaces — fewer false triggers.
+  - **`useEventStream` uses a `useRef` for `since`, not a `useQuery` key.** *Why:* keying the query on `since` would invalidate on every tick (cache miss every poll, lost retry semantics). The ref keeps the queryKey stable; the function reads the latest `since` lazily.
+  - **`applyClearChat` walks events backwards and filters chat events older than the most recent `system:clear-chat`.** *Why:* deterministic regardless of order, and the latest clear is what the user sees.
+  - **Types are hand-mirrored** in `dashboard/src/lib/types.ts` rather than imported from the CLI's `web/events.ts` and `web/control.ts`. *Why:* Vite project's tsconfig has different lib targets (DOM, browser-only); pulling server types would force `paths` mappings or a separate package, neither worth it for ~40 lines of types. Drift risk is low and caught by the API tests if shapes diverge.
+  - **State refetch every 30s + invalidation on command success.** *Why:* `/api/state` hits Hyperliquid (no cache server-side per M3 lock); 30s is rare enough not to hammer it but quick enough that positions don't go too stale. After a slash command (especially `/watchlist` or anything that may mutate state), invalidate to refetch immediately.
+  - **Activity feed auto-scrolls only when within 200px of the bottom.** *Why:* preserves user's scroll position when reading older events; matches Ink's "settled vs active" intuition.
+  - **Chat panel is fixed 16rem (h-64)** under the activity feed, both with internal scroll. *Why:* prevents one panel from starving the other; chat tends to grow taller, fixing it keeps activity visible.
+
+### Milestone 4 — step 1: Vite scaffold + Hono static serving — shipped 2026-04-29
+
+- `apps/cli/dashboard/` — Vite project. `index.html` (root with `#root` div), `src/main.tsx` (StrictMode + `QueryClientProvider`), `src/App.tsx` (minimal "hello" with `useQuery` hitting `/healthz`), `src/index.css` (`@import 'tailwindcss'`), `vite.config.ts` (React + Tailwind v4 plugins, output to `../dist/dashboard`, dev proxy for `/api/*` and `/healthz` to `127.0.0.1:7878`), `tsconfig.json` (browser DOM lib, `vite/client` types, `react-jsx`).
+- `apps/cli/package.json` — devDeps added: `vite ^8`, `@vitejs/plugin-react ^6`, `react-dom ^18.3.1` (pinned to match Ink's React), `@types/react-dom ^18.3`, `tailwindcss ^4.2`, `@tailwindcss/vite ^4.2`, `@tanstack/react-query ^5.100`, `uplot ^1.6`. Scripts: `build` chains `build:cli && build:dashboard`; new `build:dashboard` and `dev:dashboard` (Vite cwd-based — Vite 8 dropped `--root`).
+- `apps/cli/src/commands/start/web/server.ts` — removed the M1 placeholder `app.get('/')`. Added a static-file catch-all when `dashboardRoot !== null`. Default root resolves from `import.meta.url` so the CLI binary finds `dist/dashboard/` at its sibling regardless of cwd. Path-traversal guard ensures resolved targets stay inside the root. `/api/*` and `/healthz` are explicitly skipped by the catch-all. Friendly 503 with build hint when `index.html` is missing (helpful pre-build).
+- `apps/cli/src/commands/start/web/server.test.ts` — 7 new dashboard tests (15 total in this file): index serving, mime types, 404 for missing files, 503 with hint when bundle isn't built, `/api/*` not intercepted, path traversal blocked. Existing tests pass `dashboardRoot: null` to keep their assertions unambiguous.
+- **Verification done:** 145/145 tests pass. `pnpm --filter @zhive/cli build` chains tsup → vite cleanly (tsup's `clean: true` runs first, Vite's output survives). Bundle: `dist/dashboard/index.html` (0.4 KB), `index-XXX.css` (6.6 KB / 2.1 KB gz, Tailwind purged), `index-XXX.js` (175 KB / 56 KB gz — React + ReactDOM + TanStack Query + minimal app). Smoke via `tsx`: `GET /` serves built HTML, `GET /assets/index-XXX.js` returns the JS bundle, `/healthz` and `/missing.txt` behave correctly. Pre-existing typecheck error in `zhive.ts:257` unchanged.
+- **Locked decisions confirmed during build:**
+  - Build order **tsup → vite** (`build:cli && build:dashboard`) — *why:* tsup's `clean: true` wipes `dist/`, so Vite must run *after* tsup or its output dies. Cleanest fix; no need to flip tsup's clean flag.
+  - Vite outputs to `../dist/dashboard` via absolute `path.resolve(__dirname, ...)` in `vite.config.ts` — *why:* keeps Vite's cwd inside `dashboard/` (idiomatic) while merging output into the CLI's `dist/`.
+  - Hono catch-all `app.get('/*', ...)` with manual `fs.readFile` instead of `@hono/node-server`'s `serveStatic` — *why:* `serveStatic`'s `root` is cwd-relative; we need an absolute path resolved from `import.meta.url` so the static handler works whether the CLI is run from npx cache, the repo, or a global install. ~25 lines of code, full control over mime types and the path-traversal guard.
+  - Default `dashboardRoot` is `<binary dir>/dashboard` (resolved from `import.meta.url`); pass `null` to disable — *why:* tests need `null` to make the empty-options case unambiguous (otherwise the catch-all would intercept everything and only return 404 via its own logic, which is fine but harder to reason about).
+  - Pinned `react-dom` to `^18.3.1` to match Ink's `react@^18.3.1` — *why:* pnpm initially installed `react-dom@19` which mismatched. The dashboard bundle is independent of Ink's React, but matching versions avoids type-defs ambiguity in IDE tooling.
 
 ### Milestone 3 — Bidirectional command API — shipped 2026-04-29
 
@@ -80,28 +136,40 @@ Status legend: ✅ Done · 🟡 In progress · ⬜ Queued · ❌ Blocked
 
 ## Queued — Design Notes
 
-### Milestone 4 — Vanilla JS dashboard UI — next priority
+### Milestone 4 — React + Vite dashboard UI — next priority
 
 - **Why this matters:** Without it, all the API plumbing is invisible. This milestone also adds the live market-data layer (PnL, comparison graph) that the landing page already showcases.
+
+- **Phasing (3 commits):**
+  1. **Scaffold + serve.** Vite project at `apps/cli/dashboard/`, build wired into `pnpm --filter @zhive/cli build`, Hono static-file route, minimal "hello dashboard" replacing the placeholder `/`. Verifies the pipeline end-to-end.
+  2. **Panels + control plane.** Header, activity feed, chat, command bar, positions, watchlist. Wired to `/api/state` (initial) + `/api/events` (polling) + `POST /api/command` + `POST /api/chat`.
+  3. **Live market data + chart.** Hyperliquid `allMids` WS client, real-time PnL, uPlot ROE chart matching the landing page (ROE % delta from window start, rolling 30s).
+
 - **Already built (reusable):**
-  - The Ink layout in `apps/cli/src/commands/start/ui/app.tsx` — informational reference for what panels the web dashboard should mirror (header, activity feed, positions overlay, watchlist overlay)
-  - The landing page's existing Hyperliquid WS integration and comparison graph — copy the subscription shape and graph approach from there rather than re-deriving (path TBD; see Open Follow-ups)
+  - The Ink layout in `apps/cli/src/commands/start/ui/app.tsx` — informational reference for what panels the web dashboard should mirror (header, activity feed, positions overlay, watchlist overlay).
+  - All M3 endpoints: `/api/state`, `/api/events?since=`, `POST /api/command`, `POST /api/chat`. Event payload union (`message | error | decision | online | chat | system`) is locked.
+  - The landing page's existing Hyperliquid WS integration and comparison graph — copy the subscription shape and graph approach from there rather than re-deriving (paths in Open Follow-ups below).
+
 - **Needs building:**
-  - `apps/cli/src/commands/start/web/dashboard/index.html` — single-file HTML, inline CSS, inline JS
-  - `apps/cli/src/commands/start/web/dashboard/app.js` — separate file if HTML gets unwieldy; otherwise inline
-  - Server static-route to serve the dashboard at `GET /`
-  - Browser-side WS client connecting directly to `wss://api.hyperliquid.xyz/ws`, subscribing to mark prices for assets the agent currently has open positions in (driven off the positions snapshot from `/api/state`)
-  - Realtime PnL computation in the browser — `(markPx − entryPx) × size` per position, aggregated; recomputes on every WS tick
-  - Comparison graph rendered with a tiny lib (Chart.js or uPlot, both single-file CDN) — equity curve over time
+  - `apps/cli/dashboard/` Vite project: `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx`, `src/App.tsx`, `src/index.css`, `tailwind.config.js`, `postcss.config.js`. Output to `apps/cli/dist/dashboard/`.
+  - Build wiring: `apps/cli/package.json` `build` script runs tsup AND vite. Likely via `&&` or `npm-run-all`.
+  - Hono static-file middleware in `web/server.ts` serving `dist/dashboard/` at `/` and `/assets/*`. Falls through to existing routes for `/api/*` and `/healthz`.
+  - TanStack Query setup: `QueryClientProvider`, `useQuery` for `/api/state`, `useQuery` with `refetchInterval` for `/api/events?since=`, `useMutation` for `POST /api/command` and `POST /api/chat`.
+  - Components: `<Header/>`, `<ActivityFeed/>`, `<ChatPanel/>`, `<CommandBar/>`, `<PositionsTable/>`, `<WatchlistPanel/>`, `<RoeChart/>` (uPlot wrapper).
+  - Browser-side `hyperliquid-ws.ts` (port from landing-page singleton) — subscribes to `allMids`, exposes a tiny store/hook for live mids.
+  - Real-time PnL/ROE derivation hook — `(markPx − entryPx) × signedSize` per position, aggregated; recomputes on every WS tick.
+
 - **Locked decisions:**
-  - Vanilla JS, no React/Tailwind, no build step — *why:* (user confirmation) keeps the CLI npm package slim and avoids a frontend build pipeline; the dashboard is utility, not a product surface
-  - Single-file HTML where reasonable — *why:* simpler to ship; any "framework" we'd reach for here would be over-engineered for the use case
-  - Browser opens WS directly to Hyperliquid; the local server does NOT proxy market data — *why:* Hyperliquid's public WS allows any origin, has no auth, and would only add load + complexity to our server. Clean split: server owns private agent state, browser owns public market data.
-  - Realtime PnL is computed in the browser, not the server — *why:* prices arrive over the WS the browser already holds; sending them through our server first would add a hop for no gain.
+  - **React 18 + Vite + TypeScript + Tailwind + TanStack Query + uPlot** — *why:* React opens the ecosystem we'd reach for as the dashboard grows; Vite is the standard React bundler with minimal config; Tailwind removes CSS bikeshedding; TanStack Query gives clean cache+retry semantics for the polling endpoints; uPlot is built for the rolling-window per-tick chart pattern (~40kb).
+  - **Build step accepted; Vite added as a devDependency of `@zhive/cli`.** *Why:* user confirmed (npx-based distribution makes the bundle size delta ~tens to hundreds of ms one-time download per version — in the noise vs the existing multi-MB tarball). Walks back the M4 prep "no build step" lock; replacement: `pnpm --filter @zhive/cli build` orchestrates both tsup (CLI) and vite (dashboard).
+  - **Dashboard source lives at `apps/cli/dashboard/`** (sibling of `src/`), output to `apps/cli/dist/dashboard/`. *Why:* keeps Vite's roots, configs, and tsconfig disjoint from tsup's. Browser code never touches Node-only `src/` paths.
+  - **Browser opens WS directly to Hyperliquid; the local server does NOT proxy market data** — *why (kept from prior lock):* Hyperliquid's public WS allows any origin, has no auth, and would only add load + complexity to our server. Clean split: server owns private agent state, browser owns public market data.
+  - **Realtime PnL is computed in the browser, not the server** — *why (kept):* prices arrive over the WS the browser already holds; sending them through our server first would add a hop for no gain.
+  - **Chart axis: ROE % delta from window start, rolling 30s window** — *why (locked from M4 prep):* mirrors the landing page exactly — same visual language users already know.
+
 - **Open questions:**
-  - Layout: tabs (activity / positions / watchlist / chart) vs. side-by-side panels? — **leaning:** side-by-side on desktop (CSS grid); chart spans the top row, activity + positions split below. Matches how a trader watches things.
-  - Comparison graph axes: agent equity vs. what? (HODL of same notional? Market index? Other agents?) — **leaning:** mirror whatever the landing page already does — will check that source as part of M4 prep.
-  - Graph library: Chart.js (richer, ~70kb) vs. uPlot (lean, ~40kb, faster on tick updates) — **leaning:** uPlot, since equity curves update on every WS tick and uPlot is built for that pattern.
+  - Layout: tabs vs side-by-side panels? — **leaning:** side-by-side desktop grid (chart top row, activity + positions split below). Decide during commit #2.
+  - Dev iteration: Vite dev server with proxy to a separately-running `cli start --web`, or just rebuild + refresh? — **leaning:** start with rebuild + refresh (minimal config); add dev-server proxy if iteration feels slow.
 
 ---
 
