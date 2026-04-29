@@ -12,6 +12,7 @@ import type {
 } from '../types';
 import { HyperliquidService } from '../../hyperliquid/service';
 import { PositionNotFound, UnknownError, UnSupportedAssetError } from './error';
+import { stopLossTriggerPrice, takeProfitTriggerPrice } from './tp-sl';
 import type { IExchange, TradingCategory } from './types';
 
 const DEFAULT_SLIPPAGE = 0.03;
@@ -175,10 +176,10 @@ export class HyperliquidExchange implements IExchange {
     let slPrice: string | undefined;
     let tpPrice: string | undefined;
 
+    const side = isBuy ? 'long' : 'short';
+
     if (!_.isNil(d.sl)) {
-      const priceMovePct = d.sl / d.leverage / 100;
-      // SL triggers when price moves against the position
-      const triggerPrice = entryPrice * (isBuy ? 1 - priceMovePct : 1 + priceMovePct);
+      const triggerPrice = stopLossTriggerPrice(entryPrice, side, d.sl, d.leverage);
       // Limit price is worse than trigger to ensure fill on market trigger
       const limitPrice = triggerPrice * (isBuy ? 1 - this.slippage : 1 + this.slippage);
       orders.push({
@@ -198,11 +199,7 @@ export class HyperliquidExchange implements IExchange {
     }
 
     if (!_.isNil(d.tp)) {
-      // Convert PnL % to price move %, accounting for leverage.
-      // PnL% = priceMove% * leverage  =>  priceMove% = PnL% / leverage
-      const tpPriceMovePct = d.tp / d.leverage / 100;
-      // TP triggers when price moves in favor of the position
-      const triggerPrice = entryPrice * (isBuy ? 1 + tpPriceMovePct : 1 - tpPriceMovePct);
+      const triggerPrice = takeProfitTriggerPrice(entryPrice, side, d.tp, d.leverage);
       // Limit price is worse than trigger to ensure fill
       const limitPrice = triggerPrice * (isBuy ? 1 - this.slippage : 1 + this.slippage);
       orders.push({

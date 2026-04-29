@@ -13,6 +13,7 @@ import { createIndicatorCommand } from './commands/indicator/commands/index';
 import { createMarketCommand } from './commands/market/commands/index';
 import { createTACommand } from './commands/ta/commands/index';
 import { createPlatformCommand } from './commands/platform/commands/index';
+import { createBacktestCommand } from './commands/backtest';
 
 const CLI_VERSION = process.env.__CLI_VERSION__ ?? 'dev';
 
@@ -34,6 +35,7 @@ program.addCommand(createIndicatorCommand());
 program.addCommand(createMarketCommand());
 program.addCommand(createTACommand());
 program.addCommand(createPlatformCommand());
+program.addCommand(createBacktestCommand());
 
 // Show help with exit code 0 when no arguments provided
 const args = process.argv.slice(2);

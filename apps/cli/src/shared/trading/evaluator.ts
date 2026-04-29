@@ -4,7 +4,7 @@ import { traceable } from 'langsmith/traceable';
 import { z } from 'zod';
 import { cacheableSystem, type AgentRuntime } from '../agent';
 import { formatToolError } from '../megathread/utils.js';
-import { AssetAnalyzer } from './analyzer.js';
+import { AssetAnalyzer, ProviderFactory } from './analyzer.js';
 import { IExchange } from './exchange/types';
 import { loadMemory } from './memory';
 import { RiskEngine } from './risk';
@@ -42,8 +42,9 @@ export class AssetEvaluator {
   constructor(
     private exchange: IExchange,
     private runtime: AgentRuntime,
+    providerFactory?: ProviderFactory,
   ) {
-    this.analyzer = new AssetAnalyzer(runtime);
+    this.analyzer = new AssetAnalyzer(runtime, providerFactory);
   }
 
   async evaluate(

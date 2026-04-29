@@ -2,6 +2,7 @@ import { getMemoryLineCount } from '@zhive/sdk';
 import { generateText } from 'ai';
 import { AgentRuntime } from '../agent/runtime';
 import { AssetEvaluator } from './evaluator';
+import { ProviderFactory } from './analyzer';
 import { IExchange } from './exchange/types';
 import { loadMemory, saveMemory } from './memory';
 import { TradeDecision } from './types';
@@ -36,11 +37,17 @@ export class TradingAgent {
     config?: TradingAgentCallbacks & {
       intervalMs?: number;
     },
+    injects?: {
+      exchange?: IExchange;
+      providerFactory?: ProviderFactory;
+    },
   ): Promise<TradingAgent> {
-    const exchange = await ZhiveExchange.create({
-      apiKey: runtime.config.apiKey,
-    });
-    const evaluator = new AssetEvaluator(exchange, runtime);
+    const exchange =
+      injects?.exchange ??
+      (await ZhiveExchange.create({
+        apiKey: runtime.config.apiKey,
+      }));
+    const evaluator = new AssetEvaluator(exchange, runtime, injects?.providerFactory);
 
     return new TradingAgent(
       runtime,
@@ -76,7 +83,7 @@ export class TradingAgent {
     this.abortController = null;
   }
 
-  private async runOnce() {
+  async runOnce() {
     const account = await this.exchange.fetchAccountState();
     this.abortController = new AbortController();
 

@@ -1,11 +1,19 @@
 import * as ai from 'ai';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
+import { IProvider } from 'pinets';
 import { AgentRuntime } from '../agent/runtime';
 import { createPineScriptTool, createPineScriptToolForAsset } from '../tools/pinescript';
 import { IExchange } from './exchange/types';
 import { AccountSummary, PairInfo } from './types';
 import { cacheableSystem } from '../agent';
 import { HyperliquidProvider } from '../tools/pinescript/providers/hyperliquid/provider';
+
+export type ProviderFactory = (coin: string) => Promise<IProvider>;
+
+const defaultProviderFactory: ProviderFactory = async (coin) => {
+  const dex = coin.includes(':') ? coin.split(':')[0] : undefined;
+  return HyperliquidProvider.create({ dex });
+};
 
 const { ToolLoopAgent } = wrapAISDK(ai);
 
@@ -419,7 +427,14 @@ const SYSTEM_PROMPT = `You are a technical analyst. Your task is to analyze a gi
 ${pinescriptGuide}`;
 
 export class AssetAnalyzer {
-  constructor(private runtime: AgentRuntime) {}
+  private providerFactory: ProviderFactory;
+
+  constructor(
+    private runtime: AgentRuntime,
+    providerFactory?: ProviderFactory,
+  ) {
+    this.providerFactory = providerFactory ?? defaultProviderFactory;
+  }
 
   async analyze(
     ctx: { abortSignal?: AbortSignal },
@@ -434,10 +449,8 @@ export class AssetAnalyzer {
       leverage: number;
     },
   ): Promise<string> {
-    const dex = coin.includes(':') ? coin.split(':')[0] : undefined;
-
-    const hyperliquidProvider = await HyperliquidProvider.create({ dex });
-    const pineScriptTool = createPineScriptToolForAsset(coin, hyperliquidProvider);
+    const provider = await this.providerFactory(coin);
+    const pineScriptTool = createPineScriptToolForAsset(coin, provider);
 
     const agent = new ToolLoopAgent({
       model: this.runtime.model,

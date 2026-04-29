@@ -11,6 +11,7 @@ import {
   TradeDecision,
 } from '../types';
 import { PositionNotFound, UnSupportedAssetError } from './error';
+import { stopLossTriggerPrice, takeProfitTriggerPrice } from './tp-sl';
 import { IExchange, TradingCategory } from './types';
 
 export interface PositionSummary {
@@ -196,17 +197,16 @@ export class ZhiveExchange implements IExchange {
     let slPrice: string | undefined;
     let tpPrice: string | undefined;
 
+    const side = isBuy ? 'long' : 'short';
+
     if (order.sl) {
-      const priceMovePct = order.sl / order.leverage / 100;
-      // SL triggers when price moves against the position
-      const triggerPrice = entryPrice * (isBuy ? 1 - priceMovePct : 1 + priceMovePct);
+      const triggerPrice = stopLossTriggerPrice(entryPrice, side, order.sl, order.leverage);
       slPrice = formatPrice(triggerPrice, szDecimal);
       req.stop_loss = slPrice;
     }
 
     if (order.tp) {
-      const priceMovePct = order.tp / order.leverage / 100;
-      const triggerPrice = entryPrice * (isBuy ? 1 + priceMovePct : 1 - priceMovePct);
+      const triggerPrice = takeProfitTriggerPrice(entryPrice, side, order.tp, order.leverage);
       tpPrice = formatPrice(triggerPrice, szDecimal);
       req.take_profit = tpPrice;
     }
@@ -257,6 +257,7 @@ export class ZhiveExchange implements IExchange {
     return {
       accountValue: data.total_equity,
       marginUsed: marginUsed,
+      withdrawable: data.cash_balance,
       spotBalances: [
         {
           coin: 'USDC',
