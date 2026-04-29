@@ -3,11 +3,13 @@ import { access } from 'fs/promises';
 import { join } from 'path';
 import { initializeAgentRuntime } from '../../shared/agent/runtime';
 import { BacktestRunner, BacktestSummary } from '../../shared/backtest/runner';
+import { getHiveDir } from '../../shared/config/constant';
 import { loadAgentEnv } from '../../shared/config/env-loader';
 
 export const createBacktestCommand = (): Command => {
   return new Command('backtest')
     .description('Replay the trading agent against historical Hyperliquid candles')
+    .option('--agent <name>', 'Agent name under ~/.zhive/agents/<name>; defaults to cwd')
     .requiredOption('--from <date>', 'Start date (ISO 8601, e.g. 2026-01-01)')
     .requiredOption('--to <date>', 'End date (ISO 8601, e.g. 2026-01-31)')
     .option('--cash <usd>', 'Initial USDC balance', '10000')
@@ -17,14 +19,24 @@ export const createBacktestCommand = (): Command => {
     .option('--slippage <fraction>', 'Per-fill slippage as a fraction (e.g. 0.03)', '0.03')
     .option('--fee-bps <bps>', 'Taker fee in basis points', '2.5')
     .action(async (raw) => {
-      const cwd = process.cwd();
-      const isAgentDir = await access(join(cwd, 'SOUL.md'))
+      let agentDir: string;
+      if (raw.agent) {
+        agentDir = join(getHiveDir(), 'agents', raw.agent);
+      } else {
+        agentDir = process.cwd();
+      }
+
+      const hasSoul = await access(join(agentDir, 'SOUL.md'))
         .then(() => true)
         .catch(() => false);
-      if (!isAgentDir) {
-        console.error('Error: "backtest" must be called from an agent directory (with SOUL.md)');
+      if (!hasSoul) {
+        const where = raw.agent ? `"${raw.agent}" (${agentDir})` : 'current directory';
+        console.error(`Error: no SOUL.md found in ${where}`);
         process.exit(1);
       }
+
+      // Agent runtime + env loaders expect to operate from the agent dir.
+      process.chdir(agentDir);
 
       const fromMs = Date.parse(raw.from);
       const toMs = Date.parse(raw.to);
@@ -38,7 +50,7 @@ export const createBacktestCommand = (): Command => {
       }
 
       await loadAgentEnv();
-      const runtime = await initializeAgentRuntime();
+      const runtime = await initializeAgentRuntime(agentDir);
 
       const fullWatchList = runtime.config.watchList;
       let watchList: string[];
