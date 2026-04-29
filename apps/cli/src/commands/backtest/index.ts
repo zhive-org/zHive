@@ -11,7 +11,8 @@ export const createBacktestCommand = (): Command => {
     .requiredOption('--from <date>', 'Start date (ISO 8601, e.g. 2026-01-01)')
     .requiredOption('--to <date>', 'End date (ISO 8601, e.g. 2026-01-31)')
     .option('--cash <usd>', 'Initial USDC balance', '10000')
-    .option('--interval <ms>', 'Decision tick in milliseconds', String(60 * 60 * 1000))
+    .option('--interval <ms>', 'Decision tick in milliseconds', String(4 * 60 * 60 * 1000))
+    .option('--coin <symbol>', 'Restrict the run to a single watchlist coin (e.g. xyz:GOLD)')
     .option('--out <dir>', 'Output directory for JSONL artifacts', './backtest-results')
     .option('--slippage <fraction>', 'Per-fill slippage as a fraction (e.g. 0.03)', '0.03')
     .option('--fee-bps <bps>', 'Taker fee in basis points', '2.5')
@@ -39,10 +40,29 @@ export const createBacktestCommand = (): Command => {
       await loadAgentEnv();
       const runtime = await initializeAgentRuntime();
 
+      const fullWatchList = runtime.config.watchList;
+      let watchList: string[];
+      if (raw.coin) {
+        if (!fullWatchList.includes(raw.coin)) {
+          console.error(
+            `Error: --coin ${raw.coin} not in agent watchlist [${fullWatchList.join(', ')}]`,
+          );
+          process.exit(1);
+        }
+        watchList = [raw.coin];
+      } else if (fullWatchList.length > 1) {
+        watchList = [fullWatchList[0]];
+        console.log(
+          `Watchlist has ${fullWatchList.length} coins; restricting to "${fullWatchList[0]}". Pass --coin to override.`,
+        );
+      } else {
+        watchList = fullWatchList;
+      }
+
       const summary = await BacktestRunner.run({
         from: fromMs,
         to: toMs,
-        watchList: runtime.config.watchList,
+        watchList,
         runtime,
         intervalMs: Number(raw.interval),
         initialCashUsd: Number(raw.cash),
