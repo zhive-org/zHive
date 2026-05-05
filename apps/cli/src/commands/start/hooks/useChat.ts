@@ -197,7 +197,6 @@ export function useChat({
           switch (part.type) {
             case 'text-delta': {
               response += part.text;
-              setChatBuffer(response);
               const now = Date.now();
               if (now - lastFlushTime >= THROTTLE_MS) {
                 setChatBuffer(response);
