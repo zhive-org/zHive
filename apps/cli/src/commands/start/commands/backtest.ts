@@ -3,7 +3,8 @@ import { formatFillsForAgent, formatSummary } from '../../../shared/backtest/for
 import { BacktestRunner } from '../../../shared/backtest/runner';
 import type { SlashCommandCallbacks } from '../services/command-registry';
 
-const DEFAULT_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4h
+const DAYS = 24 * 60 * 60 * 1000;
+const DEFAULT_INTERVAL_MS = DAYS;
 const DEFAULT_CASH = 10_000;
 const OUT_DIR = './backtest-results';
 
@@ -56,13 +57,8 @@ export async function backtestSlashCommand(
 ): Promise<void> {
   const parsed = parseArgs(args);
 
-  if (!parsed.from || !parsed.to) {
-    callbacks?.onError?.(`Missing --from or --to. ${USAGE}`);
-    return;
-  }
-
-  const fromMs = Date.parse(parsed.from);
-  const toMs = Date.parse(parsed.to);
+  const fromMs = parsed.from ? Date.parse(parsed.from) : Date.now() - 30 * DAYS;
+  const toMs = parsed.to ? Date.parse(parsed.to) : Date.now();
   if (Number.isNaN(fromMs) || Number.isNaN(toMs)) {
     callbacks?.onError?.('--from and --to must be ISO 8601 dates (e.g. 2026-04-25)');
     return;
@@ -72,30 +68,11 @@ export async function backtestSlashCommand(
     return;
   }
 
-  const fullWatchList = runtime.config.watchList;
-  if (fullWatchList.length === 0) {
-    callbacks?.onError?.('Agent watchlist is empty. Add a coin in config.json first.');
+  if (!parsed.coin) {
+    callbacks?.onError?.('--coin must be provided');
     return;
   }
-
-  let watchList: string[];
-  if (parsed.coin) {
-    if (!fullWatchList.includes(parsed.coin)) {
-      callbacks?.onError?.(
-        `--coin ${parsed.coin} not in agent watchlist [${fullWatchList.join(', ')}]`,
-      );
-      return;
-    }
-    watchList = [parsed.coin];
-  } else {
-    watchList = [fullWatchList[0]];
-    if (fullWatchList.length > 1) {
-      callbacks?.onMessage?.(
-        `Watchlist has ${fullWatchList.length} coins; restricting to "${fullWatchList[0]}". Pass --coin to override.`,
-      );
-    }
-  }
-
+  const watchList = [parsed.coin];
   const intervalMs = parsed.interval ? Number(parsed.interval) : DEFAULT_INTERVAL_MS;
   const initialCashUsd = parsed.cash ? Number(parsed.cash) : DEFAULT_CASH;
   const outDir = OUT_DIR;
@@ -144,13 +121,9 @@ export async function backtestSlashCommand(
       fillsText = '(fills.jsonl unavailable)';
     }
 
-    const agentContext = [
-      '[Backtest Result]',
-      summaryText.trim(),
-      '',
-      'Fills:',
-      fillsText,
-    ].join('\n');
+    const agentContext = ['[Backtest Result]', summaryText.trim(), '', 'Fills:', fillsText].join(
+      '\n',
+    );
     callbacks?.onAgentContext?.(agentContext);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
