@@ -91,16 +91,18 @@ export function useChat({
 
       // Handle slash commands
       if (message.startsWith('/')) {
-        const trimmedMessage = message.trim().toLowerCase();
-        const parts = trimmedMessage.split(/\s+/);
-        const baseCommand = parts[0];
+        const trimmed = message.trim();
+        // Preserve original casing/values for args; only the base command is matched case-insensitively.
+        const parts = trimmed.split(/\s+/);
+        const baseCommand = parts[0].toLowerCase();
+        const args = parts.slice(1);
 
         const callbacks: SlashCommandCallbacks = {
           onMessage: (text: string) => addChatActivity({ type: 'chat-agent', text }),
           onError: (error: string) => {
             addChatActivity({
               type: 'chat-error',
-              text: `Failed to load skills: ${error}`,
+              text: error,
             });
           },
           onClear: () => {
@@ -110,9 +112,12 @@ export function useChat({
           onOverlayOpen: (overlay: ChatOverlay) => {
             setOverlay(overlay);
           },
+          onAgentContext: (text: string) => {
+            sessionMessagesRef.current.push({ role: 'assistant', content: text });
+          },
         };
 
-        await executeSlashCommand(baseCommand, runtime, callbacks);
+        await executeSlashCommand(baseCommand, runtime, callbacks, args);
         return;
       }
 

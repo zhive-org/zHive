@@ -7,15 +7,14 @@ import { ZhiveExchange } from '../shared/trading/exchange/zhive';
 
 (async () => {
   const exchange = await ZhiveExchange.create({
-    // baseUrl: 'http://localhost:6969',
+    baseUrl: 'http://localhost:6969',
     apiKey: process.env.ZHIVE_API_KEY!,
   });
-  const account = await exchange.fetchAccountState();
 
   const res = await exchange.placeOrder({
-    coin: 'ETH',
-    action: 'CLOSE',
-    sizeUsd: 100,
+    asset: 'SPX',
+    action: 'SHORT',
+    sizeUsd: 1000,
     leverage: 1,
     reasoning: 'Test order',
     sl: 80,
