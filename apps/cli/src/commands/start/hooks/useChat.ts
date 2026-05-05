@@ -2,24 +2,21 @@ import * as ai from 'ai';
 import { type SystemModelMessage } from 'ai';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { useCallback, useRef, useState } from 'react';
+import { AgentRuntime } from '../../../shared/agent';
+import { getModel } from '../../../shared/config/ai-providers';
 import { extractAndSaveMemory } from '../../../shared/megathread/analysis';
 import { buildChatPrompt, type ChatMessage } from '../../../shared/megathread/prompts/chat-prompt';
-import { editSectionTool } from '../../../shared/tools/edit-section';
-import { fetchRulesTool } from '../../../shared/tools/fetch-rules';
 import { extractErrorMessage } from '../../../shared/megathread/utils';
-import { getModel } from '../../../shared/config/ai-providers';
-import { styled } from '../../shared/theme';
-import { positionsSlashCommand } from '../commands/positions';
-import { skillsSlashCommand } from '../commands/skills';
 import {
-  executeSlashCommand,
-  SLASH_COMMANDS,
-  SlashCommandCallbacks,
-} from '../services/command-registry';
+  createReadBacktestResultTool,
+  createReadFileTool,
+  writeFileTool,
+} from '../../../shared/tools/agent-files';
+import { fetchRulesTool } from '../../../shared/tools/fetch-rules';
 import type { DetailedPosition } from '../../../shared/trading/types';
+import { styled } from '../../shared/theme';
+import { executeSlashCommand, SlashCommandCallbacks } from '../services/command-registry';
 import { ChatActivityItem } from './types';
-import { useAgentRuntime } from './useAgentRuntime';
-import { AgentRuntime } from '../../../shared/agent';
 
 export type ChatOverlay =
   | { type: 'positions'; positions: DetailedPosition[] }
@@ -164,12 +161,15 @@ export function useChat({
             anthropic: { cacheControl: { type: 'ephemeral' } },
           },
         };
+        const readFile = createReadFileTool(runtime.config.dir);
+        const readBacktestResult = createReadBacktestResultTool(runtime.config.dir);
         const agent = new ToolLoopAgent({
           model,
           instructions: cacheableSystem,
           tools: {
-            editSection: editSectionTool,
-            fetchRules: fetchRulesTool,
+            writeFile: writeFileTool,
+            readFile,
+            readBacktestResult,
             ...runtime.tools,
           },
           maxOutputTokens: 4096,

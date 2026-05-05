@@ -1,4 +1,4 @@
-import { appendFile, mkdir, writeFile } from 'fs/promises';
+import { appendFile, mkdir, unlink, writeFile } from 'fs/promises';
 import * as path from 'path';
 import { AgentRuntime } from '../agent/runtime';
 import { TradingAgent } from '../trading/agent';
@@ -54,11 +54,13 @@ export class BacktestRunner {
     const snapshotsPath = path.join(opts.outDir, 'snapshots.jsonl');
     const summaryPath = path.join(opts.outDir, 'summary.json');
 
-    // Truncate any prior outputs.
+    // Truncate any prior outputs (and remove stale summary.json so a failed
+    // run doesn't leave the previous summary in place).
     await Promise.all([
       writeFile(decisionsPath, ''),
       writeFile(fillsPath, ''),
       writeFile(snapshotsPath, ''),
+      unlink(summaryPath).catch(() => {}),
     ]);
 
     const clock = new BacktestClock(opts.from);

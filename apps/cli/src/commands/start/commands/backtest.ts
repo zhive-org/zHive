@@ -5,10 +5,10 @@ import type { SlashCommandCallbacks } from '../services/command-registry';
 
 const DEFAULT_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4h
 const DEFAULT_CASH = 10_000;
-const DEFAULT_OUT = './backtest-results';
+const OUT_DIR = './backtest-results';
 
 const USAGE =
-  'Usage: /backtest --from <iso> --to <iso> [--coin <symbol>] [--cash <usd>] [--interval <ms>] [--out <dir>]';
+  'Usage: /backtest --from <iso> --to <iso> [--coin <symbol>] [--cash <usd>] [--interval <ms>]';
 
 interface ParsedArgs {
   from?: string;
@@ -16,7 +16,6 @@ interface ParsedArgs {
   coin?: string;
   cash?: string;
   interval?: string;
-  out?: string;
 }
 
 function parseArgs(args: string[]): ParsedArgs {
@@ -43,10 +42,6 @@ function parseArgs(args: string[]): ParsedArgs {
         break;
       case '--interval':
         out.interval = next;
-        i++;
-        break;
-      case '--out':
-        out.out = next;
         i++;
         break;
     }
@@ -103,7 +98,7 @@ export async function backtestSlashCommand(
 
   const intervalMs = parsed.interval ? Number(parsed.interval) : DEFAULT_INTERVAL_MS;
   const initialCashUsd = parsed.cash ? Number(parsed.cash) : DEFAULT_CASH;
-  const outDir = parsed.out ?? DEFAULT_OUT;
+  const outDir = OUT_DIR;
 
   if (Number.isNaN(intervalMs) || intervalMs <= 0) {
     callbacks?.onError?.('--interval must be a positive number of milliseconds');
