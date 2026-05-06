@@ -70,11 +70,7 @@ export async function backtestSlashCommand(
     return;
   }
 
-  if (!parsed.coin) {
-    callbacks?.onError?.('--coin must be provided');
-    return;
-  }
-  const watchList = [parsed.coin];
+  const watchList = [parsed.coin ?? 'BTC'];
   const intervalMs = parsed.interval ? Number(parsed.interval) : DEFAULT_INTERVAL_MS;
   const initialCashUsd = parsed.cash ? Number(parsed.cash) : DEFAULT_CASH;
   const outDir = OUT_DIR;
