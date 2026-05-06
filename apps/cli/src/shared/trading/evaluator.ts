@@ -143,13 +143,11 @@ Trading Strategy:
 ${this.runtime.config.strategyContent}
 
 Consider cross-asset correlations and portfolio-level risk when making decisions.
-Be conservative: prefer HOLD when signals are ambiguous.
 
 Rules
 - Make decision based on given analysis.
-- Don't open leveraged position more than max leverage.
-- Don't exceed total exposure limit across all positions.
-- Avoid overtrading; patience and discipline preserve capital.
+- If more than one asset is given and you don't have enough fund to long/short all attractive assets, prioritize the ones with strongest analysis and best risk/reward profile.
+- Don't open leveraged position more than 1x.
 - Treat trading like a probability game with positive expectancy over many trades`;
   }
 
