@@ -8,9 +8,6 @@ const DEFAULT_INTERVAL_MS = DAYS;
 const DEFAULT_CASH = 10_000;
 const OUT_DIR = './backtest-results';
 
-const USAGE =
-  'Usage: /backtest --from <iso> --to <iso> [--coin <symbol>] [--cash <usd>] [--interval <ms>]';
-
 interface ParsedArgs {
   from?: string;
   to?: string;

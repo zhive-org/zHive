@@ -46,7 +46,7 @@ SLASH_COMMANDS = [
   {
     name: '/backtest',
     description:
-      'Run a backtest: /backtest --from <iso> --to <iso> [--coin <symbol>] [--cash <usd>] [--interval <ms>]',
+      'Run a backtest: /backtest --coin <symbol> [--from <iso>] [--to <iso>] [--cash <usd>] [--interval <ms>]',
     handler: backtestSlashCommand,
   },
   { name: '/help', description: 'Show available commands', handler: helpCommands },
