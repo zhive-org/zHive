@@ -223,6 +223,7 @@ export class BacktestExchange implements IExchange {
     if (mark == null) return null;
     const prev = (await this._markPrice(pair, ts - DAY_MS)) ?? mark;
     const dayVol = await this._24hVolumeUsd(pair, ts);
+    const funding = await this.store.getFundingRate(pair, ts);
 
     return {
       coin: pair,
@@ -230,7 +231,7 @@ export class BacktestExchange implements IExchange {
       midPx: mark.toString(),
       prevDayPx: prev.toString(),
       dayNtlVlm: dayVol.toString(),
-      funding: '0',
+      funding: funding.toString(),
       openInterest: '0',
     };
   }
@@ -267,8 +268,7 @@ export class BacktestExchange implements IExchange {
     if (existing) {
       // Same-side add: weighted-average entry, replace TP/SL with the new ones.
       const totalSize = existing.size + sizeBase;
-      const avgEntry =
-        (existing.entryPrice * existing.size + fillPrice * sizeBase) / totalSize;
+      const avgEntry = (existing.entryPrice * existing.size + fillPrice * sizeBase) / totalSize;
       pos = {
         ...existing,
         size: totalSize,
@@ -388,9 +388,7 @@ function liquidationPrice(pos: OpenPosition): number {
   // Simplified: liquidation when unrealized PnL ≈ -margin.
   // priceMove = -1 / leverage of entry.
   const move = 1 / pos.leverage;
-  return pos.side === 'long'
-    ? pos.entryPrice * (1 - move)
-    : pos.entryPrice * (1 + move);
+  return pos.side === 'long' ? pos.entryPrice * (1 - move) : pos.entryPrice * (1 + move);
 }
 
 function triggerOrNull(

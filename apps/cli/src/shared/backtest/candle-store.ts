@@ -15,9 +15,20 @@ const MAX_CANDLES_PER_REQUEST = 5000;
 // repeated calls walking forward through time amortize across one HTTP fetch.
 const LOOKAHEAD_CANDLES = 1000;
 
+// Funding entries publish hourly; look back a day so any `ts` is bracketed.
+const FUNDING_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+// Extend forward by ~30d on a fetch so a forward-walking backtest amortizes.
+const FUNDING_LOOKAHEAD_MS = 30 * 24 * 60 * 60 * 1000;
+
 interface Range {
   from: number;
   to: number;
+}
+
+interface FundingEntry {
+  time: number;
+  fundingRate: number;
+  premium: number;
 }
 
 export interface PrefetchOptions {
@@ -38,6 +49,12 @@ export class CandleStore {
   private loadedRanges = new Map<string, Range[]>(); // sorted, merged
   private diskLoaded = new Set<string>();
   private inflight = new Map<string, Promise<void>>();
+
+  // Parallel cache for funding rates, keyed by coin only.
+  private funding = new Map<string, FundingEntry[]>();
+  private fundingRanges = new Map<string, Range[]>();
+  private fundingDiskLoaded = new Set<string>();
+  private fundingInflight = new Map<string, Promise<void>>();
 
   private constructor(private info: InfoClient | null) {}
 
@@ -68,6 +85,19 @@ export class CandleStore {
   static cachePath(coin: string, interval: Interval): string {
     const safe = coin.replace(/[^A-Za-z0-9_-]/g, '_');
     return path.join(CACHE_DIR, `${safe}-${interval}.jsonl`);
+  }
+
+  static fundingCachePath(coin: string): string {
+    const safe = coin.replace(/[^A-Za-z0-9_-]/g, '_');
+    return path.join(CACHE_DIR, `funding-${safe}.jsonl`);
+  }
+
+  /** Test helper: pre-populate funding so reads don't try to fetch. */
+  seedFunding(coin: string, entries: FundingEntry[]): void {
+    const sorted = [...entries].sort((a, b) => a.time - b.time);
+    this.funding.set(coin, sorted);
+    this.fundingDiskLoaded.add(coin);
+    this.fundingRanges.set(coin, [{ from: -Infinity, to: Infinity }]);
   }
 
   /**
@@ -108,6 +138,111 @@ export class CandleStore {
     const idx = lowerBoundByOpenTime(arr, ts + 1) - 1;
     if (idx < 0) return null;
     return arr[idx];
+  }
+
+  /**
+   * Returns the funding rate active at `ts` (latest entry with time <= ts).
+   * Hourly granularity from Hyperliquid; falls back to 0 when no entry exists.
+   */
+  async getFundingRate(coin: string, ts: number): Promise<number> {
+    await this.ensureFundingWindow(coin, ts - FUNDING_LOOKBACK_MS, ts + 1);
+    const arr = this.funding.get(coin);
+    if (!arr || arr.length === 0) return 0;
+    const idx = lowerBoundByTime(arr, ts + 1) - 1;
+    if (idx < 0) return 0;
+    return arr[idx].fundingRate;
+  }
+
+  async ensureFundingWindow(coin: string, from: number, to: number): Promise<void> {
+    if (to <= from) return;
+    if (!this.info) return; // seeded store: nothing to fetch.
+
+    while (this.fundingInflight.has(coin)) {
+      await this.fundingInflight.get(coin);
+    }
+
+    if (!this.fundingDiskLoaded.has(coin)) {
+      const p = this._loadFundingFromDisk(coin);
+      this.fundingInflight.set(coin, p);
+      try {
+        await p;
+      } finally {
+        this.fundingInflight.delete(coin);
+      }
+    }
+
+    const ranges = this.fundingRanges.get(coin) ?? [];
+    const gaps = uncoveredSpans(ranges, from, to);
+    if (gaps.length === 0) return;
+
+    const p = this._fetchAndMergeFunding(coin, gaps);
+    this.fundingInflight.set(coin, p);
+    try {
+      await p;
+    } finally {
+      this.fundingInflight.delete(coin);
+    }
+  }
+
+  private async _loadFundingFromDisk(coin: string): Promise<void> {
+    await fs.mkdir(CACHE_DIR, { recursive: true });
+    const file = CandleStore.fundingCachePath(coin);
+    const cached = await readFundingJsonl(file);
+    this.funding.set(coin, cached);
+    const cov = fundingCoverage(cached);
+    this.fundingRanges.set(coin, cov ? [cov] : []);
+    this.fundingDiskLoaded.add(coin);
+  }
+
+  private async _fetchAndMergeFunding(coin: string, gaps: Range[]): Promise<void> {
+    const file = CandleStore.fundingCachePath(coin);
+    const ranges = this.fundingRanges.get(coin) ?? [];
+    let merged = this.funding.get(coin) ?? [];
+
+    for (const gap of gaps) {
+      const extendedTo = gap.to + FUNDING_LOOKAHEAD_MS;
+      const fetched = await this._fetchFundingRange(coin, gap.from, extendedTo);
+      merged = mergeFunding(merged, fetched);
+      ranges.push({ from: gap.from, to: extendedTo });
+    }
+
+    this.funding.set(coin, merged);
+    this.fundingRanges.set(coin, mergeRanges(ranges));
+    await writeFundingJsonl(file, merged);
+  }
+
+  private async _fetchFundingRange(coin: string, from: number, to: number): Promise<FundingEntry[]> {
+    if (!this.info) {
+      throw new Error('CandleStore was constructed without a network client');
+    }
+    const out: FundingEntry[] = [];
+    let cursor = Math.max(0, from);
+
+    // Hyperliquid caps the response (~500 entries), so page until we cross `to`
+    // or the API returns nothing more.
+    while (cursor < to) {
+      const raw = await this.info.fundingHistory({
+        coin,
+        startTime: cursor,
+        endTime: to,
+      });
+      if (raw.length === 0) break;
+
+      for (const r of raw) {
+        out.push({
+          time: r.time,
+          fundingRate: parseFloat(r.fundingRate),
+          premium: parseFloat(r.premium),
+        });
+      }
+
+      const lastT = raw[raw.length - 1].time;
+      const next = lastT + 1;
+      if (next <= cursor) break;
+      cursor = next;
+    }
+
+    return out;
   }
 
   /**
@@ -302,5 +437,48 @@ async function readJsonl(file: string): Promise<RawCandle[]> {
 
 async function writeJsonl(file: string, candles: RawCandle[]): Promise<void> {
   const body = candles.map((c) => JSON.stringify(c)).join('\n') + '\n';
+  await fs.writeFile(file, body, 'utf8');
+}
+
+function lowerBoundByTime(arr: FundingEntry[], ts: number): number {
+  let lo = 0;
+  let hi = arr.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (arr[mid].time < ts) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function fundingCoverage(arr: FundingEntry[]): Range | null {
+  if (arr.length === 0) return null;
+  return { from: arr[0].time, to: arr[arr.length - 1].time + 1 };
+}
+
+function mergeFunding(a: FundingEntry[], b: FundingEntry[]): FundingEntry[] {
+  if (a.length === 0) return [...b].sort((x, y) => x.time - y.time);
+  if (b.length === 0) return a;
+  const seen = new Map<number, FundingEntry>();
+  for (const e of a) seen.set(e.time, e);
+  for (const e of b) seen.set(e.time, e);
+  return Array.from(seen.values()).sort((x, y) => x.time - y.time);
+}
+
+async function readFundingJsonl(file: string): Promise<FundingEntry[]> {
+  try {
+    const txt = await fs.readFile(file, 'utf8');
+    return txt
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as FundingEntry);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw err;
+  }
+}
+
+async function writeFundingJsonl(file: string, entries: FundingEntry[]): Promise<void> {
+  const body = entries.map((e) => JSON.stringify(e)).join('\n') + '\n';
   await fs.writeFile(file, body, 'utf8');
 }
