@@ -412,20 +412,6 @@ plot(ready ? 1 : 0,              'ready')
 
 Use this as a template — swap indicators, thresholds, and plot names to match the actual STRATEGY.md you've been given. Keep the overall shape: chart TF = entry-trigger TF, higher-TF values via "request.security" with the "ta.*" call wrapped inside, one named plot per downstream-needed value, a "ready" gate on the output booleans.`;
 
-const SYSTEM_PROMPT = `You are a technical analyst. Your task is to analyze a given asset based on the user's strategy and decide the next action.
-
-## Rules
-- If there is opened position, you can only close or increase position size. you cannot change from long to short or short to long
-
-## Output
-- Concise summary of the analysis without headings or titles.
-- Be direct and specific: cite the actual indicator values and which rules passed or failed.
-- If the decision is HOLD, briefly state which rule(s) failed or which limits blocked the trade.
-- If the decision is LONG/SHORT/CLOSE, state the rules that supported it and include the proposed order (for entries) or the triggered exit condition (for closes).
-
-
-${pinescriptGuide}`;
-
 export class AssetAnalyzer {
   private providerFactory: ProviderFactory;
 
@@ -451,6 +437,39 @@ export class AssetAnalyzer {
   ): Promise<string> {
     const provider = await this.providerFactory(coin);
     const pineScriptTool = createPineScriptToolForAsset(coin, provider);
+
+    const SYSTEM_PROMPT = `You are a technical analyst. Your task is to analyze a given asset based on the user's strategy and decide the next action.
+
+## Strategy
+${this.runtime.config.strategyContent}
+
+## Rules
+- If there is opened position, you can only close or increase position size. you cannot change from long to short or short to long
+- Break the analysis into multiple focused Pine scripts rather than one monolithic script. Each script should answer one specific question in the decision framework.
+## Script Decomposition
+Break the analysis into multiple focused Pine scripts rather than one monolithic script. Each script should answer one specific question in the decision framework.
+
+Split when ANY of these apply:
+- The strategy has different code paths for "position open" vs. "no position"
+- Earlier checks can short-circuit later ones (e.g., if ADX < 20, no need to evaluate breakouts)
+- The strategy uses more than ~4 indicators
+- Different indicators have different warmup requirements
+
+Standard decomposition for trend-following strategies:
+1. **Regime/filter script** — runs first. Computes the trend filter and strength gate (e.g., EMA stack, ADX). If the regime fails, output HOLD and skip remaining scripts.
+2. **Entry signal script** — runs only if no position is open AND the regime check passed. Computes breakout/setup conditions and the proposed order (entry, initial stop, ATR for sizing).
+3. **Position management script** — runs only if a position is open. Computes trailing stop, exit conditions (e.g., EMA cross against position), and whether any exit has triggered.
+
+Call scripts sequentially and stop early when the decision is determined. Do not run scripts whose outputs the current decision branch doesn't need.
+
+## Output
+- Concise summary of the analysis without headings or titles.
+- Be direct and specific: cite the actual indicator values and which rules passed or failed.
+- If the decision is HOLD, briefly state which rule(s) failed or which limits blocked the trade.
+- If the decision is LONG/SHORT/CLOSE, state the rules that supported it and include the proposed order (for entries) or the triggered exit condition (for closes).
+
+
+${pinescriptGuide}`;
 
     const agent = new ToolLoopAgent({
       model: this.runtime.model,
@@ -490,8 +509,7 @@ Value: $${account.accountValue.toFixed(2)}
 Margin Used=$${account.marginUsed.toFixed(2)}
 Available Trading Balance: value=${availableUsdc}
 
-## Strategy
-${this.runtime.config.strategyContent}`;
+`;
 
     const res = await agent.generate({ prompt, abortSignal: ctx.abortSignal });
     return res.text;
