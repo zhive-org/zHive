@@ -19,7 +19,6 @@ export interface UseAgentState {
   timeframesDisplay: string | null;
   activePollActivities: PollActivityItem[];
   settledPollActivities: PollActivityItem[];
-  termWidth: number;
   stats: AgentStats | null;
   statsUpdatedAt: Date | null;
 }
@@ -32,25 +31,12 @@ export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState
   const [sectorsDisplay, setSectorsDisplay] = useState<string | null>(null);
   const [timeframesDisplay, setTimeframesDisplay] = useState<string | null>(null);
 
-  const [termWidth, setTermWidth] = useState(process.stdout.columns || 60);
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [statsUpdatedAt, setStatsUpdatedAt] = useState<Date | null>(null);
 
   const agentRef = useRef<TradingAgent | null>(null);
 
   const { activePollActivities, settledPollActivities, addLog } = usePollActivity();
-
-  // ─── Terminal resize tracking ───────────────────────
-
-  useEffect(() => {
-    const onResize = (): void => {
-      setTermWidth(process.stdout.columns || 60);
-    };
-    process.stdout.on('resize', onResize);
-    return () => {
-      process.stdout.off('resize', onResize);
-    };
-  }, []);
 
   // ─── Stats polling (every 5 min) ───────────────────
 
@@ -179,7 +165,6 @@ export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState
     timeframesDisplay,
     activePollActivities,
     settledPollActivities,
-    termWidth,
     stats,
     statsUpdatedAt,
   };

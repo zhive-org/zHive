@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Static, Text } from 'ink';
 import { useAgent } from '../hooks/useAgent';
 import { PollText, Spinner } from './Spinner';
@@ -16,15 +16,11 @@ import { useAgentRuntime } from '../hooks/useAgentRuntime';
 
 export function App(): React.ReactElement {
   const { runtime, reloadRuntime } = useAgentRuntime();
+  const [termWidth, setTermWidth] = useState(process.stdout.columns || 60);
 
-  const {
-    connected,
-    agentName,
-    modelInfo,
-    activePollActivities,
-    settledPollActivities,
-    termWidth,
-  } = useAgent({ runtime });
+  const { connected, agentName, modelInfo, activePollActivities, settledPollActivities } = useAgent(
+    { runtime },
+  );
 
   const {
     input,
@@ -36,6 +32,17 @@ export function App(): React.ReactElement {
     setInput,
     closeOverlay,
   } = useChat({ runtime, reloadRuntime });
+
+  // ─── Terminal resize tracking ───────────────────────
+  useEffect(() => {
+    const onResize = (): void => {
+      setTermWidth(process.stdout.columns || 60);
+    };
+    process.stdout.on('resize', onResize);
+    return () => {
+      process.stdout.off('resize', onResize);
+    };
+  }, []);
 
   // When stdin is not a TTY (piped by hive-cli start), skip interactive input
   const isInteractive = process.stdin.isTTY === true;
