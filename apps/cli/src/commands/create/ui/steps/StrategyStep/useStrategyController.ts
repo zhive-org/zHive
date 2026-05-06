@@ -68,7 +68,7 @@ export type ViewState =
 
 export function useStrategyController(): ViewState {
   const { state: wizard, dispatch: wd } = useWizard();
-  const { apiConfig, identity, strategy, strategyChat } = wizard;
+  const { apiConfig, identity, strategy, strategyChat, watchlist } = wizard;
 
   const [machine, send] = useReducer(reduce, initial);
   const [pending, setPending] = useState<Pending>('thinking');
@@ -92,8 +92,9 @@ export function useStrategyController(): ViewState {
         seed,
         transcript,
         feedback,
+        assets: watchlist.assets,
       }),
-    [apiConfig.apiKey, apiConfig.providerId],
+    [apiConfig.apiKey, apiConfig.providerId, watchlist.assets],
   );
 
   const callAgent = useCallback(
@@ -113,6 +114,7 @@ export function useStrategyController(): ViewState {
           seed: strategyChat.seed,
           coveredTopics: covered,
           forceRemaining: force,
+          assets: watchlist.assets,
         });
 
         if (turn.kind === 'done') {
@@ -127,6 +129,7 @@ export function useStrategyController(): ViewState {
               seed: strategyChat.seed,
               coveredTopics: Array.from(merged),
               forceRemaining: remaining,
+              assets: watchlist.assets,
             });
           }
         }
@@ -144,7 +147,7 @@ export function useStrategyController(): ViewState {
         inFlight.current = false;
       }
     },
-    [apiConfig.apiKey, apiConfig.providerId, buildCustomStream, strategyChat.seed],
+    [apiConfig.apiKey, apiConfig.providerId, buildCustomStream, strategyChat.seed, watchlist.assets],
   );
 
   // Kick off agent on (re-)entering the 'custom' state.

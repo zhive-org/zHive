@@ -144,6 +144,7 @@ export function generateStrategyFromTranscript({
   transcript,
   feedback,
   draft,
+  assets = [],
 }: {
   providerId: AIProviderId;
   apiKey: string;
@@ -151,9 +152,15 @@ export function generateStrategyFromTranscript({
   transcript: ChatTurn[];
   draft?: string;
   feedback?: string;
+  assets?: string[];
 }): AsyncIterable<string> {
+  const assetsLine =
+    assets.length > 0
+      ? `The user has already selected these assets to trade in the wizard: ${assets.join(', ')}. Tailor the strategy to these specific assets where it matters; otherwise stay generic.\n\n`
+      : '';
+
   const userInputBlock = `## User Input
-The creator and an interview agent had the following conversation about the trading strategy. Use ALL of it to design the strategy:
+${assetsLine}The creator and an interview agent had the following conversation about the trading strategy. Use ALL of it to design the strategy:
 
 ${serializeTranscript(seed, transcript)}`;
 

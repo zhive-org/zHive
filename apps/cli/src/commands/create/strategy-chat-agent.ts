@@ -4,12 +4,11 @@ import { AIProviderId, buildLanguageModel } from '../../shared/config/ai-provide
 
 export const STRATEGY_TOPICS = [
   'tradingStyle',
-  'assetsAndTimeframe',
+  'candleTimeframe',
   'marketRegimeView',
   'entrySignal',
   'exitSignal',
   'riskAndSizing',
-  'experienceAndConstraints',
 ] as const;
 
 export type StrategyTopic = (typeof STRATEGY_TOPICS)[number];
@@ -17,18 +16,16 @@ export type StrategyTopic = (typeof STRATEGY_TOPICS)[number];
 const TOPIC_DESCRIPTIONS: Record<StrategyTopic, string> = {
   tradingStyle:
     "Trading style/archetype (e.g. trend-following, mean-reversion, momentum, breakout, grid, DCA). Feeds Philosophy.",
-  assetsAndTimeframe:
-    'Which assets the agent trades and the holding-period timeframe (intraday, swing days, weeks). Feeds Philosophy + Decision Framework.',
+  candleTimeframe:
+    'Which candlestick bar timeframe (e.g. 15m, 1h, 4h, 1d) the analysis should read indicators from. Note: the agent runs on a fixed polling interval — this question is about chart bar size, NOT how often the agent acts. The assets to trade are ALREADY chosen in an earlier wizard step — do NOT ask which assets to trade. Feeds Philosophy + Decision Framework.',
   marketRegimeView:
     'When the strategy is supposed to work and when it is not (regime filter / market view). Feeds Philosophy + Decision Framework.',
   entrySignal:
     'Concrete conditions that trigger an entry (which indicators, levels, confirmations). Feeds Entry Rules.',
   exitSignal:
-    'Concrete conditions that trigger an exit: take-profit, stop-loss, time-based, trailing. Feeds Exit Rules.',
+    'Concrete conditions that trigger an exit. The runtime ONLY supports fixed take-profit and fixed stop-loss — do NOT propose trailing stops, time-based exits, scale-outs, or breakeven moves. Ask the user for a fixed TP level (or R-multiple) and a fixed SL level. Feeds Exit Rules.',
   riskAndSizing:
-    'Risk per trade, max exposure, leverage limits, sizing rules. Feeds Position Sizing + Risk Limits.',
-  experienceAndConstraints:
-    "User's prior trading experience and any explicit constraints (capital range, drawdown tolerance, things to avoid). Grounds the strategy in realism.",
+    'Risk per trade, leverage limits, and per-position sizing rules. Do NOT ask about portfolio-level limits like max drawdown or max concurrent open positions — the runtime does not enforce those. Feeds Position Sizing + Risk Limits.',
 };
 
 const choiceItemSchema = z.object({
@@ -148,7 +145,11 @@ export interface ChatTurn {
   topic?: StrategyTopic;
 }
 
-function buildSystemPrompt(coveredTopics: StrategyTopic[], forceRemaining: StrategyTopic[]): string {
+function buildSystemPrompt(
+  coveredTopics: StrategyTopic[],
+  forceRemaining: StrategyTopic[],
+  assets: string[],
+): string {
   const remaining = STRATEGY_TOPICS.filter((t) => !coveredTopics.includes(t));
   const topicList = STRATEGY_TOPICS.map((t) => `- **${t}**: ${TOPIC_DESCRIPTIONS[t]}`).join('\n');
 
@@ -157,9 +158,17 @@ function buildSystemPrompt(coveredTopics: StrategyTopic[], forceRemaining: Strat
       ? `\n\n**You attempted to mark this conversation done, but these topics are still uncovered: ${forceRemaining.join(', ')}. You MUST ask about one of them now — do not emit kind:"done".**`
       : '';
 
+  const assetsLine =
+    assets.length > 0
+      ? `The user has ALREADY selected these assets to trade in an earlier wizard step: ${assets.join(', ')}. Do NOT ask which assets to trade. You may reference these specific assets when asking other questions (e.g. "For ${assets[0]}, what timeframe…").`
+      : 'The user has not yet locked in specific assets — keep the strategy asset-agnostic and do NOT ask which assets to trade (that is handled elsewhere in the wizard).';
+
   return `You are a quantitative trading coach interviewing a user to design their algorithmic trading strategy.
 
 Your job: ask short, friendly, ONE-AT-A-TIME questions until you have enough information to generate a high-quality STRATEGY.md. Then emit kind:"done".
+
+## Pre-selected context
+${assetsLine}
 
 ## Topics you must cover (each at least once):
 ${topicList}
@@ -174,6 +183,7 @@ Each turn return EITHER:
 - Do NOT re-ask information the user already gave.
 - Keep questions concrete and decision-shaped, not philosophical. Bad: "What is your edge?". Good: "What's the main signal that tells you to enter — a moving-average cross, a breakout level, RSI, or something else?"
 - Choices should be specific and trader-grounded (use real indicators, real timeframes, real % numbers).
+- When asking about exits, the only valid options to offer are fixed take-profit and fixed stop-loss (price levels, % moves, or R-multiples). Do not present trailing stops, time-based exits, or partial scale-outs as choices.
 
 ## Defer rule (IMPORTANT)
 - For EVERY choice question, set \`allowDefer: true\` so the user can ask you to pick a sensible default. The runtime will append a "Pick a sensible default for me" option automatically — DO NOT add it to your \`choices\` list yourself.
@@ -192,6 +202,7 @@ export interface NextAgentTurnArgs {
   seed: string;
   coveredTopics: StrategyTopic[];
   forceRemaining?: StrategyTopic[];
+  assets?: string[];
 }
 
 export function transcriptToMessages(seed: string, transcript: ChatTurn[]): ModelMessage[] {
@@ -210,13 +221,14 @@ export async function nextAgentTurn({
   seed,
   coveredTopics,
   forceRemaining = [],
+  assets = [],
 }: NextAgentTurnArgs): Promise<AgentTurn> {
   const model = buildLanguageModel(providerId, apiKey, 'generation');
   const messages = transcriptToMessages(seed, transcript);
 
   const result = await generateObject({
     model,
-    system: buildSystemPrompt(coveredTopics, forceRemaining),
+    system: buildSystemPrompt(coveredTopics, forceRemaining, assets),
     messages,
     schema: agentTurnEnvelope,
   });
