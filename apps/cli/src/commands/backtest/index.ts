@@ -2,8 +2,9 @@ import { Command } from 'commander';
 import { access } from 'fs/promises';
 import { join } from 'path';
 import { initializeAgentRuntime } from '../../shared/agent/runtime';
-import { formatSummary } from '../../shared/backtest/format';
+import { formatBacktestProgress, formatSummary } from '../../shared/backtest/format';
 import { BacktestRunner } from '../../shared/backtest/runner';
+import { tryStartBacktestSession } from '../../shared/backtest/state';
 import { getHiveDir } from '../../shared/config/constant';
 import { loadAgentEnv } from '../../shared/config/env-loader';
 
@@ -72,18 +73,40 @@ export const createBacktestCommand = (): Command => {
         watchList = fullWatchList;
       }
 
-      const summary = await BacktestRunner.run({
+      const intervalMs = Number(raw.interval);
+      const initialCashUsd = Number(raw.cash);
+
+      const session = tryStartBacktestSession({
         from: fromMs,
         to: toMs,
+        intervalMs,
+        initialCashUsd,
         watchList,
-        runtime,
-        intervalMs: Number(raw.interval),
-        initialCashUsd: Number(raw.cash),
-        slippage: Number(raw.slippage),
-        feeBps: Number(raw.feeBps),
-        outDir: raw.out,
+        source: 'cli',
       });
+      if ('running' in session) {
+        console.log(formatBacktestProgress(session.running));
+        return;
+      }
 
-      console.log(formatSummary(summary));
+      try {
+        const summary = await BacktestRunner.run({
+          from: fromMs,
+          to: toMs,
+          watchList,
+          runtime,
+          intervalMs,
+          initialCashUsd,
+          slippage: Number(raw.slippage),
+          feeBps: Number(raw.feeBps),
+          outDir: raw.out,
+          onProgress: (p) => session.handle.tick(p),
+        });
+        session.handle.finish();
+        console.log(formatSummary(summary));
+      } catch (err) {
+        session.handle.fail(err);
+        throw err;
+      }
     });
 };

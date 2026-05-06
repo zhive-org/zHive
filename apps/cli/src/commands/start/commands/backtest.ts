@@ -1,6 +1,11 @@
 import type { AgentRuntime } from '../../../shared/agent';
-import { formatFillsForAgent, formatSummary } from '../../../shared/backtest/format';
+import {
+  formatBacktestProgress,
+  formatFillsForAgent,
+  formatSummary,
+} from '../../../shared/backtest/format';
 import { BacktestRunner } from '../../../shared/backtest/runner';
+import { tryStartBacktestSession } from '../../../shared/backtest/state';
 import type { SlashCommandCallbacks } from '../services/command-registry';
 
 const DAYS = 24 * 60 * 60 * 1000;
@@ -85,6 +90,23 @@ export async function backtestSlashCommand(
 
   const fromIso = new Date(fromMs).toISOString();
   const toIso = new Date(toMs).toISOString();
+
+  const session = tryStartBacktestSession({
+    from: fromMs,
+    to: toMs,
+    intervalMs,
+    initialCashUsd,
+    watchList,
+    source: 'chat',
+  });
+  if ('running' in session) {
+    callbacks?.onMessage?.(
+      'A backtest is already running — showing current progress instead of starting a new one.\n' +
+        formatBacktestProgress(session.running),
+    );
+    return;
+  }
+
   callbacks?.onMessage?.(
     `Running backtest: ${fromIso} → ${toIso} on ${watchList[0]} (interval ${intervalMs}ms, cash $${initialCashUsd}). This may take a few minutes…`,
   );
@@ -98,6 +120,7 @@ export async function backtestSlashCommand(
       intervalMs,
       initialCashUsd,
       outDir,
+      onProgress: (p) => session.handle.tick(p),
     });
 
     const summaryText = formatSummary(summary);
@@ -122,7 +145,9 @@ export async function backtestSlashCommand(
       '\n',
     );
     callbacks?.onAgentContext?.(agentContext);
+    session.handle.finish();
   } catch (err) {
+    session.handle.fail(err);
     const message = err instanceof Error ? err.message : String(err);
     callbacks?.onError?.(`Backtest failed: ${message}`);
   }

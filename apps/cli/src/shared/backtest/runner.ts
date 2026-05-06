@@ -20,6 +20,7 @@ export interface BacktestRunOptions {
   slippage?: number;
   feeBps?: number;
   outDir: string;
+  onProgress?: (info: { currentTime: number; currentEquity: number }) => void;
 }
 
 export interface BacktestSummary {
@@ -135,6 +136,8 @@ export class BacktestRunner {
       const snap = await exchange.snapshot();
       await appendFile(snapshotsPath, JSON.stringify(snap) + '\n');
       equityCurve.push(snap.equity);
+
+      opts.onProgress?.({ currentTime: t, currentEquity: snap.equity });
     }
 
     // Final flush: close clock through `to` to resolve any leftover triggers.

@@ -10,6 +10,7 @@ import { extractErrorMessage } from '../../../shared/megathread/utils';
 import {
   createReadBacktestResultTool,
   createReadFileTool,
+  getRunningBacktestTool,
   writeFileTool,
 } from '../../../shared/tools/agent-files';
 import { fetchRulesTool } from '../../../shared/tools/fetch-rules';
@@ -170,6 +171,7 @@ export function useChat({
             writeFile: writeFileTool,
             readFile,
             readBacktestResult,
+            getRunningBacktest: getRunningBacktestTool,
             ...runtime.tools,
           },
           maxOutputTokens: 4096,

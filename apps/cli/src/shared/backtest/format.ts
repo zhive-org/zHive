@@ -1,4 +1,5 @@
 import { BacktestSummary } from './runner';
+import { BacktestProgress } from './state';
 import { FillRecord } from './types';
 
 const fmtMoney = (v: number): string =>
@@ -33,6 +34,25 @@ export function formatSummary(s: BacktestSummary): string {
       );
     }
   }
+  return lines.join('\n');
+}
+
+export function formatBacktestProgress(p: BacktestProgress): string {
+  const elapsedSec = Math.floor((Date.now() - p.startedAt) / 1000);
+  const elapsed =
+    elapsedSec >= 60 ? `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s` : `${elapsedSec}s`;
+  const lines = [
+    'Backtest in progress',
+    '--------------------',
+    `Window:        ${new Date(p.from).toISOString()} → ${new Date(p.to).toISOString()}`,
+    `Watchlist:     ${p.watchList.join(', ')}`,
+    `Source:        ${p.source}`,
+    `Progress:      ${p.percent.toFixed(1)}% (${p.ticksCompleted}/${p.totalTicks} ticks)`,
+    `Current time:  ${new Date(p.currentTime).toISOString()}`,
+    `Elapsed:       ${elapsed}`,
+    `Initial cash:  ${fmtMoney(p.initialCashUsd)}`,
+    `Current equity:${p.currentEquity === null ? ' (no tick yet)' : ' ' + fmtMoney(p.currentEquity)}`,
+  ];
   return lines.join('\n');
 }
 
