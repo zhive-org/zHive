@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer } from 'react';
 import type { AIProviderId } from '../../../shared/config/ai-providers.js';
+import type { ChatTurn, StrategyTopic } from '../strategy-chat-agent.js';
 
 // ── Step navigation ────────────────────────────────────────────
 
@@ -41,6 +42,12 @@ export interface GenerationState {
   input: string;
 }
 
+export interface StrategyChatState {
+  seed: string;
+  transcript: ChatTurn[];
+  coveredTopics: StrategyTopic[];
+}
+
 export interface WizardState {
   step: Step;
   identity: IdentityState;
@@ -48,6 +55,7 @@ export interface WizardState {
   apiConfig: ApiKeyState;
   soul: GenerationState;
   strategy: GenerationState;
+  strategyChat: StrategyChatState;
   error: string;
 }
 
@@ -61,6 +69,10 @@ export type WizardAction =
   | { type: 'SET_API_CONFIG'; payload: ApiKeyState }
   | { type: 'SET_STRATEGY'; payload: GenerationState }
   | { type: 'UPDATE_STRATEGY'; payload: Partial<GenerationState> }
+  | { type: 'SET_CHAT_SEED'; seed: string }
+  | { type: 'APPEND_CHAT_TURN'; turn: ChatTurn; topicsAddressed: StrategyTopic[] }
+  | { type: 'POP_CHAT_TURN' }
+  | { type: 'RESET_CHAT' }
   | { type: 'SET_ERROR'; message: string };
 
 // ── Reducer ────────────────────────────────────────────────────
@@ -100,6 +112,47 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
         strategy: { ...state.strategy, ...action.payload },
       };
 
+    case 'SET_CHAT_SEED':
+      return {
+        ...state,
+        strategyChat: { seed: action.seed, transcript: [], coveredTopics: [] },
+      };
+
+    case 'APPEND_CHAT_TURN': {
+      const merged = new Set<StrategyTopic>(state.strategyChat.coveredTopics);
+      for (const t of action.topicsAddressed) merged.add(t);
+      return {
+        ...state,
+        strategyChat: {
+          ...state.strategyChat,
+          transcript: [...state.strategyChat.transcript, action.turn],
+          coveredTopics: Array.from(merged),
+        },
+      };
+    }
+
+    case 'POP_CHAT_TURN': {
+      const trimmed = state.strategyChat.transcript.slice(0, -1);
+      const covered = new Set<StrategyTopic>();
+      for (const t of trimmed) {
+        if (t.topic) covered.add(t.topic);
+      }
+      return {
+        ...state,
+        strategyChat: {
+          ...state.strategyChat,
+          transcript: trimmed,
+          coveredTopics: Array.from(covered),
+        },
+      };
+    }
+
+    case 'RESET_CHAT':
+      return {
+        ...state,
+        strategyChat: { seed: '', transcript: [], coveredTopics: [] },
+      };
+
     case 'SET_ERROR':
       return { ...state, error: action.message };
 
@@ -118,6 +171,7 @@ export function createInitialState(initialName?: string): WizardState {
     apiConfig: { providerId: null, apiKey: '' },
     soul: { content: '', draft: '', input: '' },
     strategy: { content: '', draft: '', input: '' },
+    strategyChat: { seed: '', transcript: [], coveredTopics: [] },
     error: '',
   };
 }

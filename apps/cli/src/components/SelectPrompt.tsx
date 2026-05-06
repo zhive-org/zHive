@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { colors, symbols } from '../commands/shared/theme';
+import { TextPrompt } from './TextPrompt';
 
 export interface SelectItem {
   label: string;
@@ -15,7 +16,20 @@ interface SelectPromptProps {
   defaultValue?: string;
   onSelect: (item: SelectItem) => void;
   onBack?: () => void;
+  /** When true, appends a "Type my own answer" item that swaps to a TextPrompt. */
+  allowCustom?: boolean;
+  /** Placeholder for the custom text input. */
+  customPlaceholder?: string;
+  /** Called when the user submits a custom typed answer. */
+  onCustom?: (value: string) => void;
+  /** When true, appends a "Pick a sensible default for me" item. */
+  allowDefer?: boolean;
+  /** Called when the user picks the defer item. */
+  onDefer?: () => void;
 }
+
+const CUSTOM_VALUE = '__custom_answer__';
+const DEFER_VALUE = '__defer_answer__';
 
 export function SelectPrompt({
   label,
@@ -23,25 +37,61 @@ export function SelectPrompt({
   defaultValue,
   onSelect,
   onBack,
+  allowCustom = false,
+  customPlaceholder,
+  onCustom,
+  allowDefer = false,
+  onDefer,
 }: SelectPromptProps): React.ReactElement {
+  const effectiveItems: SelectItem[] = [
+    ...items,
+    ...(allowDefer
+      ? [
+          {
+            label: '🎲 Pick a sensible default for me',
+            value: DEFER_VALUE,
+            description: 'Let the agent choose a reasonable default and continue.',
+          },
+        ]
+      : []),
+    ...(allowCustom
+      ? [
+          {
+            label: '✎ Type my own answer',
+            value: CUSTOM_VALUE,
+            description: 'Provide a free-form response instead.',
+          },
+        ]
+      : []),
+  ];
+
   const initialIndex = defaultValue
     ? Math.max(
         0,
-        items.findIndex((i) => i.value === defaultValue),
+        effectiveItems.findIndex((i) => i.value === defaultValue),
       )
     : 0;
   const [highlightedValue, setHighlightedValue] = useState<string>(
-    defaultValue ?? items[0]?.value ?? '',
+    defaultValue ?? effectiveItems[0]?.value ?? '',
   );
+  const [mode, setMode] = useState<'select' | 'custom'>('select');
 
   useInput((_input, key) => {
-    if (key.escape && onBack) {
+    if (mode === 'select' && key.escape && onBack) {
       onBack();
     }
   });
 
   const handleSelect = (item: { label: string; value: string }): void => {
-    const found = items.find((i) => i.value === item.value);
+    if (item.value === CUSTOM_VALUE) {
+      setMode('custom');
+      return;
+    }
+    if (item.value === DEFER_VALUE) {
+      if (onDefer) onDefer();
+      return;
+    }
+    const found = effectiveItems.find((i) => i.value === item.value);
     if (found) {
       onSelect(found);
     }
@@ -51,7 +101,21 @@ export function SelectPrompt({
     setHighlightedValue(item.value);
   };
 
-  const highlightedItem = items.find((i) => i.value === highlightedValue);
+  if (mode === 'custom') {
+    return (
+      <TextPrompt
+        label={label}
+        placeholder={customPlaceholder}
+        onSubmit={(value) => {
+          if (onCustom) onCustom(value);
+          else onSelect({ label: value, value });
+        }}
+        onBack={() => setMode('select')}
+      />
+    );
+  }
+
+  const highlightedItem = effectiveItems.find((i) => i.value === highlightedValue);
   const highlightedDescription = highlightedItem?.description;
 
   return (
@@ -64,7 +128,7 @@ export function SelectPrompt({
       </Box>
       <Box marginLeft={2}>
         <SelectInput
-          items={items}
+          items={effectiveItems}
           initialIndex={initialIndex}
           onSelect={handleSelect}
           onHighlight={handleHighlight}

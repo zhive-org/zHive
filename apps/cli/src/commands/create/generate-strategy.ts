@@ -1,33 +1,28 @@
 import { streamText } from 'ai';
 import { AIProviderId, buildLanguageModel } from '../../shared/config/ai-providers.js';
 import { buildStrategyMarkdown, STRATEGY_PRESETS } from './presets/index.js';
+import type { ChatTurn } from './strategy-chat-agent.js';
 
 const strategyExamples = STRATEGY_PRESETS.slice(0, 1)
   .map((p) => buildStrategyMarkdown('ExampleAgent', p))
   .join('\n---\n');
 
-export function generateStrategy({
-  providerId,
-  apiKey,
-  agentName,
-  strategy,
-  feedback,
+function buildPrompt({
+  userInputBlock,
   draft,
+  feedback,
 }: {
-  providerId: AIProviderId;
-  apiKey: string;
-  agentName: string;
-  strategy: string;
+  userInputBlock: string;
   draft?: string;
   feedback?: string;
-}): AsyncIterable<string> {
+}): string {
   const feedbackLine = feedback
     ? `\n\n## User feedback. Adjust the draft based on the feedback:\n"${feedback}"`
     : '';
 
   const draftLine = draft ? `## Prev Draft\n\n"${draft}"` : '';
 
-  const prompt = `You are a quantitative trader designing a trading strategy that will be used by trading agent to make real trading decision on behalf of the user.
+  return `You are a quantitative trader designing a trading strategy that will be used by trading agent to make real trading decision on behalf of the user.
 
 The trading agent will be given
 - Position
@@ -53,9 +48,7 @@ Then it will use STRATEGY.md to decide the next action.
 
 The quality of every trade depends on how clear, specific and self-consistent this strategy is.
 
-## User Input
-The creator described the agent's trading strategy as:
-"${strategy}"
+${userInputBlock}
 
 ${draftLine}
 
@@ -96,14 +89,73 @@ A numbered checklist the analysis LLM walks through in order. This should be the
 
 ### Example output
 ${strategyExamples}`;
+}
 
+function streamPrompt(
+  providerId: AIProviderId,
+  apiKey: string,
+  prompt: string,
+): AsyncIterable<string> {
   const model = buildLanguageModel(providerId, apiKey, 'generation');
-
   const result = streamText({
     model,
     prompt,
     maxOutputTokens: 1200,
   });
-
   return result.textStream;
+}
+
+export function generateStrategy({
+  providerId,
+  apiKey,
+  agentName: _agentName,
+  strategy,
+  feedback,
+  draft,
+}: {
+  providerId: AIProviderId;
+  apiKey: string;
+  agentName: string;
+  strategy: string;
+  draft?: string;
+  feedback?: string;
+}): AsyncIterable<string> {
+  const userInputBlock = `## User Input
+The creator described the agent's trading strategy as:
+"${strategy}"`;
+
+  return streamPrompt(providerId, apiKey, buildPrompt({ userInputBlock, draft, feedback }));
+}
+
+function serializeTranscript(seed: string, transcript: ChatTurn[]): string {
+  const lines = [`User's initial intent: "${seed}"`, '', '### Q&A:'];
+  for (const turn of transcript) {
+    lines.push(`Q: ${turn.question}`);
+    lines.push(`A: ${turn.answer}`);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+export function generateStrategyFromTranscript({
+  providerId,
+  apiKey,
+  seed,
+  transcript,
+  feedback,
+  draft,
+}: {
+  providerId: AIProviderId;
+  apiKey: string;
+  seed: string;
+  transcript: ChatTurn[];
+  draft?: string;
+  feedback?: string;
+}): AsyncIterable<string> {
+  const userInputBlock = `## User Input
+The creator and an interview agent had the following conversation about the trading strategy. Use ALL of it to design the strategy:
+
+${serializeTranscript(seed, transcript)}`;
+
+  return streamPrompt(providerId, apiKey, buildPrompt({ userInputBlock, draft, feedback }));
 }
