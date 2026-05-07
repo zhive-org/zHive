@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Header } from './Header';
 import { ActivityFeed } from './ActivityFeed';
 import { ChatPanel } from './ChatPanel';
@@ -18,9 +19,14 @@ interface DashboardProps {
 
 export function Dashboard({ state, connected }: DashboardProps) {
   const stream = useEventStream();
-  const { mids, status: wsStatus, tick } = useMids();
 
   const positions = state.positions;
+  const coins = useMemo(
+    () => Array.from(new Set([...positions.map((p) => p.coin), ...state.watchlist])),
+    [positions, state.watchlist],
+  );
+  const { mids, status: wsStatus, tick } = useMids(coins);
+
   const pnl = usePnl(positions, mids, tick);
   const series = useRoeSeries(pnl.roePercent);
 
@@ -36,8 +42,8 @@ export function Dashboard({ state, connected }: DashboardProps) {
         roePercent={pnl.roePercent}
         wsStatus={wsStatus}
       />
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[1fr_320px]">
-        <div className="flex min-h-0 flex-col gap-4">
+      <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-4 lg:grid-cols-[1fr_320px]">
+        <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
           <section className="shrink-0 border border-hive-border bg-hive-near-black">
             <div className="flex items-center justify-between border-b border-hive-border px-4 py-2">
               <h2 className="font-mono text-xs font-medium uppercase tracking-wider text-hive-text-secondary">
@@ -52,9 +58,9 @@ export function Dashboard({ state, connected }: DashboardProps) {
           <ActivityFeed events={stream.events} />
           <ChatPanel events={stream.events} agentName={state.agentName} />
         </div>
-        <aside className="flex flex-col gap-4">
-          <PositionsTable positions={pnl.positionsValued} />
-          <WatchlistPanel watchlist={state.watchlist} />
+        <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+          <PositionsTable positions={pnl.positionsValued} mids={mids} />
+          <WatchlistPanel watchlist={state.watchlist} mids={mids} />
         </aside>
       </main>
       <CommandBar />

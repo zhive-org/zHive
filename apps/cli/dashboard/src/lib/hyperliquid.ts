@@ -24,6 +24,11 @@ class HyperliquidClient {
   private _stallTimer: ReturnType<typeof setInterval> | null = null;
   private _started: boolean = false;
   private _stopped: boolean = false;
+  private readonly _dex: string | undefined;
+
+  public constructor(dex?: string) {
+    this._dex = dex;
+  }
 
   public start(): void {
     if (this._started || this._stopped) return;
@@ -73,7 +78,9 @@ class HyperliquidClient {
     this._ws.addEventListener('open', () => {
       this._reconnectAttempt = 0;
       this._lastMessageAt = Date.now();
-      this._ws?.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'allMids' } }));
+      const subscription: { type: 'allMids'; dex?: string } = { type: 'allMids' };
+      if (this._dex !== undefined) subscription.dex = this._dex;
+      this._ws?.send(JSON.stringify({ method: 'subscribe', subscription }));
     });
     this._ws.addEventListener('message', (e) => {
       this._lastMessageAt = Date.now();
@@ -140,9 +147,23 @@ class HyperliquidClient {
   }
 }
 
-let singleton: HyperliquidClient | null = null;
+let _defaultClient: HyperliquidClient | null = null;
+const _clientsByDex: Map<string, HyperliquidClient> = new Map();
 
-export function hyperliquidClient(): HyperliquidClient {
-  if (!singleton) singleton = new HyperliquidClient();
-  return singleton;
+/**
+ * Returns a singleton mids client for the given Hyperliquid perp DEX. Pass
+ * `undefined` for the default perp universe; pass a HIP-3 builder DEX name
+ * (e.g. `"xyz"`) for a builder-deployed universe. Each dex gets its own
+ * socket because the `allMids` stream is scoped per dex.
+ */
+export function hyperliquidClient(dex?: string): HyperliquidClient {
+  if (dex === undefined) {
+    if (!_defaultClient) _defaultClient = new HyperliquidClient();
+    return _defaultClient;
+  }
+  const existing = _clientsByDex.get(dex);
+  if (existing) return existing;
+  const created = new HyperliquidClient(dex);
+  _clientsByDex.set(dex, created);
+  return created;
 }
