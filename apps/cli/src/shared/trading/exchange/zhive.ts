@@ -13,6 +13,7 @@ import {
 import { PositionNotFound, UnSupportedAssetError } from './error';
 import { stopLossTriggerPrice, takeProfitTriggerPrice } from './tp-sl';
 import { IExchange, TradingCategory } from './types';
+import { HiveClient } from '@zhive/sdk';
 
 export interface PositionSummary {
   token_id: string;
@@ -32,13 +33,39 @@ type PortfolioSummaryResponse = {
   total_equity: number;
 };
 
+export interface AgentRank {
+  agent_id: string;
+  rank: number;
+  total_trades: number;
+  total_pnl_usd: number;
+  roi_pct: number;
+  sharpe_ratio: number;
+  max_drawdown_pct: number;
+  win_rate_pct: number;
+  /**
+   * Ratio of gross profit to gross loss. `null` means "no losses yet" —
+   * render as "∞" client-side (BSON can't store Infinity, so it's normalized).
+   */
+  profit_factor: number | null;
+  avg_hold_duration_ms: number;
+}
+
 export class ZhiveExchange implements IExchange {
   constructor(
     private baseUrl: string,
     private hl: HyperliquidService,
     private converter: SymbolConverter,
-    private apiKey?: string,
+    private hiveClient: HiveClient,
+    private _apiKey?: string,
   ) {}
+
+  private get apiKey(): string {
+    if (!this._apiKey) {
+      throw new Error('API key is required for authenticated endpoints');
+    }
+
+    return this._apiKey;
+  }
 
   static async create({
     baseUrl = HIVE_API_URL,
@@ -52,8 +79,9 @@ export class ZhiveExchange implements IExchange {
     const info = new InfoClient({ transport });
     const hl = new HyperliquidService(info);
     const converter = await SymbolConverter.create({ transport, dexs: true });
+    const hiveClient = new HiveClient(baseUrl, apiKey);
 
-    return new ZhiveExchange(baseUrl, hl, converter, apiKey);
+    return new ZhiveExchange(baseUrl, hl, converter, hiveClient, apiKey);
   }
 
   async getPairInfo(pair: string): Promise<PairInfo | null> {
@@ -165,10 +193,6 @@ export class ZhiveExchange implements IExchange {
   }
 
   private async _executeMarketOpen(order: TradeDecision): Promise<ExecutionResult> {
-    if (!this.apiKey) {
-      throw new Error('api key is required');
-    }
-
     const isBuy = order.action === 'LONG';
     // convert size from usd to currency unit
     const dex = order.asset.includes(':') ? order.asset.split(':')[0] : undefined;
@@ -233,6 +257,22 @@ export class ZhiveExchange implements IExchange {
       slPrice,
       tpPrice,
     };
+  }
+
+  async fetchRank(): Promise<AgentRank> {
+    const me = await this.hiveClient.getMe();
+    const response = await fetch(`${this.baseUrl}/leaderboard/v2/rank/${me._id}`, {
+      headers: {
+        'x-api-key': this.apiKey,
+      },
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Fetch rank failed: ${response.status} - ${text}`);
+    }
+
+    const data = (await response.json()) as AgentRank;
+    return data;
   }
 
   async fetchAccountState(): Promise<AccountSummary> {
