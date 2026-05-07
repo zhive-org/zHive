@@ -26,9 +26,12 @@ const POSITIONS_TTL_MS = 5_000;
 export interface AppProps {
   webPort?: number;
   openInBrowser?: boolean;
+  /** Reuse this auth token instead of generating one (handoff from a prior
+   * picker server so the open browser tab keeps its cookie). */
+  webAuthToken?: string;
 }
 
-export const App: React.FC<AppProps> = ({ webPort, openInBrowser }) => {
+export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }) => {
   const { runtime, reloadRuntime } = useAgentRuntime();
   const [termWidth, setTermWidth] = useState(process.stdout.columns || 60);
   const eventBus = useMemo(() => new WebEventBus(), []);
@@ -123,7 +126,14 @@ export const App: React.FC<AppProps> = ({ webPort, openInBrowser }) => {
     [runtime, eventBus, handleChatSubmit, clearChat],
   );
 
-  const webServer = useWebServer({ port: webPort, runtime, eventBus, control, openInBrowser });
+  const webServer = useWebServer({
+    port: webPort,
+    runtime,
+    eventBus,
+    control,
+    openInBrowser,
+    authToken: webAuthToken,
+  });
 
   // ─── Terminal resize tracking ───────────────────────
   useEffect(() => {

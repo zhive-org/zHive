@@ -19,6 +19,9 @@ interface UseWebServerArgs {
   eventBus: WebEventBus;
   control: WebControl;
   openInBrowser?: boolean;
+  /** Optional pre-existing token (e.g. inherited from the picker server so the
+   * already-open browser tab stays authenticated across the server swap). */
+  authToken?: string;
 }
 
 export function useWebServer({
@@ -27,12 +30,17 @@ export function useWebServer({
   eventBus,
   control,
   openInBrowser,
+  authToken: providedAuthToken,
 }: UseWebServerArgs): WebServerStatus {
   const [state, setState] = useState<WebServerStatus>({ status: 'disabled' });
   // Stable token for the lifetime of the Ink app. Regenerated only when the
   // process restarts — old browser tabs become unauthenticated, which is the
-  // intended behavior.
-  const authToken = useMemo(() => randomBytes(24).toString('base64url'), []);
+  // intended behavior. If the caller passed one in (handoff from picker), use
+  // that instead so the open browser tab keeps its cookie.
+  const authToken = useMemo(
+    () => providedAuthToken ?? randomBytes(24).toString('base64url'),
+    [providedAuthToken],
+  );
 
   useEffect(() => {
     if (port === undefined) {

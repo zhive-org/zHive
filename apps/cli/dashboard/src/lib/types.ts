@@ -41,3 +41,15 @@ export interface WebState {
   positions: DetailedPosition[];
   memory: string;
 }
+
+export interface PickerAgentSummary {
+  name: string;
+  /** ISO 8601 timestamp. */
+  created: string;
+  bio: string | null;
+  avatarUrl?: string;
+}
+
+export type ApiState =
+  | ({ phase: 'ready' } & WebState)
+  | { phase: 'selecting'; agents: PickerAgentSummary[] };

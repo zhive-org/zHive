@@ -1,4 +1,4 @@
-import type { WebEventsSince, WebState } from './types';
+import type { ApiState, WebEventsSince } from './types';
 
 async function asJsonError(res: Response): Promise<never> {
   const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -13,10 +13,20 @@ async function readJson<T>(res: Response, label: string): Promise<T> {
   }
 }
 
-export async function fetchState(): Promise<WebState> {
+export async function fetchApiState(): Promise<ApiState> {
   const res = await fetch('/api/state', { credentials: 'same-origin' });
   if (!res.ok) await asJsonError(res);
-  return readJson<WebState>(res, '/api/state');
+  return readJson<ApiState>(res, '/api/state');
+}
+
+export async function selectAgent(name: string): Promise<void> {
+  const res = await fetch('/api/agents/select', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) await asJsonError(res);
 }
 
 export async function fetchEvents(since: number): Promise<WebEventsSince> {
