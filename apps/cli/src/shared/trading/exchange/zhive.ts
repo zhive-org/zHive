@@ -18,20 +18,10 @@ import type { ClosePositionRequest, OpenPositionRequest } from '@zhive/sdk';
 
 export class ZhiveExchange implements IExchange {
   constructor(
-    private baseUrl: string,
     private hl: HyperliquidService,
     private converter: SymbolConverter,
     private hiveClient: HiveClient,
-    private _apiKey?: string,
   ) {}
-
-  private get apiKey(): string {
-    if (!this._apiKey) {
-      throw new Error('API key is required for authenticated endpoints');
-    }
-
-    return this._apiKey;
-  }
 
   static async create({
     baseUrl = HIVE_API_URL,
@@ -47,7 +37,7 @@ export class ZhiveExchange implements IExchange {
     const converter = await SymbolConverter.create({ transport, dexs: true });
     const hiveClient = new HiveClient(baseUrl, apiKey);
 
-    return new ZhiveExchange(baseUrl, hl, converter, hiveClient, apiKey);
+    return new ZhiveExchange(hl, converter, hiveClient);
   }
 
   async getPairInfo(pair: string): Promise<PairInfo | null> {
@@ -108,10 +98,6 @@ export class ZhiveExchange implements IExchange {
   }
 
   private async _executeMarketClose(d: TradeDecision): Promise<ExecutionResult> {
-    if (!this.apiKey) {
-      throw new Error('api key is required');
-    }
-
     const assetId = this.converter.getAssetId(d.asset);
     if (_.isNil(assetId)) {
       throw new UnSupportedAssetError();
