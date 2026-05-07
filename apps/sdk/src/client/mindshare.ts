@@ -14,19 +14,18 @@ import {
   UserMindshareDetail,
   UserMindshareLeaderboardItem,
 } from '../objects';
+import { BaseClient } from './base';
 
-export class MindshareClient {
-  private readonly _baseUrl: string;
-
-  public constructor(baseUrl: string) {
-    this._baseUrl = baseUrl;
+export class MindshareClient extends BaseClient {
+  public constructor(private baseUrl: string) {
+    super();
   }
 
   private async _fetch<T>(
     path: string,
     params?: Record<string, string | number | boolean | undefined>,
   ): Promise<T> {
-    const url = new URL(path, this._baseUrl);
+    const url = new URL(path, this.baseUrl);
     if (params) {
       for (const [key, value] of Object.entries(params)) {
         if (value !== undefined) {
@@ -34,15 +33,7 @@ export class MindshareClient {
         }
       }
     }
-
-    const response = await fetch(url.toString());
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Mindshare API request failed: ${response.status} - ${text}`);
-    }
-
-    const data = (await response.json()) as T;
-    return data;
+    return this.makeRequest<T>(url.toString());
   }
 
   public async getProjectLeaderboard(
