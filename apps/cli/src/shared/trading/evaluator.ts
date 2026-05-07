@@ -6,9 +6,8 @@ import { cacheableSystem, type AgentRuntime } from '../agent';
 import { formatToolError } from '../utils';
 import { AssetAnalyzer, ProviderFactory } from './analyzer.js';
 import { IExchange } from './exchange/types';
-import { loadMemory } from './memory';
-import { RiskEngine } from './risk';
 import type { AccountSummary, PairInfo, TradeDecision } from './types.js';
+import { loadMemoryByTopic } from '@zhive/sdk';
 
 const { Output, generateText } = wrapAISDK(ai);
 
@@ -187,7 +186,7 @@ Rules
       assetLines.push('---');
     }
 
-    const memory = await loadMemory('trade-decisions.md');
+    const memory = await loadMemoryByTopic('trade-decisions.md');
 
     const availableUsdc = account.spotBalances.find((b) => b.coin === 'USDC')?.hold ?? '0';
     const prompt = `Analyze the following ${assetEntries.length} assets and provide a trading decision for each.

@@ -9,6 +9,8 @@ export type { StoredRecentComment } from './recent-comments';
 export {
   loadMemory,
   saveMemory,
+  loadMemoryByTopic,
+  saveMemoryByTopic,
   memoryPath,
   getMemoryLineCount,
   MEMORY_SOFT_LIMIT,

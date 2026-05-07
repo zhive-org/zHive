@@ -1,10 +1,9 @@
-import { getMemoryLineCount } from '@zhive/sdk';
+import { getMemoryLineCount, loadMemoryByTopic, saveMemoryByTopic } from '@zhive/sdk';
 import { generateText } from 'ai';
 import { AgentRuntime } from '../agent/runtime';
 import { AssetEvaluator } from './evaluator';
 import { ProviderFactory } from './analyzer';
 import { IExchange } from './exchange/types';
-import { loadMemory, saveMemory } from './memory';
 import { TradeDecision } from './types';
 import { PositionNotFound, UnknownError, UnSupportedAssetError } from './exchange/error';
 import { ZhiveExchange } from './exchange/zhive';
@@ -126,7 +125,7 @@ export class TradingAgent {
   }
 
   private async saveDecisions(decisions: TradeDecision[]): Promise<void> {
-    const memory = await loadMemory('trade-decisions.md');
+    const memory = await loadMemoryByTopic('trade-decisions.md');
     const timestamp = new Date().toISOString();
     const newEntry =
       `## ${timestamp}\n\n` +
@@ -137,7 +136,7 @@ export class TradingAgent {
     if (lineCount > 200) {
       updatedMemory = await this.compactDecisions(updatedMemory);
     }
-    await saveMemory('trade-decisions.md', updatedMemory);
+    await saveMemoryByTopic('trade-decisions.md', updatedMemory);
   }
 
   private async compactDecisions(content: string): Promise<string> {
