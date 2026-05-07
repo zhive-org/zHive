@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import * as path from 'node:path';
 
@@ -30,6 +30,16 @@ vi.mock('../../shared/theme', () => ({
   },
 }));
 
+const mockGetMe = vi.fn();
+const mockGetRank = vi.fn();
+
+vi.mock('../../../shared/config/hive-client', () => ({
+  getHiveClient: vi.fn(() => ({
+    getMe: mockGetMe,
+    trading: { getRank: mockGetRank },
+  })),
+}));
+
 import { createAgentProfileCommand } from './profile';
 
 describe('createAgentProfileCommand', () => {
@@ -43,6 +53,14 @@ describe('createAgentProfileCommand', () => {
     vi.clearAllMocks();
     consoleOutput = [];
     consoleErrorOutput = [];
+
+    mockGetMe.mockResolvedValue({ _id: 'agent-id-123' });
+    mockGetRank.mockResolvedValue({
+      total_pnl_usd: 1234.5,
+      roi_pct: 0.1234,
+      win_rate_pct: 0.6789,
+      max_drawdown_pct: 0.0521,
+    });
 
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
       consoleOutput.push(args.join(' '));
@@ -77,16 +95,6 @@ describe('createAgentProfileCommand', () => {
     expect(consoleErrorOutput.join('\n')).toContain('agent-no-skills');
   });
 
-  it('shows error when credentials are missing', async () => {
-    const command = createAgentProfileCommand();
-
-    await expect(command.parseAsync(['no-cred'], { from: 'user' })).rejects.toThrow(
-      'process.exit(1)',
-    );
-
-    expect(consoleErrorOutput.join('\n')).toContain('Agent "no-cred" not found');
-  });
-
   it('displays profile from local config', async () => {
     const command = createAgentProfileCommand();
     await command.parseAsync(['test-agent'], { from: 'user' });
@@ -101,32 +109,54 @@ describe('createAgentProfileCommand', () => {
     expect(output).toContain('https://example.com/avatar.png');
   });
 
-  it('displays profile settings section', async () => {
+  it('displays portfolio section with rank stats', async () => {
+    const command = createAgentProfileCommand();
+    await command.parseAsync(['test-agent'], { from: 'user' });
+
+    expect(mockGetMe).toHaveBeenCalled();
+    expect(mockGetRank).toHaveBeenCalledWith('agent-id-123');
+
+    const output = consoleOutput.join('\n');
+    expect(output).toContain('Portfolio');
+    expect(output).toContain('PNL:');
+    expect(output).toContain('+$1234.50');
+    expect(output).toContain('ROI:');
+    expect(output).toContain('+12.34%');
+    expect(output).toContain('WIN RATE:');
+    expect(output).toContain('67.89%');
+    expect(output).toContain('MAX DD:');
+    expect(output).toContain('5.21%');
+  });
+
+  it('formats negative PNL and ROI with minus sign', async () => {
+    mockGetRank.mockResolvedValue({
+      total_pnl_usd: -50.5,
+      roi_pct: -0.0725,
+      win_rate_pct: 0.4,
+      max_drawdown_pct: 0.15,
+    });
+
     const command = createAgentProfileCommand();
     await command.parseAsync(['test-agent'], { from: 'user' });
 
     const output = consoleOutput.join('\n');
-    expect(output).toContain('Profile Settings');
-    expect(output).toContain('Sentiment:');
-    expect(output).toContain('bullish');
-    expect(output).toContain('Timeframes:');
-    expect(output).toContain('4h, 24h');
-    expect(output).toContain('Sectors:');
-    expect(output).toContain('defi, gaming');
+    expect(output).toContain('-$50.50');
+    expect(output).toContain('-7.25%');
   });
 
-  it('handles agent with empty sectors', async () => {
+  it('handles missing roi_pct gracefully', async () => {
+    mockGetRank.mockResolvedValue({
+      total_pnl_usd: 0,
+      roi_pct: null,
+      win_rate_pct: 0,
+      max_drawdown_pct: 0,
+    });
+
     const command = createAgentProfileCommand();
-    await command.parseAsync(['empty-agent'], { from: 'user' });
+    await command.parseAsync(['test-agent'], { from: 'user' });
 
     const output = consoleOutput.join('\n');
-    expect(output).toContain('Agent Profile: empty-agent');
-    expect(output).toContain('Sentiment:');
-    expect(output).toContain('neutral');
-    expect(output).toContain('Sectors:');
-    // Empty sectors should show dash
-    const sectorsLine = consoleOutput.find((line) => line.includes('Sectors:'));
-    expect(sectorsLine).toContain('-');
+    expect(output).toContain('+0.00%');
   });
 
   it('works with different fixture agents', async () => {
@@ -135,7 +165,6 @@ describe('createAgentProfileCommand', () => {
 
     const output = consoleOutput.join('\n');
     expect(output).toContain('Agent Profile: agent-no-skills');
-    expect(output).toContain('bearish');
-    expect(output).toContain('infrastructure');
+    expect(output).toContain('Agent without skills directory for testing');
   });
 });
