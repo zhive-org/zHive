@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { PollActivityItem } from './types';
 import { colors, symbols } from '../../shared/theme';
-import { formatTime, formatTimeLeft, formatTokenUsage } from '../../../shared/megathread/utils';
+import { formatTime, formatTimeLeft, formatTokenUsage } from '../../../shared/utils';
 import { HIVE_FRONTEND_URL } from '../../../shared/config/constant';
 
 interface PollActivityFormatter<T extends PollActivityItem = PollActivityItem> {

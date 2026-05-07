@@ -4,20 +4,19 @@ import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { useCallback, useRef, useState } from 'react';
 import { AgentRuntime } from '../../../shared/agent';
 import { getModel } from '../../../shared/config/ai-providers';
-import { extractAndSaveMemory } from '../../../shared/megathread/analysis';
-import { buildChatPrompt, type ChatMessage } from '../../../shared/megathread/prompts/chat-prompt';
-import { extractErrorMessage } from '../../../shared/megathread/utils';
+import { extractErrorMessage } from '../../../shared/utils';
 import {
   createReadBacktestResultTool,
   createReadFileTool,
   getRunningBacktestTool,
   writeFileTool,
 } from '../../../shared/tools/agent-files';
-import { fetchRulesTool } from '../../../shared/tools/fetch-rules';
 import type { DetailedPosition } from '../../../shared/trading/types';
 import { styled } from '../../shared/theme';
 import { executeSlashCommand, SlashCommandCallbacks } from '../services/command-registry';
 import { ChatActivityItem } from './types';
+import { buildChatPrompt, ChatMessage } from '../../../shared/chat';
+import { extractAndSaveMemory } from '../../../shared/memory';
 
 export type ChatOverlay =
   | { type: 'positions'; positions: DetailedPosition[] }

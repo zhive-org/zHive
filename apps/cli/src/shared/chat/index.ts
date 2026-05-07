@@ -1,5 +1,3 @@
-import type { SplitPrompt } from './prompt';
-
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -24,7 +22,7 @@ export function buildChatPrompt(
   soulContent: string,
   strategyContent: string,
   context: ChatContext,
-): SplitPrompt {
+): { system: string; prompt: string } {
   // ── System (static per agent session — cached by providers) ──
 
   const system = `You are an AI trading agent having a conversation with your operator. Stay in character.

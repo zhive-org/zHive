@@ -12,7 +12,7 @@ const items = [
     description: p.philosophy,
   })),
   {
-    label: 'Custom (chat with agent)',
+    label: 'Custom',
     value: CUSTOM_VALUE,
     description: 'Let an agent interview you to design the strategy.',
   },

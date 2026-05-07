@@ -4,8 +4,9 @@ import { HoneycombLoader } from '../../../../components/HoneycombLoader';
 import { colors, symbols, border } from '../../../shared/theme';
 import { scaffoldProject } from '../../generate';
 import { getProvider } from '../../../../shared/config/ai-providers';
-import { extractErrorMessage } from '../../../../shared/megathread/utils';
+
 import { useWizard } from '../wizard-context';
+import { extractErrorMessage } from '../../../../shared/utils';
 
 interface StepStatus {
   label: string;

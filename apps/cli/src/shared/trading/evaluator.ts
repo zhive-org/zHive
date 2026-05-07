@@ -3,7 +3,7 @@ import { wrapAISDK } from 'langsmith/experimental/vercel';
 import { traceable } from 'langsmith/traceable';
 import { z } from 'zod';
 import { cacheableSystem, type AgentRuntime } from '../agent';
-import { formatToolError } from '../megathread/utils.js';
+import { formatToolError } from '../utils';
 import { AssetAnalyzer, ProviderFactory } from './analyzer.js';
 import { IExchange } from './exchange/types';
 import { loadMemory } from './memory';

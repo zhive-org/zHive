@@ -1,5 +1,5 @@
 import type { BollingerBandsValue, IndicatorValue, MACDValue } from '../../ta/service';
-import { truncateTimeseries, truncationLabel } from '../../megathread/utils';
+import { truncateTimeseries, truncationLabel } from '../../utils';
 import type { OHLCPoint } from '@zhive/sdk';
 
 export function formatOhlcData(data: OHLCPoint[]): string {

@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { z } from 'zod';
-import { extractErrorMessage } from '../../megathread/utils';
+import { extractErrorMessage } from '../../utils';
 import type { BacktestSummary } from '../../backtest/runner';
 import type { FillRecord } from '../../backtest/types';
 import type { TradeDecision } from '../../trading/types';

@@ -18,7 +18,7 @@ import {
   initializeAgentRuntime,
 } from '../shared/agent/agent-runtime';
 import { processMegathreadRound } from '../shared/megathread/analysis';
-import { extractErrorMessage } from '../shared/megathread/utils';
+import { extractErrorMessage } from '../shared/utils';
 
 interface AnalyzeOptions {
   text: string;

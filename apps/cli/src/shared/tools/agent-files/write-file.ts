@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import path from 'path';
 import z from 'zod';
 import * as fs from 'fs/promises';
-import { extractErrorMessage } from '../../megathread/utils';
+import { extractErrorMessage } from '../../utils';
 
 export const writeFileTool = tool({
   description: 'Write file. Only call AFTER user confirms.',

@@ -3,8 +3,8 @@ import { AgentRuntime } from '../../../shared/agent';
 import { discoverSkills } from '../../../shared/agent/skills/skill-parser';
 import type { SkillDefinition } from '../../../shared/agent/skills/types';
 import { getHiveDir } from '../../../shared/config/constant';
-import { extractErrorMessage } from '../../../shared/megathread/utils';
 import type { Result } from '../../../shared/types';
+import { extractErrorMessage } from '../../../shared/utils';
 import { styled } from '../../shared/theme';
 import { SlashCommandCallbacks } from '../services/command-registry';
 

@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import * as path from 'path';
 import { z } from 'zod';
-import { extractErrorMessage } from '../../megathread/utils';
+import { extractErrorMessage } from '../../utils';
 import { assertReadable, readWithCap, resolveAgentPath } from './sandbox';
 
 export function createReadFileTool(agentDir: string) {

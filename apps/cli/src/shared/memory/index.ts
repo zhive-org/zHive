@@ -1,5 +1,9 @@
-import type { ChatMessage } from './chat-prompt';
-import type { SplitPrompt } from './prompt';
+import { getMemoryLineCount, loadMemory, MEMORY_SOFT_LIMIT, saveMemory } from '@zhive/sdk';
+import { getModel } from '../config/ai-providers';
+import { generateText } from 'ai';
+import { cacheableSystem } from '../agent';
+import { extractErrorMessage, stripCodeFences } from '../utils';
+import type { ChatMessage } from '../chat';
 
 export interface MemoryExtractionContext {
   currentMemory: string;
@@ -7,7 +11,10 @@ export interface MemoryExtractionContext {
   lineCount: number;
 }
 
-export function buildMemoryExtractionPrompt(context: MemoryExtractionContext): SplitPrompt {
+export function buildMemoryExtractionPrompt(context: MemoryExtractionContext): {
+  system: string;
+  prompt: string;
+} {
   const { currentMemory, sessionMessages, lineCount } = context;
 
   // ── System (static — cached by providers) ──
@@ -63,4 +70,34 @@ ${sessionSection}
 Update the MEMORY.md based on the session activity above.`;
 
   return { system, prompt };
+}
+
+export async function extractAndSaveMemory(sessionMessages: ChatMessage[]): Promise<string | null> {
+  const currentMemory = await loadMemory();
+  const lineCount = getMemoryLineCount(currentMemory);
+
+  if (sessionMessages.length === 0 && lineCount <= MEMORY_SOFT_LIMIT) {
+    return null;
+  }
+
+  const prompt = buildMemoryExtractionPrompt({
+    currentMemory,
+    sessionMessages,
+    lineCount,
+  });
+
+  try {
+    const model = await getModel();
+    const { text } = await generateText({
+      model,
+      messages: [cacheableSystem(prompt.system), { role: 'user' as const, content: prompt.prompt }],
+    });
+    const cleaned = stripCodeFences(text);
+    await saveMemory(cleaned);
+    return cleaned;
+  } catch (err: unknown) {
+    const raw = extractErrorMessage(err);
+    console.error(`[Memory] Failed to extract memory: ${raw.slice(0, 200)}`);
+    return null;
+  }
 }

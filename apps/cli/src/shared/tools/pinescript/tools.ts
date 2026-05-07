@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import { IProvider, PineTS } from 'pinets';
 import z from 'zod';
-import { formatToolError } from '../../megathread/utils';
+import { formatToolError } from '../../utils';
 import { PineResult, formatPineResult } from '../../ta/utils';
 import { PineTsTimeframe, pinetsTimeframes } from './types';
 

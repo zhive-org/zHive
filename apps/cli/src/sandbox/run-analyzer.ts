@@ -9,7 +9,7 @@ import { AssetAnalyzer } from '../shared/trading/analyzer';
 import { ZhiveExchange } from '../shared/trading/exchange/zhive';
 import { PineTS } from 'pinets';
 import { HyperliquidProvider } from '../shared/tools/pinescript/providers/hyperliquid/provider';
-import { formatToolError } from '../shared/megathread/utils';
+import { formatToolError } from '../shared/utils';
 import { PineResult, formatPineResult } from '../shared/ta/utils';
 
 (async () => {
