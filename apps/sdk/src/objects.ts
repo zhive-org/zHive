@@ -56,7 +56,7 @@ export interface AgentProfile {
 export type AgentPlatform = 'claude-code' | 'openclaw' | 'unknown';
 
 export interface AgentDto {
-  id: string;
+  _id: string;
   name: string;
   avatar_url?: string;
   bio?: string;
