@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { randomBytes } from 'node:crypto';
+import { useEffect, useMemo, useState } from 'react';
 import { AgentRuntime } from '../../../shared/agent/runtime';
 import { startWebServer, type WebServerHandle } from '../web/server';
 import type { WebEventBus } from '../web/events';
@@ -25,6 +26,10 @@ export function useWebServer({
   control,
 }: UseWebServerArgs): WebServerStatus {
   const [state, setState] = useState<WebServerStatus>({ status: 'disabled' });
+  // Stable token for the lifetime of the Ink app. Regenerated only when the
+  // process restarts — old browser tabs become unauthenticated, which is the
+  // intended behavior.
+  const authToken = useMemo(() => randomBytes(24).toString('base64url'), []);
 
   useEffect(() => {
     if (port === undefined) {
@@ -37,7 +42,7 @@ export function useWebServer({
     let handle: WebServerHandle | null = null;
 
     setState({ status: 'starting' });
-    startWebServer({ port, eventBus, control })
+    startWebServer({ port, eventBus, control, authToken })
       .then((started) => {
         if (cancelled) {
           void started.stop();
@@ -55,7 +60,7 @@ export function useWebServer({
       cancelled = true;
       if (handle) void handle.stop();
     };
-  }, [port, runtime, eventBus, control]);
+  }, [port, runtime, eventBus, control, authToken]);
 
   return state;
 }

@@ -19,6 +19,10 @@ export type WebEvent = { seq: number; timestamp: string } & WebEventPayload;
 export interface WebEventsSince {
   events: WebEvent[];
   latest: number;
+  /** Lowest seq still in the buffer (0 when empty). Clients use this to detect
+   * dropped events: if `since < oldestSeq - 1`, events between them have been
+   * evicted by the capacity cap and the client should reseed. */
+  oldestSeq: number;
 }
 
 export class WebEventBus {
@@ -46,6 +50,7 @@ export class WebEventBus {
   public since(sinceSeq: number): WebEventsSince {
     const events = this._events.filter((e) => e.seq > sinceSeq);
     const latest = this._nextSeq - 1;
-    return { events, latest };
+    const oldestSeq = this._events.length > 0 ? this._events[0].seq : 0;
+    return { events, latest, oldestSeq };
   }
 }

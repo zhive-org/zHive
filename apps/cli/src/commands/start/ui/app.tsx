@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Static, Text } from 'ink';
 import { loadMemory } from '@zhive/sdk';
 import { useAgent } from '../hooks/useAgent';
@@ -17,6 +17,9 @@ import { WebEventBus } from '../web/events';
 import type { WebControl, WebState } from '../web/control';
 import { executeSlashCommand, type SlashCommandCallbacks } from '../services/command-registry';
 import { ZhiveExchange } from '../../../shared/trading/exchange/zhive';
+import type { DetailedPosition } from '../../../shared/trading/types';
+
+const POSITIONS_TTL_MS = 5_000;
 
 // ─── Main TUI App ────────────────────────────────────
 
@@ -28,6 +31,8 @@ export const App: React.FC<AppProps> = ({ webPort }) => {
   const { runtime, reloadRuntime } = useAgentRuntime();
   const [termWidth, setTermWidth] = useState(process.stdout.columns || 60);
   const eventBus = useMemo(() => new WebEventBus(), []);
+  const exchangeRef = useRef<{ apiKey: string; client: Promise<ZhiveExchange> } | null>(null);
+  const positionsCacheRef = useRef<{ ts: number; positions: DetailedPosition[] } | null>(null);
 
   const { connected, agentName, modelInfo, activePollActivities, settledPollActivities } = useAgent(
     { runtime, eventBus },
@@ -90,8 +95,21 @@ export const App: React.FC<AppProps> = ({ webPort }) => {
         if (!runtime) {
           throw new Error('Runtime not ready');
         }
-        const exchange = await ZhiveExchange.create({ apiKey: runtime.config.apiKey });
-        const positions = await exchange.fetchPositions();
+        const apiKey = runtime.config.apiKey;
+        if (exchangeRef.current?.apiKey !== apiKey) {
+          exchangeRef.current = { apiKey, client: ZhiveExchange.create({ apiKey }) };
+          positionsCacheRef.current = null;
+        }
+        const cache = positionsCacheRef.current;
+        const now = Date.now();
+        let positions: DetailedPosition[];
+        if (cache && now - cache.ts < POSITIONS_TTL_MS) {
+          positions = cache.positions;
+        } else {
+          const exchange = await exchangeRef.current.client;
+          positions = await exchange.fetchPositions();
+          positionsCacheRef.current = { ts: now, positions };
+        }
         const memory = await loadMemory();
         return {
           agentName: runtime.config.name,

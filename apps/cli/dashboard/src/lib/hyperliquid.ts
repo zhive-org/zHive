@@ -1,5 +1,6 @@
 const WS_URL = 'wss://api.hyperliquid.xyz/ws';
 const STALL_MS = 3000;
+const STALL_FORCE_RECONNECT_MS = 15_000;
 const RECONNECT_MIN_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 
@@ -20,13 +21,36 @@ class HyperliquidClient {
   private _lastMessageAt: number = 0;
   private _reconnectAttempt: number = 0;
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private _stallTimer: ReturnType<typeof setInterval> | null = null;
   private _started: boolean = false;
+  private _stopped: boolean = false;
 
   public start(): void {
-    if (this._started) return;
+    if (this._started || this._stopped) return;
     this._started = true;
     this._connect();
-    setInterval(() => this._checkStall(), 1000);
+    this._stallTimer = setInterval(() => this._checkStall(), 1000);
+  }
+
+  public stop(): void {
+    this._stopped = true;
+    this._started = false;
+    if (this._stallTimer) {
+      clearInterval(this._stallTimer);
+      this._stallTimer = null;
+    }
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
+    if (this._ws) {
+      try {
+        this._ws.close();
+      } catch {
+        // ignore
+      }
+      this._ws = null;
+    }
   }
 
   public subscribe(listener: MidsListener): () => void {
@@ -38,6 +62,7 @@ class HyperliquidClient {
   }
 
   private _connect(): void {
+    if (this._stopped) return;
     this._setStatus(this._reconnectAttempt === 0 ? 'connecting' : 'reconnecting');
     try {
       this._ws = new WebSocket(WS_URL);
@@ -68,12 +93,14 @@ class HyperliquidClient {
         // Ignore malformed messages — they shouldn't end the stream.
       }
     });
-    this._ws.addEventListener('close', () => this._scheduleReconnect());
+    this._ws.addEventListener('close', () => {
+      if (!this._stopped) this._scheduleReconnect();
+    });
     this._ws.addEventListener('error', () => this._ws?.close());
   }
 
   private _scheduleReconnect(): void {
-    if (this._reconnectTimer) return;
+    if (this._reconnectTimer || this._stopped) return;
     this._setStatus('reconnecting');
     const delay = Math.min(RECONNECT_MAX_MS, RECONNECT_MIN_MS * 2 ** this._reconnectAttempt);
     this._reconnectAttempt += 1;
@@ -84,9 +111,21 @@ class HyperliquidClient {
   }
 
   private _checkStall(): void {
-    if (this._status !== 'live') return;
-    if (Date.now() - this._lastMessageAt > STALL_MS) {
+    if (this._stopped) return;
+    const sinceLastMsg = Date.now() - this._lastMessageAt;
+    if (this._status === 'live' && sinceLastMsg > STALL_MS) {
       this._setStatus('stalled');
+    }
+    // Half-open TCP can sit at `stalled` forever without firing `close`. After
+    // 15s of no data, force a reconnect so the user isn't staring at stale
+    // mids presented as live.
+    if (this._status === 'stalled' && sinceLastMsg > STALL_FORCE_RECONNECT_MS) {
+      try {
+        this._ws?.close();
+      } catch {
+        // ignore
+      }
+      this._scheduleReconnect();
     }
   }
 

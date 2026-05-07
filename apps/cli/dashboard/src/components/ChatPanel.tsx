@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { WebEvent } from '../lib/types';
 
 interface ChatPanelProps {
@@ -15,8 +15,10 @@ const ROLE_STYLES: Record<string, { label: string; color: string }> = {
 
 export function ChatPanel({ events, agentName }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const visible = events.filter(
-    (e): e is Extract<WebEvent, { type: 'chat' }> => e.type === 'chat',
+  const visible = useMemo(
+    () =>
+      events.filter((e): e is Extract<WebEvent, { type: 'chat' }> => e.type === 'chat'),
+    [events],
   );
 
   useEffect(() => {

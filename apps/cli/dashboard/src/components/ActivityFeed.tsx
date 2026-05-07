@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { formatTime, formatUsd } from '../lib/format';
 import type { WebEvent } from '../lib/types';
 
@@ -15,7 +15,10 @@ const ACTION_COLOR: Record<string, string> = {
 
 export function ActivityFeed({ events }: ActivityFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const visible = events.filter((e) => e.type !== 'chat' && e.type !== 'system');
+  const visible = useMemo(
+    () => events.filter((e) => e.type !== 'chat' && e.type !== 'system'),
+    [events],
+  );
 
   useEffect(() => {
     const el = scrollRef.current;

@@ -60,6 +60,13 @@ export function ScaffoldStep(): React.ReactElement {
           exit();
         },
       };
+      // The wizard no longer has a Soul step; if soul.content is empty,
+      // synthesize one from the default preset so SOUL.md isn't written
+      // empty (which strips the agent's voice from every prompt).
+      const soulContent =
+        soul.content ||
+        buildSoulMarkdown(identity.name, identity.bio, SOUL_PRESETS[0], identity.avatarUrl);
+
       await scaffoldProject({
         agent: {
           name: identity.name,
@@ -69,7 +76,7 @@ export function ScaffoldStep(): React.ReactElement {
         callbacks,
         provider,
         apiKey: apiConfig.apiKey,
-        soulContent: soul.content,
+        soulContent,
         strategyContent: strategy.content,
         watchList: watchlist.assets,
       });

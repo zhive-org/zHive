@@ -179,6 +179,9 @@ export class ZhiveExchange implements IExchange {
     return {
       accountValue: data.total_equity,
       marginUsed: marginUsed,
+      // zHive's portfolio summary doesn't expose a dedicated withdrawable
+      // field; cash_balance is the unlocked liquid balance, which is what
+      // a trader can pull out without closing positions.
       withdrawable: data.cash_balance,
       spotBalances: [
         {

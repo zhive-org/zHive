@@ -17,6 +17,7 @@ export type WebEvent = { seq: number; timestamp: string } & WebEventPayload;
 export interface WebEventsSince {
   events: WebEvent[];
   latest: number;
+  oldestSeq: number;
 }
 
 export interface DetailedPosition {

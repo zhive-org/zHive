@@ -1,6 +1,6 @@
 # CLI Web Dashboard for Real-World Trading
 
-**Status:** M4 shipped — full dashboard live (panels + Hyperliquid WS + uPlot ROE chart). All four milestones done.
+**Status:** M4 shipped + post-review hardening pass (auth, host check, body cap, gap signaling, exchange caching, dedupe). All four milestones done.
 **Complements:** none
 **Last updated:** 2026-04-29
 
@@ -28,6 +28,42 @@ Status legend: ✅ Done · 🟡 In progress · ⬜ Queued · ❌ Blocked
 ---
 
 ## What Was Built
+
+### Post-review hardening — shipped 2026-04-29
+
+Driven by code-reviewer findings (1 CRITICAL, 5 HIGH, 7 MEDIUM, 6 LOW, 5 test gaps). All addressed.
+
+- **Auth (CRITICAL).** `apps/cli/src/commands/start/hooks/useWebServer.ts` generates a random 24-byte URL-safe token via `randomBytes` once per Ink-process lifetime and passes it to `startWebServer`. The Ink header URL becomes `http://127.0.0.1:<port>/?token=<token>`. Server-side, `apps/cli/src/commands/start/web/server.ts`:
+  - Middleware on `/api/*` checks the request hostname (Host header → URL hostname fallback for unit tests) — rejects non-localhost with 403 (DNS-rebinding defense).
+  - Same middleware checks for cookie `zhive_auth=<token>` or `Authorization: Bearer <token>` — rejects with 401 otherwise.
+  - Static handler at `GET /` accepts a one-shot `?token=<token>` query, sets an HttpOnly SameSite=Lax cookie, and 302-redirects to a clean `/`. Without a valid cookie/token, returns a 401 page pointing the user at the CLI URL.
+  - `/healthz` and static `/assets/*` remain public (no secrets).
+- **Fire-and-forget rejections (HIGH#2).** `executeCommand` and `submitChat` wrappers in `server.ts` now `.catch()` the promise and push a `{type:'error', errorMessage}` event to the bus so the dashboard sees the failure.
+- **Slash command name validation (HIGH#3).** `server.ts` builds a `Set` from `SLASH_COMMANDS` at startup and rejects unknown names with 400 before the dispatch reaches the registry.
+- **Chat body cap (HIGH#4).** 8 KB hard limit on `text`; oversized requests get 413 without invoking the LLM.
+- **Capacity-drop gap signaling (HIGH#5).** `apps/cli/src/commands/start/web/events.ts` `WebEventBus.since()` now also returns `oldestSeq`. Dashboard's `useEventStream` (`apps/cli/dashboard/src/lib/useEventStream.ts`) compares `oldestSeq` against the previously-seen `latest`; on a gap (events evicted before the client polled) it dispatches `reset` instead of `append`, replacing the buffer with the freshly returned events. Prevents a dropped `system:clear-chat` from leaving cleared chats visible forever.
+- **Exchange client + positions cache (HIGH#6).** `apps/cli/src/commands/start/ui/app.tsx` keeps the `ZhiveExchange` instance in a `useRef` keyed on `apiKey` (only re-created if the key changes) and caches `fetchPositions()` results for 5 s. With dashboard polling `/api/state` every 30 s, this still hits Hyperliquid at a normal rate; with multiple tabs or future faster polling, the TTL prevents thrashing.
+- **Symlink-aware path traversal guard (MEDIUM).** `server.ts` now `realpath`s both the requested target AND the dashboard root, then prefix-checks. macOS-aware (where tmpdir resolves through `/private/var/folders`).
+- **Dashboard JSON error wrapping (MEDIUM).** `apps/cli/dashboard/src/lib/api.ts` wraps `res.json()` in `readJson(res, label)` so a non-JSON success body produces a labeled error instead of an opaque `SyntaxError`. All fetches now also pass `credentials: 'same-origin'` so the auth cookie travels.
+- **Hyperliquid `stop()` + half-open recovery (MEDIUM).** `apps/cli/dashboard/src/lib/hyperliquid.ts` keeps the stall timer in `_stallTimer`, exposes `stop()` for clean shutdown, and forces a reconnect when `stalled` exceeds 15 s — a half-open TCP that never fires `close` no longer leaves the dashboard staring at stale mids.
+- **Dashboard event dedupe + reducer extraction (LOW + test gap).** `useEventStream.ts` now has stable `lastDataRef` identity check (StrictMode double-effect safety) AND `dedupeBySeq` defense in the reducer. `applyClearChat`, `dedupeBySeq`, and `eventsReducer` exported as pure functions.
+- **Cache-Control headers (LOW).** `index.html` → `Cache-Control: no-cache`. `/assets/*` → `Cache-Control: public, max-age=31536000, immutable` (Vite hashes the filenames).
+- **Buffer pass-through (LOW).** `c.body(content, ...)` instead of `c.body(new Uint8Array(content), ...)` — avoids one buffer copy per request.
+- **Memoized panel filters (LOW).** `ActivityFeed` and `ChatPanel` wrap their filter expressions in `useMemo` keyed on `events`, avoiding O(n) re-filter on every keystroke in the unrelated CommandBar.
+
+**New test coverage (+34 tests, 145 → 179 total):**
+
+- `events.test.ts`: capacity-drop reports `oldestSeq` (gap-detectable from client side); empty bus reports `oldestSeq=0`.
+- `server.test.ts`: 14 new — auth (no token / valid bearer / wrong bearer), Host header (localhost ok / non-localhost 403), `/healthz` public, 401 page when cookie missing, `?token=` redirect with `Set-Cookie`, command name validation (known/unknown), chat body cap → 413, `executeCommand` rejection routed to bus, encoded `..` path traversal blocked, Cache-Control headers (no-cache vs immutable).
+- NEW `dashboard/src/lib/useEventStream.test.ts` (11 tests): `applyClearChat` (no clear / one clear / non-chat preserved / multiple clears use latest), `dedupeBySeq`, `eventsReducer` (append/reset/empty no-op/dedupe/cap at 500/clear-chat applied during append).
+- NEW `dashboard/src/lib/usePnl.test.ts` (7 tests): empty positions, long+gain, short+gain, mid-missing falls back to markPrice / entryPrice, mixed-side aggregation, zero-cost guard.
+
+**Locked decisions confirmed during the hardening pass:**
+
+- **Token in URL on first load + cookie thereafter** — *why:* localhost-only environment, browser's URL-bar leakage risk is minimal, and the cookie is HttpOnly so JS can't exfiltrate it. Alternative (POST /auth + bootstrap page) added complexity with no real win for this threat model.
+- **`isLocalHost(c)` falls back to `new URL(c.req.url).hostname` when no Host header is present** — *why:* Hono's `app.fetch(new Request(...))` synthetic test path doesn't auto-populate Host. Falling back to URL hostname keeps the unit tests honest and the production path tight (real browsers always send Host).
+- **`executeCommand`/`submitChat` errors flow to the event bus, not back through HTTP** — *why:* same lock as M3 (output flows through the polling channel, not the response). Just extends to errors, which the user previously couldn't see.
+- **Cookie is session-scoped (no `Max-Age`)** — *why:* the token regenerates on every CLI restart, so persisting across browser restarts has no value (cookie would be invalid against the new token anyway). Session-only avoids a stale cookie outliving its purpose.
 
 ### Milestone 4 — step 3: Hyperliquid WS + live PnL + uPlot ROE chart — shipped 2026-04-29
 

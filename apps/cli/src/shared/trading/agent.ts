@@ -20,6 +20,7 @@ const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // 1 hr
 export class TradingAgent {
   private _timeoutId: ReturnType<typeof setTimeout> | null = null;
   private abortController?: AbortController | null = null;
+  private _stopped: boolean = false;
 
   private constructor(
     private runtime: AgentRuntime,
@@ -59,19 +60,26 @@ export class TradingAgent {
   }
 
   private async _scheduleNextRun() {
+    // Guard against a stop() that landed while runOnce() was still in flight:
+    // the .finally() chain would otherwise still schedule a tick on a stopped
+    // agent, leaving a zombie timer that re-trades alongside a fresh instance.
+    if (this._stopped) return;
     this.callbacks.onSleep?.(this.intervalMs);
     this._timeoutId = setTimeout(() => {
+      if (this._stopped) return;
       this.run();
     }, this.intervalMs);
   }
 
   async run() {
+    if (this._stopped) return;
     this.runOnce()
       .catch((err) => this.callbacks.onError?.(err instanceof Error ? err.message : String(err)))
       .finally(() => this._scheduleNextRun());
   }
 
   stop() {
+    this._stopped = true;
     if (this._timeoutId) {
       clearTimeout(this._timeoutId);
     }

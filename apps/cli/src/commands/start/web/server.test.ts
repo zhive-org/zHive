@@ -41,7 +41,7 @@ describe('buildApp', () => {
   });
 
   describe('with eventBus', () => {
-    it('returns events since seq', async () => {
+    it('returns events since seq with latest and oldestSeq', async () => {
       const bus = new WebEventBus();
       bus.push({ type: 'message', text: 'a' });
       bus.push({ type: 'message', text: 'b' });
@@ -52,6 +52,7 @@ describe('buildApp', () => {
       const body = await res.json();
       expect(body.events.map((e: { seq: number }) => e.seq)).toEqual([2]);
       expect(body.latest).toBe(2);
+      expect(body.oldestSeq).toBe(1);
     });
   });
 
@@ -191,6 +192,157 @@ describe('buildApp', () => {
       const app = buildApp({ dashboardRoot: tmp });
       const res = await fetch(app, '/../package.json');
       expect(res.status).toBe(404);
+    });
+
+    it('blocks encoded path traversal', async () => {
+      const app = buildApp({ dashboardRoot: tmp });
+      const res = await fetch(app, '/%2e%2e/package.json');
+      expect(res.status).toBe(404);
+    });
+
+    it('sets immutable cache for /assets/*', async () => {
+      const app = buildApp({ dashboardRoot: tmp });
+      const res = await fetch(app, '/assets/index-abc.js');
+      expect(res.headers.get('cache-control')).toContain('immutable');
+    });
+
+    it('sets no-cache for index.html', async () => {
+      const app = buildApp({ dashboardRoot: tmp });
+      const res = await fetch(app, '/');
+      expect(res.headers.get('cache-control')).toBe('no-cache');
+    });
+  });
+
+  describe('auth', () => {
+    const TOKEN = 'secret-test-token';
+
+    it('blocks /api/* requests without a token', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null, authToken: TOKEN });
+      const res = await fetch(app, '/api/state');
+      expect(res.status).toBe(401);
+      expect(control.getState).not.toHaveBeenCalled();
+    });
+
+    it('accepts /api/* with a valid bearer token', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null, authToken: TOKEN });
+      const res = await fetch(app, '/api/state', {
+        headers: { authorization: `Bearer ${TOKEN}` },
+      });
+      expect(res.status).toBe(200);
+    });
+
+    it('rejects /api/* with the wrong bearer token', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null, authToken: TOKEN });
+      const res = await fetch(app, '/api/state', {
+        headers: { authorization: 'Bearer wrong' },
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects requests with a non-localhost Host header', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null, authToken: TOKEN });
+      const res = await app.fetch(
+        new Request('http://attacker.example.com/api/state', {
+          headers: { authorization: `Bearer ${TOKEN}`, host: 'attacker.example.com' },
+        }),
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it('keeps /healthz public', async () => {
+      const app = buildApp({ dashboardRoot: null, authToken: TOKEN });
+      const res = await fetch(app, '/healthz');
+      expect(res.status).toBe(200);
+    });
+
+    it('serves a 401 page for / without a valid cookie', async () => {
+      let tmpDir: string;
+      tmpDir = await mkdtemp(path.join(tmpdir(), 'zhive-auth-test-'));
+      try {
+        await writeFile(path.join(tmpDir, 'index.html'), '<!doctype html><body>x</body>');
+        const app = buildApp({ dashboardRoot: tmpDir, authToken: TOKEN });
+        const res = await fetch(app, '/');
+        expect(res.status).toBe(401);
+        expect(await res.text()).toContain('cli start --web');
+      } finally {
+        await rm(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it('redirects / to a clean URL after a valid ?token= sets the cookie', async () => {
+      let tmpDir: string;
+      tmpDir = await mkdtemp(path.join(tmpdir(), 'zhive-auth-redir-'));
+      try {
+        await writeFile(path.join(tmpDir, 'index.html'), '<!doctype html><body>x</body>');
+        const app = buildApp({ dashboardRoot: tmpDir, authToken: TOKEN });
+        const res = await fetch(app, `/?token=${TOKEN}`);
+        expect(res.status).toBe(302);
+        expect(res.headers.get('location')).toBe('/');
+        expect(res.headers.get('set-cookie')).toContain('zhive_auth=');
+      } finally {
+        await rm(tmpDir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('command and chat validation', () => {
+    it('rejects unknown slash commands', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/command', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: '/not-a-command' }),
+      });
+      expect(res.status).toBe(400);
+      expect(control.executeCommand).not.toHaveBeenCalled();
+    });
+
+    it('accepts known slash commands', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/command', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: '/help' }),
+      });
+      expect(res.status).toBe(200);
+      expect(control.executeCommand).toHaveBeenCalledWith('/help');
+    });
+
+    it('rejects oversized chat text with 413', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const big = 'x'.repeat(8 * 1024 + 1);
+      const res = await fetch(app, '/api/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: big }),
+      });
+      expect(res.status).toBe(413);
+      expect(control.submitChat).not.toHaveBeenCalled();
+    });
+
+    it('catches rejections from executeCommand and reports via the event bus', async () => {
+      const control = fakeControl({
+        executeCommand: vi.fn().mockRejectedValue(new Error('boom')),
+      });
+      const bus = new WebEventBus();
+      const app = buildApp({ control, eventBus: bus, dashboardRoot: null });
+      const res = await fetch(app, '/api/command', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: '/help' }),
+      });
+      expect(res.status).toBe(200);
+      // Wait a tick so the catch handler runs.
+      await new Promise((r) => setTimeout(r, 0));
+      const { events } = bus.since(0);
+      expect(events.some((e) => e.type === 'error' && e.errorMessage === 'boom')).toBe(true);
     });
   });
 });

@@ -5,13 +5,15 @@ import type { WebEvent } from './types';
 
 const MAX_EVENTS = 500;
 
-interface EventsState {
+export interface EventsState {
   events: WebEvent[];
 }
 
-type EventsAction = { type: 'append'; events: WebEvent[] };
+export type EventsAction =
+  | { type: 'append'; events: WebEvent[] }
+  | { type: 'reset'; events: WebEvent[] };
 
-function applyClearChat(events: WebEvent[]): WebEvent[] {
+export function applyClearChat(events: WebEvent[]): WebEvent[] {
   let cutoff = -1;
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i];
@@ -24,10 +26,27 @@ function applyClearChat(events: WebEvent[]): WebEvent[] {
   return events.filter((e) => e.type !== 'chat' || e.seq > cutoff);
 }
 
-function reducer(state: EventsState, action: EventsAction): EventsState {
+export function dedupeBySeq(events: WebEvent[]): WebEvent[] {
+  const seen = new Set<number>();
+  const out: WebEvent[] = [];
+  for (const e of events) {
+    if (seen.has(e.seq)) continue;
+    seen.add(e.seq);
+    out.push(e);
+  }
+  return out;
+}
+
+export function eventsReducer(state: EventsState, action: EventsAction): EventsState {
   switch (action.type) {
+    case 'reset': {
+      let merged = applyClearChat(dedupeBySeq(action.events));
+      if (merged.length > MAX_EVENTS) merged = merged.slice(-MAX_EVENTS);
+      return { events: merged };
+    }
     case 'append': {
-      let merged = [...state.events, ...action.events];
+      if (action.events.length === 0) return state;
+      let merged = dedupeBySeq([...state.events, ...action.events]);
       merged = applyClearChat(merged);
       if (merged.length > MAX_EVENTS) merged = merged.slice(-MAX_EVENTS);
       return { events: merged };
@@ -42,8 +61,14 @@ export interface EventStream {
 }
 
 export function useEventStream(): EventStream {
-  const [state, dispatch] = useReducer(reducer, { events: [] });
+  const [state, dispatch] = useReducer(eventsReducer, { events: [] });
   const sinceRef = useRef(0);
+  // Identity check so a doubly-invoked StrictMode effect doesn't re-append
+  // the same poll's events.
+  const lastDataRef = useRef<unknown>(null);
+  // Highest latest-seq we've already processed. Used to detect a capacity-drop
+  // gap by comparing against the next poll's oldestSeq.
+  const prevLatestRef = useRef(0);
 
   const query = useQuery({
     queryKey: ['events'],
@@ -58,8 +83,24 @@ export function useEventStream(): EventStream {
   });
 
   useEffect(() => {
-    if (query.data && query.data.events.length > 0) {
-      dispatch({ type: 'append', events: query.data.events });
+    const data = query.data;
+    if (!data || data === lastDataRef.current) return;
+    lastDataRef.current = data;
+
+    // Capacity-drop gap: the bus's oldestSeq leapfrogged the last latest we
+    // saw, meaning events were silently evicted. Reset to the freshly received
+    // events so the dashboard doesn't carry forward stale state (e.g. a
+    // dropped clear-chat could leave old chats visible forever).
+    const droppedGap =
+      data.oldestSeq > 0 && prevLatestRef.current > 0 && data.oldestSeq > prevLatestRef.current + 1;
+    prevLatestRef.current = data.latest;
+
+    if (droppedGap) {
+      dispatch({ type: 'reset', events: data.events });
+      return;
+    }
+    if (data.events.length > 0) {
+      dispatch({ type: 'append', events: data.events });
     }
   }, [query.data]);
 

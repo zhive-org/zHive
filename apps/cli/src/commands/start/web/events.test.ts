@@ -48,6 +48,29 @@ describe('WebEventBus', () => {
     expect(latest).toBe(4);
   });
 
+  it('reports oldestSeq so clients can detect capacity drops', () => {
+    const bus = new WebEventBus(3);
+    bus.push({ type: 'message', text: '1' });
+    bus.push({ type: 'message', text: '2' });
+    bus.push({ type: 'message', text: '3' });
+    bus.push({ type: 'message', text: '4' });
+    bus.push({ type: 'message', text: '5' });
+
+    // Client with stale `since=1` finds oldestSeq=3 — events 2 was evicted,
+    // signaling a gap.
+    const { events, latest, oldestSeq } = bus.since(1);
+    expect(events.map((e) => e.seq)).toEqual([3, 4, 5]);
+    expect(latest).toBe(5);
+    expect(oldestSeq).toBe(3);
+    expect(oldestSeq > 1 + 1).toBe(true);
+  });
+
+  it('reports oldestSeq=0 for an empty bus', () => {
+    const bus = new WebEventBus();
+    const { oldestSeq } = bus.since(0);
+    expect(oldestSeq).toBe(0);
+  });
+
   it('serializes timestamp as ISO string', () => {
     const bus = new WebEventBus();
     const fixed = new Date('2026-04-29T12:00:00.000Z');
