@@ -1,26 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { AgentTradingStatsV2BatchEntryDto } from '@zhive/sdk/dist/objects';
 import { Box, Text, useApp } from 'ink';
-import { colors, symbols, border } from '../../shared/theme';
-import {
-  scanAgents,
-  fetchBulkStats,
-  sortByHoney,
-  type AgentConfig,
-  type AgentStats,
-} from '../../../shared/config/agent';
+import React, { useEffect, useState } from 'react';
+import { scanAgents, type AgentConfig } from '../../../shared/config/agent';
+import { getHiveClient } from '../../../shared/config/hive-client';
+import { border, colors, symbols } from '../../shared/theme';
 
 interface AgentRow {
   info: AgentConfig;
-  stats: AgentStats | null;
+  rank: AgentTradingStatsV2BatchEntryDto | null;
 }
 
 const COL = {
   name: 0,
-  honey: 8,
-  wax: 8,
+  pnl: 12,
+  roi: 10,
   winRate: 10,
-  confidence: 8,
-  simPnl: 10,
+  maxDd: 10,
   provider: 0,
   created: 14,
 } as const;
@@ -29,11 +24,18 @@ function cell(text: string, width: number): string {
   return ` ${text}`.padEnd(width);
 }
 
-function formatPnl(value: number): string {
-  const abs = Math.abs(Math.round(value));
+function formatSignedUsd(value: number): string {
+  const abs = Math.abs(value).toFixed(2);
   if (value > 0) return `+$${abs}`;
   if (value < 0) return `-$${abs}`;
-  return '$0';
+  return `$${abs}`;
+}
+
+function formatSignedPct(value: number): string {
+  const abs = Math.abs(value).toFixed(2);
+  if (value > 0) return `+${abs}%`;
+  if (value < 0) return `-${abs}%`;
+  return `${abs}%`;
 }
 
 function formatDate(date: Date): string {
@@ -58,13 +60,20 @@ export function ListApp(): React.ReactElement {
       }
 
       const names = agents.map((a) => a.name);
-      const statsMap = await fetchBulkStats(names);
+      const hiveClient = getHiveClient();
+      const ranks = await hiveClient.trading.getStatByNames(names);
+      const rankMap = ranks.reduce((acc, rank) => {
+        acc.set(rank.agent_name, rank);
+        return acc;
+      }, new Map<string, AgentTradingStatsV2BatchEntryDto>());
 
       const agentRows: AgentRow[] = agents.map((info) => ({
         info,
-        stats: statsMap.get(info.name) ?? null,
+        rank: rankMap.get(info.name) ?? null,
       }));
-      const sortedRows = sortByHoney(agentRows);
+      const sortedRows = agentRows.sort(
+        (a, b) => (b.rank?.total_pnl_usd ?? -Infinity) - (a.rank?.total_pnl_usd ?? -Infinity),
+      );
       setRows(sortedRows);
     };
     void load();
@@ -74,7 +83,7 @@ export function ListApp(): React.ReactElement {
     if (rows !== null) {
       exit();
     }
-  }, [rows]);
+  }, [rows, exit]);
 
   if (rows === null) {
     return (
@@ -102,31 +111,15 @@ export function ListApp(): React.ReactElement {
 
   const nameW = Math.max(COL.name, ...rows.map((r) => r.info.name.length)) + 2;
   const providerW = Math.max(COL.provider, ...rows.map((r) => r.info.provider.length)) + 2;
-  const honeyW = COL.honey;
-  const waxW = COL.wax;
+  const pnlW = COL.pnl;
+  const roiW = COL.roi;
   const winRateW = COL.winRate;
-  const confidenceW = COL.confidence;
-  const simPnlW = COL.simPnl;
-
+  const maxDdW = COL.maxDd;
   const createdW = COL.created;
 
   const sep = border.horizontal;
   const totalWidth =
-    nameW +
-    1 +
-    honeyW +
-    1 +
-    waxW +
-    1 +
-    winRateW +
-    1 +
-    confidenceW +
-    1 +
-    simPnlW +
-    1 +
-    providerW +
-    1 +
-    createdW;
+    nameW + 1 + pnlW + 1 + roiW + 1 + winRateW + 1 + maxDdW + 1 + providerW + 1 + createdW;
 
   const topBorder = `${border.topLeft}${sep.repeat(totalWidth)}${border.topRight}`;
   const midBorder = `${border.teeLeft}${sep.repeat(totalWidth)}${border.teeRight}`;
@@ -154,11 +147,11 @@ export function ListApp(): React.ReactElement {
         </Text>
         <Text color={colors.honey}>{v}</Text>
         <Text color={colors.white} bold>
-          {cell('Honey', honeyW)}
+          {cell('PNL', pnlW)}
         </Text>
         <Text color={colors.honey}>{v}</Text>
         <Text color={colors.white} bold>
-          {cell('Wax', waxW)}
+          {cell('ROI', roiW)}
         </Text>
         <Text color={colors.honey}>{v}</Text>
         <Text color={colors.white} bold>
@@ -166,11 +159,7 @@ export function ListApp(): React.ReactElement {
         </Text>
         <Text color={colors.honey}>{v}</Text>
         <Text color={colors.white} bold>
-          {cell('Conf', confidenceW)}
-        </Text>
-        <Text color={colors.honey}>{v}</Text>
-        <Text color={colors.white} bold>
-          {cell('Sim PnL', simPnlW)}
+          {cell('Max DD', maxDdW)}
         </Text>
         <Text color={colors.honey}>{v}</Text>
         <Text color={colors.white} bold>
@@ -187,29 +176,45 @@ export function ListApp(): React.ReactElement {
       </Box>
 
       {rows.map((row) => {
-        const s = row.stats;
-        const honeyText = s !== null ? String(Math.floor(s.honey)) : '-';
-        const waxText = s !== null ? String(Math.floor(s.wax)) : '-';
-        const winRateText = s !== null ? `${(s.win_rate * 100).toFixed(2)}%` : '-';
-        const confidenceText = s !== null ? s.confidence.toFixed(2) : '-';
-        const pnlValue = s !== null ? s.simulated_pnl : 0;
-        const pnlText = s !== null ? formatPnl(pnlValue) : '-';
-        const pnlColor = pnlValue > 0 ? colors.green : pnlValue < 0 ? colors.red : colors.grayDim;
+        const r = row.rank;
+        const pnlValue = r?.total_pnl_usd ?? 0;
+        const roiValue = (r?.roi_pct ?? 0) * 100;
+        const pnlText = r !== null ? formatSignedUsd(pnlValue) : '-';
+        const roiText = r !== null ? formatSignedPct(roiValue) : '-';
+        const winRateText = r !== null ? `${(r.win_rate_pct * 100).toFixed(2)}%` : '-';
+        const maxDdText = r !== null ? `${(r.max_drawdown_pct * 100).toFixed(2)}%` : '-';
+
+        const pnlColor =
+          r === null
+            ? colors.grayDim
+            : pnlValue > 0
+              ? colors.green
+              : pnlValue < 0
+                ? colors.red
+                : colors.grayDim;
+        const roiColor =
+          r === null
+            ? colors.grayDim
+            : roiValue > 0
+              ? colors.green
+              : roiValue < 0
+                ? colors.red
+                : colors.grayDim;
+        const winRateColor = r === null ? colors.grayDim : colors.green;
+        const maxDdColor = r === null ? colors.grayDim : colors.red;
 
         return (
           <Box key={row.info.name}>
             <Text color={colors.honey}>{v}</Text>
             <Text color={colors.white}>{cell(row.info.name, nameW)}</Text>
             <Text color={colors.honey}>{v}</Text>
-            <Text color={colors.honey}>{cell(honeyText, honeyW)}</Text>
+            <Text color={pnlColor}>{cell(pnlText, pnlW)}</Text>
             <Text color={colors.honey}>{v}</Text>
-            <Text color={colors.wax}>{cell(waxText, waxW)}</Text>
+            <Text color={roiColor}>{cell(roiText, roiW)}</Text>
             <Text color={colors.honey}>{v}</Text>
-            <Text color={colors.green}>{cell(winRateText, winRateW)}</Text>
+            <Text color={winRateColor}>{cell(winRateText, winRateW)}</Text>
             <Text color={colors.honey}>{v}</Text>
-            <Text color={colors.cyan}>{cell(confidenceText, confidenceW)}</Text>
-            <Text color={colors.honey}>{v}</Text>
-            <Text color={pnlColor}>{cell(pnlText, simPnlW)}</Text>
+            <Text color={maxDdColor}>{cell(maxDdText, maxDdW)}</Text>
             <Text color={colors.honey}>{v}</Text>
             <Text color={colors.gray}>{cell(row.info.provider, providerW)}</Text>
             <Text color={colors.honey}>{v}</Text>

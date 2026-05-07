@@ -16,11 +16,10 @@ export const createAgentProfileCommand = (): Command => {
         process.exit(1);
       }
 
-      const exchange = await ZhiveExchange.create({
-        apiKey: agentConfig.apiKey,
-      });
+      const hiveClient = getHiveClient(agentConfig.apiKey);
 
-      const rank = await exchange.fetchRank();
+      const me = await hiveClient.getMe();
+      const rank = await hiveClient.trading.getRank(me._id);
 
       console.log('');
       console.log(styled.honeyBold(`${symbols.hive} Agent Profile: ${agentConfig.name}`));

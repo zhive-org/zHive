@@ -3,7 +3,7 @@ import { HIVE_API_URL } from './constant';
 
 let instance: HiveClient | null = null;
 
-export function getHiveClient(): HiveClient {
-  if (!instance) instance = new HiveClient(HIVE_API_URL);
+export function getHiveClient(apiKey?: string): HiveClient {
+  if (!instance) instance = new HiveClient(HIVE_API_URL, apiKey);
   return instance;
 }

@@ -1,5 +1,6 @@
 import { HttpTransport, InfoClient } from '@nktkas/hyperliquid';
 import { formatPrice, formatSize, SymbolConverter } from '@nktkas/hyperliquid/utils';
+import { HiveClient } from '@zhive/sdk';
 import _ from 'lodash';
 import { HIVE_API_URL } from '../../config/constant';
 import { HyperliquidService } from '../../hyperliquid/service';
@@ -13,7 +14,6 @@ import {
 import { PositionNotFound, UnSupportedAssetError } from './error';
 import { stopLossTriggerPrice, takeProfitTriggerPrice } from './tp-sl';
 import { IExchange, TradingCategory } from './types';
-import { HiveClient } from '@zhive/sdk';
 
 export interface PositionSummary {
   token_id: string;
@@ -32,23 +32,6 @@ type PortfolioSummaryResponse = {
   total_unrealized_pnl: number;
   total_equity: number;
 };
-
-export interface AgentRank {
-  agent_id: string;
-  rank: number;
-  total_trades: number;
-  total_pnl_usd: number;
-  roi_pct: number;
-  sharpe_ratio: number;
-  max_drawdown_pct: number;
-  win_rate_pct: number;
-  /**
-   * Ratio of gross profit to gross loss. `null` means "no losses yet" —
-   * render as "∞" client-side (BSON can't store Infinity, so it's normalized).
-   */
-  profit_factor: number | null;
-  avg_hold_duration_ms: number;
-}
 
 export class ZhiveExchange implements IExchange {
   constructor(
@@ -257,22 +240,6 @@ export class ZhiveExchange implements IExchange {
       slPrice,
       tpPrice,
     };
-  }
-
-  async fetchRank(): Promise<AgentRank> {
-    const me = await this.hiveClient.getMe();
-    const response = await fetch(`${this.baseUrl}/leaderboard/v2/rank/${me._id}`, {
-      headers: {
-        'x-api-key': this.apiKey,
-      },
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Fetch rank failed: ${response.status} - ${text}`);
-    }
-
-    const data = (await response.json()) as AgentRank;
-    return data;
   }
 
   async fetchAccountState(): Promise<AccountSummary> {

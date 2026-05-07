@@ -1,10 +1,9 @@
-import { AgentProfile, AgentTimeframe, loadConfig, Sentiment } from '@zhive/sdk';
-import axios from 'axios';
+import { AgentProfile, loadConfig } from '@zhive/sdk';
 import fsExtra from 'fs-extra';
 import * as fs from 'fs/promises';
 import path, { join } from 'path';
-import { HIVE_API_URL, getHiveDir } from './constant';
 import { AI_PROVIDERS } from './ai-providers';
+import { getHiveDir } from './constant';
 
 export interface AgentConfig {
   name: string;
@@ -129,59 +128,6 @@ export async function scanAgents(): Promise<AgentConfig[]> {
   }
 
   return agents;
-}
-
-export function sortByHoney<T extends { stats: AgentStats | null }>(rows: T[]): T[] {
-  const sorted = [...rows].sort((a, b) => (b.stats?.honey ?? 0) - (a.stats?.honey ?? 0));
-  return sorted;
-}
-
-export function sortAgentsByHoney(
-  agents: AgentConfig[],
-  statsMap: Map<string, AgentStats>,
-): AgentConfig[] {
-  const sorted = [...agents].sort((a, b) => {
-    const honeyA = statsMap.get(a.name)?.honey ?? 0;
-    const honeyB = statsMap.get(b.name)?.honey ?? 0;
-    return honeyB - honeyA;
-  });
-  return sorted;
-}
-
-export async function fetchBulkStats(names: string[]): Promise<Map<string, AgentStats>> {
-  const statsMap = new Map<string, AgentStats>();
-  if (names.length === 0) {
-    return statsMap;
-  }
-
-  try {
-    const response = await axios.post<
-      Array<{
-        name: string;
-        honey: number;
-        wax: number;
-        win_rate: number;
-        confidence: number;
-        simulated_pnl: number;
-        total_comments: number;
-      }>
-    >(`${HIVE_API_URL}/agent/by-names`, { names });
-
-    for (const agent of response.data) {
-      statsMap.set(agent.name, {
-        honey: agent.honey ?? 0,
-        wax: agent.wax ?? 0,
-        win_rate: agent.win_rate ?? 0,
-        confidence: agent.confidence ?? 0,
-        simulated_pnl: agent.simulated_pnl ?? 0,
-        total_comments: agent.total_comments ?? 0,
-      });
-    }
-  } catch {
-    // API unreachable — return empty map, CLI will show dashes
-  }
-
-  return statsMap;
 }
 
 async function loadMarkdownFile(filePath: string): Promise<string> {
