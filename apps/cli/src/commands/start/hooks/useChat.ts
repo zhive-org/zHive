@@ -14,6 +14,7 @@ import {
 import type { DetailedPosition } from '../../../shared/trading/types';
 import { styled } from '../../shared/theme';
 import { executeSlashCommand, SlashCommandCallbacks } from '../services/command-registry';
+import type { WebEventBus, WebEventPayload } from '../web/events';
 import { ChatActivityItem } from './types';
 import { buildChatPrompt, ChatMessage } from '../../../shared/chat';
 import { extractAndSaveMemory } from '../../../shared/memory';
@@ -37,14 +38,33 @@ export interface UseChatActions {
   setInput: (value: string) => void;
   handleChatSubmit: (message: string) => Promise<void>;
   closeOverlay: () => void;
+  clearChat: () => void;
+}
+
+function chatActivityToPayload(item: ChatActivityItem): WebEventPayload | null {
+  switch (item.type) {
+    case 'chat-user':
+      return { type: 'chat', role: 'user', text: item.text };
+    case 'chat-agent':
+      return { type: 'chat', role: 'agent', text: item.text };
+    case 'chat-error':
+      return { type: 'chat', role: 'error', text: item.text };
+    case 'tool-summary':
+    case 'tool-call':
+      return { type: 'chat', role: 'tool', text: item.text };
+    default:
+      return null;
+  }
 }
 
 export function useChat({
   runtime,
   reloadRuntime,
+  eventBus,
 }: {
   runtime?: AgentRuntime;
   reloadRuntime: () => void;
+  eventBus?: WebEventBus;
 }): UseChatState & UseChatActions {
   const [chatActivity, setChatActivity] = useState<ChatActivityItem[]>([]);
   const [input, setInput] = useState('');
@@ -63,15 +83,26 @@ export function useChat({
   const recentPredictionsRef = useRef<string[]>([]);
 
   // ─── Activity helpers ───────────────────────────────
-  const addChatActivity = useCallback((item: ChatActivityItem) => {
-    setChatActivity((prev) => {
-      const updated = [...prev, { timestamp: new Date(), ...item }];
-      const maxItems = 50;
-      if (updated.length > maxItems) {
-        return updated.slice(updated.length - maxItems);
-      }
-      return updated;
-    });
+  const addChatActivity = useCallback(
+    (item: ChatActivityItem) => {
+      const timestamp = new Date();
+      setChatActivity((prev) => {
+        const updated = [...prev, { timestamp, ...item }];
+        const maxItems = 50;
+        if (updated.length > maxItems) {
+          return updated.slice(updated.length - maxItems);
+        }
+        return updated;
+      });
+      const payload = chatActivityToPayload(item);
+      if (payload) eventBus?.push(payload, timestamp);
+    },
+    [eventBus],
+  );
+
+  const clearChat = useCallback(() => {
+    setChatActivity([]);
+    sessionMessagesRef.current = [];
   }, []);
 
   // ─── Chat submission ────────────────────────────────
@@ -102,10 +133,7 @@ export function useChat({
               text: error,
             });
           },
-          onClear: () => {
-            setChatActivity([]);
-            sessionMessagesRef.current = [];
-          },
+          onClear: clearChat,
           onOverlayOpen: (overlay: ChatOverlay) => {
             setOverlay(overlay);
           },
@@ -267,6 +295,7 @@ export function useChat({
       runtime?.config.soulContent,
       runtime?.config.strategyContent,
       runtime,
+      clearChat,
     ],
   );
 
@@ -279,5 +308,6 @@ export function useChat({
     setInput,
     handleChatSubmit,
     closeOverlay,
+    clearChat,
   };
 }

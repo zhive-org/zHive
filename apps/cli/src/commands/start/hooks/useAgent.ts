@@ -17,7 +17,13 @@ export interface UseAgentState {
   settledPollActivities: PollActivityItem[];
 }
 
-export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState {
+export function useAgent({
+  runtime,
+  eventBus,
+}: {
+  runtime?: AgentRuntime;
+  eventBus?: WebEventBus;
+}): UseAgentState {
   const [connected, setConnected] = useState(false);
   const [agentName, setAgentName] = useState('agent');
   const [agentBio, setAgentBio] = useState('');
@@ -44,45 +50,52 @@ export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState
 
       const callbacks: TradingAgentCallbacks = {
         onSleep(sleepMs) {
-          addLog({
-            type: 'message',
-            text: `Sleeping ${sleepMs / (1000 * 60)}m until next cycle`,
-            timestamp: new Date(),
-          });
+          const text = `Sleeping ${sleepMs / (1000 * 60)}m until next cycle`;
+          const timestamp = new Date();
+          addLog({ type: 'message', text, timestamp });
+          eventBus?.push({ type: 'message', text }, timestamp);
         },
         onEvalStarted(assets) {
-          addLog({
-            type: 'message',
-            text: `Start analyzing ${assets.length} assets`,
-            timestamp: new Date(),
-          });
+          const text = `Start analyzing ${assets.length} assets`;
+          const timestamp = new Date();
+          addLog({ type: 'message', text, timestamp });
+          eventBus?.push({ type: 'message', text }, timestamp);
         },
         onError(message) {
-          addLog({
-            type: 'error',
-            errorMessage: message,
-            timestamp: new Date(),
-          });
+          const timestamp = new Date();
+          addLog({ type: 'error', errorMessage: message, timestamp });
+          eventBus?.push({ type: 'error', errorMessage: message }, timestamp);
         },
         onEvalCompleted(decision) {
+          const sizeUsd = decision.action === 'HOLD' ? undefined : decision.sizeUsd;
+          const timestamp = new Date();
           addLog({
             type: 'decision',
             action: decision.action,
             asset: decision.asset,
             reasoning: decision.reasoning,
-            sizeUsd: decision.action === 'HOLD' ? undefined : decision.sizeUsd,
-            timestamp: new Date(),
+            sizeUsd,
+            timestamp,
           });
+          eventBus?.push(
+            {
+              type: 'decision',
+              action: decision.action,
+              asset: decision.asset,
+              reasoning: decision.reasoning,
+              sizeUsd,
+            },
+            timestamp,
+          );
         },
       };
 
       if (config.watchList.length === 0) {
-        addLog({
-          type: 'error',
-          errorMessage:
-            'Watchlist is empty. Add assets to the watchlist in config.json and restart the agent.',
-          timestamp: new Date(),
-        });
+        const errorMessage =
+          'Watchlist is empty. Add assets to the watchlist in config.json and restart the agent.';
+        const timestamp = new Date();
+        addLog({ type: 'error', errorMessage, timestamp });
+        eventBus?.push({ type: 'error', errorMessage }, timestamp);
         return;
       }
 
@@ -101,12 +114,9 @@ export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState
 
       const bio = config.bio ?? '';
       if (bio) {
-        addLog({
-          type: 'online',
-          name: config.name,
-          bio,
-          timestamp: new Date(),
-        });
+        const timestamp = new Date();
+        addLog({ type: 'online', name: config.name, bio, timestamp });
+        eventBus?.push({ type: 'online', name: config.name, bio }, timestamp);
       }
     };
 
@@ -114,17 +124,16 @@ export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState
       const raw = extractErrorMessage(err);
       const isNameTaken = raw.includes('409');
       const hint = isNameTaken ? ' Change the name in SOUL.md under "# Agent: <name>".' : '';
-      addLog({
-        type: 'error',
-        errorMessage: `Fatal: ${raw.slice(0, 120)}${hint}`,
-        timestamp: new Date(),
-      });
+      const errorMessage = `Fatal: ${raw.slice(0, 120)}${hint}`;
+      const timestamp = new Date();
+      addLog({ type: 'error', errorMessage, timestamp });
+      eventBus?.push({ type: 'error', errorMessage }, timestamp);
     });
 
     return () => {
       agentRef?.current?.stop();
     };
-  }, [addLog, runtime]);
+  }, [addLog, runtime, eventBus]);
 
   return {
     connected,

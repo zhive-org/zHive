@@ -35,6 +35,9 @@ importers:
       '@ai-sdk/xai':
         specifier: ^3.0.0
         version: 3.0.50(zod@4.3.6)
+      '@hono/node-server':
+        specifier: ^2.0.0
+        version: 2.0.0(hono@4.12.15)
       '@nktkas/hyperliquid':
         specifier: ^0.32.2
         version: 0.32.2(typescript@5.9.2)
@@ -62,6 +65,9 @@ importers:
       fs-extra:
         specifier: ^11.2.0
         version: 11.3.3
+      hono:
+        specifier: ^4.12.15
+        version: 4.12.15
       indicatorts:
         specifier: ^2.2.2
         version: 2.2.2
@@ -557,6 +563,12 @@ packages:
   '@hono/node-server@1.19.11':
     resolution: {integrity: sha512-dr8/3zEaB+p0D2n/IUrlPF1HZm586qgJNXK1a9fhg/PzdtkK7Ksd5l312tJX2yBuALqDYBlG20QEbayqPyxn+g==}
     engines: {node: '>=18.14.1'}
+    peerDependencies:
+      hono: ^4
+
+  '@hono/node-server@2.0.0':
+    resolution: {integrity: sha512-n3GfHwwCvHCkGmOwKfxUPOlbfzuO64Sbc5XC4NGPIXxkuOnJrdgExdRKmHfF924r914WRJPT397GdqLvdYTeyQ==}
+    engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
 
@@ -1446,8 +1458,8 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
-  hono@4.12.5:
-    resolution: {integrity: sha512-3qq+FUBtlTHhtYxbxheZgY8NIFnkkC/MR8u5TTsr7YZ3wixryQ3cCwn3iZbg8p8B88iDBBAYSfZDS75t8MN7Vg==}
+  hono@4.12.15:
+    resolution: {integrity: sha512-qM0jDhFEaCBb4TxoW7f53Qrpv9RBiayUHo0S52JudprkhvpjIrGoU1mnnr29Fvd1U335ZFPZQY1wlkqgfGXyLg==}
     engines: {node: '>=16.9.0'}
 
   human-signals@5.0.0:
@@ -2423,8 +2435,8 @@ snapshots:
   '@ai-sdk/devtools@0.0.15':
     dependencies:
       '@ai-sdk/provider': 3.0.8
-      '@hono/node-server': 1.19.11(hono@4.12.5)
-      hono: 4.12.5
+      '@hono/node-server': 1.19.11(hono@4.12.15)
+      hono: 4.12.15
 
   '@ai-sdk/gateway@3.0.36(zod@4.3.6)':
     dependencies:
@@ -2655,9 +2667,13 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@hono/node-server@1.19.11(hono@4.12.5)':
+  '@hono/node-server@1.19.11(hono@4.12.15)':
     dependencies:
-      hono: 4.12.5
+      hono: 4.12.15
+
+  '@hono/node-server@2.0.0(hono@4.12.15)':
+    dependencies:
+      hono: 4.12.15
 
   '@humanwhocodes/config-array@0.13.0':
     dependencies:
@@ -3664,7 +3680,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.12.5: {}
+  hono@4.12.15: {}
 
   human-signals@5.0.0: {}
 

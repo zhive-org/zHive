@@ -3,19 +3,30 @@ import { join } from 'path';
 import { Command } from 'commander';
 import { render } from 'ink';
 import React from 'react';
-import { App } from '../ui/app';
+import { App, type AppProps } from '../ui/app';
 import { AgentConfig, findAgentByName } from '../../../shared/config/agent';
 import { SelectAgentApp } from '../ui/SelectAgentApp';
 import { showHoneycombBoot } from '../ui/HoneycombBoot';
 import chalk from 'chalk';
 import { styled, symbols } from '../../shared/theme';
 import { loadAgentEnv } from '../../../shared/config/env-loader';
+import { DEFAULT_WEB_PORT } from '../web/server';
+
+interface StartOptions {
+  agent?: string;
+  web?: boolean;
+  webPort?: string;
+}
 
 export const createStartCommand = (): Command => {
   return new Command('start')
     .description('Start an agent (auto-detects agent dir)')
     .option('--agent <agent>', 'Agent name')
-    .action(async (options: { agent?: string }) => {
+    .option('--web', 'Expose a localhost web dashboard mirroring the TUI')
+    .option('--web-port <port>', `Port for the web dashboard (default ${DEFAULT_WEB_PORT})`)
+    .action(async (options: StartOptions) => {
+      const appProps = resolveAppProps(options);
+
       const isAgentDir = await access(join(process.cwd(), 'SOUL.md'))
         .then(() => true)
         .catch(() => false);
@@ -24,7 +35,7 @@ export const createStartCommand = (): Command => {
         // Direct agent run — cwd is already the agent directory.
         await loadAgentEnv();
         setupProcessLifecycle();
-        const { waitUntilExit } = render(React.createElement(App));
+        const { waitUntilExit } = render(React.createElement(App, appProps));
         await waitUntilExit();
       } else {
         // Interactive agent selection
@@ -61,12 +72,28 @@ export const createStartCommand = (): Command => {
           process.chdir(picked.dir);
           await loadAgentEnv();
           setupProcessLifecycle();
-          const { waitUntilExit } = render(React.createElement(App));
+          const { waitUntilExit } = render(React.createElement(App, appProps));
           await waitUntilExit();
         }
       }
     });
 };
+
+function resolveAppProps(options: StartOptions): AppProps {
+  if (!options.web) return {};
+
+  const port = parseWebPort(options.webPort);
+  return { webPort: port };
+}
+
+function parseWebPort(raw: string | undefined): number {
+  if (raw === undefined) return DEFAULT_WEB_PORT;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 65535) {
+    throw new Error(`Invalid --web-port "${raw}" (expected 1-65535)`);
+  }
+  return parsed;
+}
 
 const exitImmediately = (exitCode: number = 0): void => {
   process.exit(exitCode);

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Static, Text } from 'ink';
+import { loadMemory } from '@zhive/sdk';
 import { useAgent } from '../hooks/useAgent';
 import { PollText, Spinner } from './Spinner';
 import { CommandInput } from './CommandInput';
@@ -11,15 +12,25 @@ import { activityFormatter } from '../hooks/utils';
 import { PositionsView } from '../../../components/PositionsView';
 import { WatchlistView } from '../../../components/WatchlistView';
 import { useAgentRuntime } from '../hooks/useAgentRuntime';
+import { useWebServer } from '../hooks/useWebServer';
+import { WebEventBus } from '../web/events';
+import type { WebControl, WebState } from '../web/control';
+import { executeSlashCommand, type SlashCommandCallbacks } from '../services/command-registry';
+import { ZhiveExchange } from '../../../shared/trading/exchange/zhive';
 
 // ─── Main TUI App ────────────────────────────────────
 
-export function App(): React.ReactElement {
+export interface AppProps {
+  webPort?: number;
+}
+
+export const App: React.FC<AppProps> = ({ webPort }) => {
   const { runtime, reloadRuntime } = useAgentRuntime();
   const [termWidth, setTermWidth] = useState(process.stdout.columns || 60);
+  const eventBus = useMemo(() => new WebEventBus(), []);
 
   const { connected, agentName, modelInfo, activePollActivities, settledPollActivities } = useAgent(
-    { runtime },
+    { runtime, eventBus },
   );
 
   const {
@@ -31,7 +42,69 @@ export function App(): React.ReactElement {
     handleChatSubmit,
     setInput,
     closeOverlay,
-  } = useChat({ runtime, reloadRuntime });
+    clearChat,
+  } = useChat({ runtime, reloadRuntime, eventBus });
+
+  const control = useMemo<WebControl>(
+    () => ({
+      async executeCommand(name) {
+        if (!runtime) {
+          eventBus.push({ type: 'error', errorMessage: 'Runtime not ready' });
+          return;
+        }
+        const callbacks: SlashCommandCallbacks = {
+          onMessage: (text) => eventBus.push({ type: 'chat', role: 'agent', text }),
+          onError: (text) => eventBus.push({ type: 'chat', role: 'error', text }),
+          onClear: () => {
+            clearChat();
+            eventBus.push({ type: 'system', kind: 'clear-chat' });
+          },
+          onOverlayOpen: (overlay) => {
+            const text =
+              overlay?.type === 'positions'
+                ? `Positions overlay opened (${overlay.positions.length} open). Fetch /api/state for details.`
+                : overlay?.type === 'watchlist'
+                  ? 'Watchlist overlay opened. Fetch /api/state for the current list.'
+                  : 'Overlay opened.';
+            eventBus.push({ type: 'chat', role: 'agent', text });
+          },
+        };
+        await executeSlashCommand(name, runtime, callbacks);
+      },
+      async submitChat(text) {
+        if (!runtime) {
+          eventBus.push({ type: 'error', errorMessage: 'Runtime not ready' });
+          return;
+        }
+        if (text.trim().startsWith('/')) {
+          eventBus.push({
+            type: 'chat',
+            role: 'error',
+            text: 'Slash commands must be sent to POST /api/command',
+          });
+          return;
+        }
+        void handleChatSubmit(text);
+      },
+      async getState(): Promise<WebState> {
+        if (!runtime) {
+          throw new Error('Runtime not ready');
+        }
+        const exchange = await ZhiveExchange.create({ apiKey: runtime.config.apiKey });
+        const positions = await exchange.fetchPositions();
+        const memory = await loadMemory();
+        return {
+          agentName: runtime.config.name,
+          watchlist: runtime.config.watchList,
+          positions,
+          memory,
+        };
+      },
+    }),
+    [runtime, eventBus, handleChatSubmit, clearChat],
+  );
+
+  const webServer = useWebServer({ port: webPort, runtime, eventBus, control });
 
   // ─── Terminal resize tracking ───────────────────────
   useEffect(() => {
@@ -99,6 +172,19 @@ export function App(): React.ReactElement {
             </Text>
             <Text color={colors.cyan}>
               {HIVE_FRONTEND_URL}/agent/{agentName}
+            </Text>
+          </Box>
+        )}
+        {webServer.status === 'listening' && (
+          <Box paddingLeft={1}>
+            <Text color={colors.gray}>{symbols.hive} Web dashboard: </Text>
+            <Text color={colors.cyan}>{webServer.url}</Text>
+          </Box>
+        )}
+        {webServer.status === 'error' && (
+          <Box paddingLeft={1}>
+            <Text color={colors.red}>
+              {symbols.cross} Web dashboard failed to start: {webServer.error}
             </Text>
           </Box>
         )}
