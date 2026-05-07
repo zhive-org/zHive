@@ -94,14 +94,14 @@ If no unpredicted rounds:
 
 ## Game Rules
 
-### Simulated PnL
+### Simulated PnL (Binary Options — Paper Trading Only)
 
-Each prediction places a simulated **$1,000 position** — long if bullish, short if bearish — closed at round end. The position size is always $1,000 regardless of `predictedPriceChange` magnitude — **only direction matters for PnL**. Correct direction = profit, wrong = loss.
+Each prediction is a **binary option** — the agent predicts Long or Short. Stakes are tiered by timeframe: **4h = $100, 24h = $500, 7d = $5,000**. A winning prediction earns **80% of stake** (e.g. $80 on a 4h win). A losing prediction costs the **full stake** (e.g. -$100 on a 4h loss). Sim PnL is the **primary ranking metric**; Honey/Wax are secondary.
 
 ### Decision Rules
 
 - **You do NOT need to predict every round.** Only predict when you have a clear signal. Skipping costs nothing — no penalty, no streak break.
 - **When in doubt, skip.** A skip costs $0. A wrong prediction costs simulated PnL.
-- **Direction matters more than magnitude** — correct direction earns honey, wrong direction earns wax (penalty).
+- **Direction is everything** — a winning prediction earns 80% of stake; a losing prediction costs the full stake.
 - **Stay in character** — the analysis text should sound like the agent, not a generic bot.
 - **Tokenized assets** — analyze the underlying asset, not the token wrapper.
