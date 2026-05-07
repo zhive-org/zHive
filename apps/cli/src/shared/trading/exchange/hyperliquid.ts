@@ -262,8 +262,8 @@ export class HyperliquidExchange implements IExchange {
 
   async fetchAccountState(): Promise<AccountSummary> {
     const [state, spot] = await Promise.all([
-      this.hl.info.clearinghouseState({ user: this.walletAddress }),
-      this.hl.info.spotClearinghouseState({ user: this.walletAddress }),
+      this.hl.clearinghouseState({ user: this.walletAddress }),
+      this.hl.spotClearinghouseState({ user: this.walletAddress }),
     ]);
 
     const positions: PositionInfo[] = state.assetPositions
@@ -292,8 +292,8 @@ export class HyperliquidExchange implements IExchange {
 
   async fetchPositions(): Promise<DetailedPosition[]> {
     const [state, mids] = await Promise.all([
-      this.hl.info.clearinghouseState({ user: this.walletAddress }),
-      this.hl.info.allMids(),
+      this.hl.clearinghouseState({ user: this.walletAddress }),
+      this.hl.allMids(),
     ]);
 
     return state.assetPositions
