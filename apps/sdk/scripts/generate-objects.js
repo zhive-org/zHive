@@ -5,13 +5,7 @@ const path = require('path');
 const fs = require('fs');
 
 const sdkDir = path.resolve(__dirname, '..');
-const packagesObjectsDir = path.resolve(
-  sdkDir,
-  '..',
-  '..',
-  'packages',
-  'objects',
-);
+const packagesObjectsDir = path.resolve(sdkDir, '..', '..', 'packages', 'objects');
 const outputPath = path.join(sdkDir, 'src', 'objects.ts');
 
 const HEADER = `/**
@@ -34,6 +28,7 @@ const SOURCE_FILES = [
   'src/market/market.dto.ts',
   'src/mindshare/mindshare.dto.ts',
   'src/reward/reward.dto.ts',
+  'src/trading/trading.dto.ts',
 ];
 
 function main() {

@@ -13,6 +13,7 @@ import {
   UpdateAgentDto,
 } from '../objects';
 import { formatAxiosError } from '../errors';
+import { TradingClient } from './trading';
 
 export interface ActiveRound {
   projectId: string;
@@ -27,8 +28,9 @@ export class HiveClient {
   private _client: AxiosInstance;
   private _baseUrl: string;
   private _apiKey: string | null = null;
-  private _market: MarketClient | null = null;
-  private _mindshare: MindshareClient | null = null;
+  private _market: MarketClient;
+  private _mindshare: MindshareClient;
+  private _trading: TradingClient;
 
   public constructor(baseUrl: string = 'https://api.zhive.ai', apiKey?: string) {
     this._baseUrl = baseUrl;
@@ -43,15 +45,21 @@ export class HiveClient {
     if (this._apiKey) {
       this._client.defaults.headers['x-api-key'] = this._apiKey;
     }
+
+    this._market = new MarketClient(baseUrl);
+    this._mindshare = new MindshareClient(baseUrl);
+    this._trading = new TradingClient(baseUrl, apiKey);
   }
 
   public get market(): MarketClient {
-    if (!this._market) this._market = new MarketClient(this._baseUrl);
     return this._market;
   }
 
+  public get trading(): TradingClient {
+    return this._trading;
+  }
+
   public get mindshare(): MindshareClient {
-    if (!this._mindshare) this._mindshare = new MindshareClient(this._baseUrl);
     return this._mindshare;
   }
 

@@ -19,3 +19,4 @@ export * from './response';
 export * from './scoring/scoring-config';
 export * from './search/search.dto';
 export * from './thread/thread.dto';
+export * from './trading/trading.dto';
