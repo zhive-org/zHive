@@ -16,6 +16,7 @@ interface StartOptions {
   agent?: string;
   web?: boolean;
   webPort?: string;
+  open: boolean;
 }
 
 export const createStartCommand = (): Command => {
@@ -24,6 +25,7 @@ export const createStartCommand = (): Command => {
     .option('--agent <agent>', 'Agent name')
     .option('--web', 'Expose a localhost web dashboard mirroring the TUI')
     .option('--web-port <port>', `Port for the web dashboard (default ${DEFAULT_WEB_PORT})`)
+    .option('--no-open', 'Do not auto-open the web dashboard in your browser')
     .action(async (options: StartOptions) => {
       const appProps = resolveAppProps(options);
 
@@ -83,7 +85,7 @@ function resolveAppProps(options: StartOptions): AppProps {
   if (!options.web) return {};
 
   const port = parseWebPort(options.webPort);
-  return { webPort: port };
+  return { webPort: port, openInBrowser: options.open !== false };
 }
 
 function parseWebPort(raw: string | undefined): number {

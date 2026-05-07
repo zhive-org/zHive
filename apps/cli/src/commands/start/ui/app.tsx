@@ -25,9 +25,10 @@ const POSITIONS_TTL_MS = 5_000;
 
 export interface AppProps {
   webPort?: number;
+  openInBrowser?: boolean;
 }
 
-export const App: React.FC<AppProps> = ({ webPort }) => {
+export const App: React.FC<AppProps> = ({ webPort, openInBrowser }) => {
   const { runtime, reloadRuntime } = useAgentRuntime();
   const [termWidth, setTermWidth] = useState(process.stdout.columns || 60);
   const eventBus = useMemo(() => new WebEventBus(), []);
@@ -122,7 +123,7 @@ export const App: React.FC<AppProps> = ({ webPort }) => {
     [runtime, eventBus, handleChatSubmit, clearChat],
   );
 
-  const webServer = useWebServer({ port: webPort, runtime, eventBus, control });
+  const webServer = useWebServer({ port: webPort, runtime, eventBus, control, openInBrowser });
 
   // ─── Terminal resize tracking ───────────────────────
   useEffect(() => {

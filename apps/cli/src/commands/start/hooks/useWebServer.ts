@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { useEffect, useMemo, useState } from 'react';
+import open from 'open';
 import { AgentRuntime } from '../../../shared/agent/runtime';
 import { startWebServer, type WebServerHandle } from '../web/server';
 import type { WebEventBus } from '../web/events';
@@ -17,6 +18,7 @@ interface UseWebServerArgs {
   runtime: AgentRuntime | undefined;
   eventBus: WebEventBus;
   control: WebControl;
+  openInBrowser?: boolean;
 }
 
 export function useWebServer({
@@ -24,6 +26,7 @@ export function useWebServer({
   runtime,
   eventBus,
   control,
+  openInBrowser,
 }: UseWebServerArgs): WebServerStatus {
   const [state, setState] = useState<WebServerStatus>({ status: 'disabled' });
   // Stable token for the lifetime of the Ink app. Regenerated only when the
@@ -50,6 +53,11 @@ export function useWebServer({
         }
         handle = started;
         setState({ status: 'listening', url: started.url, port: started.port });
+        if (openInBrowser) {
+          // Fire-and-forget: failures (no display, headless env, etc.) shouldn't
+          // crash the TUI — the URL is still printed for the user to copy.
+          open(started.url).catch(() => {});
+        }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -60,7 +68,7 @@ export function useWebServer({
       cancelled = true;
       if (handle) void handle.stop();
     };
-  }, [port, runtime, eventBus, control, authToken]);
+  }, [port, runtime, eventBus, control, authToken, openInBrowser]);
 
   return state;
 }
