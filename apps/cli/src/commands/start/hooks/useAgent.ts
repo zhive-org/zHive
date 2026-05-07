@@ -1,14 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { AgentRuntime, initializeAgentRuntime } from '../../../shared/agent/runtime';
-import { extractErrorMessage } from '../../../shared/utils';
-import { type AgentStats, fetchBulkStats } from '../../../shared/config/agent';
+import { AgentRuntime } from '../../../shared/agent/runtime';
 import { ModelInfo, resolveModelInfo } from '../../../shared/config/ai-providers';
 import { TradingAgent, TradingAgentCallbacks } from '../../../shared/trading/agent';
+import { extractErrorMessage } from '../../../shared/utils';
 import { PollActivityItem } from './types';
 import { usePollActivity } from './usePollActivity';
-import { useAgentRuntime } from './useAgentRuntime';
-
-const STATS_POLL_INTERVAL_MS = 5 * 60 * 1_000;
 
 export interface UseAgentState {
   connected: boolean;
@@ -19,8 +15,6 @@ export interface UseAgentState {
   timeframesDisplay: string | null;
   activePollActivities: PollActivityItem[];
   settledPollActivities: PollActivityItem[];
-  stats: AgentStats | null;
-  statsUpdatedAt: Date | null;
 }
 
 export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState {
@@ -31,33 +25,9 @@ export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState
   const [sectorsDisplay, setSectorsDisplay] = useState<string | null>(null);
   const [timeframesDisplay, setTimeframesDisplay] = useState<string | null>(null);
 
-  const [stats, setStats] = useState<AgentStats | null>(null);
-  const [statsUpdatedAt, setStatsUpdatedAt] = useState<Date | null>(null);
-
   const agentRef = useRef<TradingAgent | null>(null);
 
   const { activePollActivities, settledPollActivities, addLog } = usePollActivity();
-
-  // ─── Stats polling (every 5 min) ───────────────────
-
-  useEffect(() => {
-    if (!connected) return;
-
-    const fetchStats = async (): Promise<void> => {
-      const statsMap = await fetchBulkStats([agentName]);
-      const agentStats = statsMap.get(agentName) ?? null;
-      setStats(agentStats);
-      if (agentStats) {
-        setStatsUpdatedAt(new Date());
-      }
-    };
-
-    void fetchStats();
-    const timer = setInterval(() => void fetchStats(), STATS_POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [connected, agentName]);
-
-  // ─── Agent lifecycle ────────────────────────────────
 
   useEffect(() => {
     if (!runtime) {
@@ -165,7 +135,5 @@ export function useAgent({ runtime }: { runtime?: AgentRuntime }): UseAgentState
     timeframesDisplay,
     activePollActivities,
     settledPollActivities,
-    stats,
-    statsUpdatedAt,
   };
 }

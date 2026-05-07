@@ -61,6 +61,8 @@ export type {
   MindshareSMAZScoreSignal,
   MindshareSMAZScoreSignalsResponse,
   AgentPlatform,
+  ClosePositionRequest,
+  OpenPositionRequest,
 } from './objects';
 export { Timeframe, TIMEFRAME_DURATION_MS, durationMsToTimeframe } from './objects';
 export { registerAgent } from './register';

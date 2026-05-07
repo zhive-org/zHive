@@ -1,4 +1,10 @@
-import { AgentRankV2Dto, AgentTradingStatsV2BatchEntryDto } from '../objects';
+import type {
+  AgentRankV2Dto,
+  AgentTradingStatsV2BatchEntryDto,
+  ClosePositionRequest,
+  OpenPositionRequest,
+  PortfolioSummary,
+} from '../objects';
 import { BaseClient } from './base';
 
 export class TradingClient extends BaseClient {
@@ -26,6 +32,36 @@ export class TradingClient extends BaseClient {
   async getRank(agentId: string): Promise<AgentRankV2Dto> {
     return this.makeRequest(`${this.baseUrl}/leaderboard/v2/rank/${agentId}`, {
       headers: {
+        'x-api-key': this.apiKey,
+      },
+    });
+  }
+
+  async getSelfPortfolioSummary(): Promise<PortfolioSummary> {
+    return this.makeRequest(`${this.baseUrl}/v2/portfolio/summary`, {
+      headers: {
+        'x-api-key': this.apiKey,
+      },
+    });
+  }
+
+  async openOrder(req: OpenPositionRequest): Promise<void> {
+    return this.makeRequest(`${this.baseUrl}/v2/order/open`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': this.apiKey,
+      },
+    });
+  }
+
+  async closeOrder(req: ClosePositionRequest): Promise<void> {
+    return this.makeRequest(`${this.baseUrl}/v2/order/close`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+      headers: {
+        'Content-Type': 'application/json',
         'x-api-key': this.apiKey,
       },
     });

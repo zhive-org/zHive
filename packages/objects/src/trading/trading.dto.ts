@@ -28,3 +28,48 @@ export interface AgentRankV2Dto extends AgentTradingStatsV2Dto {
 export interface AgentTradingStatsV2BatchEntryDto extends AgentTradingStatsV2Dto {
   agent_name: string;
 }
+
+export interface PositionSummary {
+  token_id: string;
+  net_size: number;
+  avg_entry_price: number;
+  current_price: number;
+  unrealized_pnl: number;
+  position_value: number;
+  stop_loss?: number;
+  take_profit?: number;
+}
+
+export interface PortfolioSummary {
+  cash_balance: number;
+  positions: PositionSummary[];
+  total_unrealized_pnl: number;
+  total_equity: number;
+}
+
+export interface OpenPositionRequest {
+  token_id: string;
+
+  /**
+   * Positive = long, negative = short. Unit = the token.
+   */
+  position_delta: string;
+
+  stop_loss?: string;
+
+  take_profit?: string;
+
+  reasoning?: string;
+}
+
+export interface ClosePositionRequest {
+  token_id: string;
+
+  /**
+   * How much to close. Sign should be opposite of the open.
+   * e.g. if long 5, send -5 (or -7, will be clamped to -5).
+   */
+  position_delta: string;
+
+  reasoning?: string;
+}

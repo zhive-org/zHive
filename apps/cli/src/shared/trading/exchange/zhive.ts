@@ -4,7 +4,7 @@ import { HiveClient } from '@zhive/sdk';
 import _ from 'lodash';
 import { HIVE_API_URL } from '../../config/constant';
 import { HyperliquidService } from '../../hyperliquid/service';
-import {
+import type {
   AccountSummary,
   DetailedPosition,
   ExecutionResult,
@@ -13,25 +13,8 @@ import {
 } from '../types';
 import { PositionNotFound, UnSupportedAssetError } from './error';
 import { stopLossTriggerPrice, takeProfitTriggerPrice } from './tp-sl';
-import { IExchange, TradingCategory } from './types';
-
-export interface PositionSummary {
-  token_id: string;
-  net_size: number;
-  avg_entry_price: number;
-  current_price: number;
-  unrealized_pnl: number;
-  position_value: number;
-  stop_loss?: number;
-  take_profit?: number;
-}
-
-type PortfolioSummaryResponse = {
-  cash_balance: number;
-  positions: PositionSummary[];
-  total_unrealized_pnl: number;
-  total_equity: number;
-};
+import type { IExchange, TradingCategory } from './types';
+import type { ClosePositionRequest, OpenPositionRequest } from '@zhive/sdk';
 
 export class ZhiveExchange implements IExchange {
   constructor(
@@ -143,31 +126,13 @@ export class ZhiveExchange implements IExchange {
     const isBuy = position.side === 'short';
 
     const reasoning = d.reasoning?.trim() || undefined;
-    const req: {
-      token_id: string;
-      position_delta: number;
-      reasoning?: string;
-    } = {
+    const req: ClosePositionRequest = {
       token_id: d.asset,
-      position_delta: position.size * (isBuy ? 1 : -1),
+      position_delta: (position.size * (isBuy ? 1 : -1)).toString(),
       reasoning,
     };
 
-    const url = `${this.baseUrl}/v2/order/close`;
-    const response = await fetch(url, {
-      method: 'POST',
-      body: JSON.stringify(req),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-      },
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Create order Failed: ${response.status} - ${text}`);
-    }
-
+    await this.hiveClient.trading.closeOrder(req);
     return {
       coin: d.asset,
       action: 'CLOSE',
@@ -189,13 +154,7 @@ export class ZhiveExchange implements IExchange {
     const size = formatSize((order.sizeUsd / entryPrice) * (isBuy ? 1 : -1), szDecimal);
 
     const reasoning = order.reasoning?.trim() || undefined;
-    const req: {
-      token_id: string;
-      position_delta: string;
-      stop_loss?: string;
-      take_profit?: string;
-      reasoning?: string;
-    } = {
+    const req: OpenPositionRequest = {
       token_id: order.asset,
       position_delta: size,
       reasoning,
@@ -205,7 +164,6 @@ export class ZhiveExchange implements IExchange {
     let tpPrice: string | undefined;
 
     const side = isBuy ? 'long' : 'short';
-
     if (order.sl) {
       const triggerPrice = stopLossTriggerPrice(entryPrice, side, order.sl, order.leverage);
       slPrice = formatPrice(triggerPrice, szDecimal);
@@ -218,21 +176,7 @@ export class ZhiveExchange implements IExchange {
       req.take_profit = tpPrice;
     }
 
-    const url = `${this.baseUrl}/v2/order/open`;
-    const response = await fetch(url, {
-      method: 'POST',
-      body: JSON.stringify(req),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-      },
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Create order Failed: ${response.status} - ${text}`);
-    }
-
+    await this.hiveClient.trading.openOrder(req);
     return {
       coin: order.asset,
       action: order.action,
@@ -243,22 +187,7 @@ export class ZhiveExchange implements IExchange {
   }
 
   async fetchAccountState(): Promise<AccountSummary> {
-    if (!this.apiKey) {
-      throw new Error('api key is required');
-    }
-
-    const response = await fetch(`${this.baseUrl}/v2/portfolio/summary`, {
-      headers: {
-        'x-api-key': this.apiKey,
-      },
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Fetch portfolio failed: ${response.status} - ${text}`);
-    }
-
-    const data = (await response.json()) as PortfolioSummaryResponse;
-
+    const data = await this.hiveClient.trading.getSelfPortfolioSummary();
     const marginUsed = data.positions.reduce((acc, p) => acc + p.position_value, 0);
 
     return {
@@ -288,21 +217,7 @@ export class ZhiveExchange implements IExchange {
   }
 
   async fetchPositions(): Promise<DetailedPosition[]> {
-    if (!this.apiKey) {
-      throw new Error('api key is required');
-    }
-
-    const response = await fetch(`${this.baseUrl}/v2/portfolio/summary`, {
-      headers: {
-        'x-api-key': this.apiKey,
-      },
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Fetch portfolio failed: ${response.status} - ${text}`);
-    }
-
-    const data = (await response.json()) as PortfolioSummaryResponse;
+    const data = await this.hiveClient.trading.getSelfPortfolioSummary();
     return data.positions.map((position) => ({
       coin: position.token_id,
       side: position.net_size > 0 ? 'long' : 'short',
