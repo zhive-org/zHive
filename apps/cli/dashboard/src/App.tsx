@@ -30,7 +30,7 @@ export function App() {
   const streamLive = !stream.isError;
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-hive-black">
       <Header
         agentName={stateQuery.data?.agentName}
         connected={connected}
@@ -41,12 +41,12 @@ export function App() {
       />
       <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[1fr_320px]">
         <div className="flex min-h-0 flex-col gap-4">
-          <section className="rounded-lg border border-zinc-800 bg-zinc-900/50">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2">
-              <h2 className="text-xs font-medium uppercase tracking-wider text-zinc-400">
+          <section className="shrink-0 border border-hive-border bg-hive-near-black">
+            <div className="flex items-center justify-between border-b border-hive-border px-4 py-2">
+              <h2 className="font-mono text-xs font-medium uppercase tracking-wider text-hive-text-secondary">
                 ROE Δ · 30s window
               </h2>
-              <span className="text-xs text-zinc-500">
+              <span className="font-mono text-xs text-hive-text-dim">
                 {positions.length === 0 ? 'no open positions' : `${positions.length} pos.`}
               </span>
             </div>

@@ -39,8 +39,8 @@ export function CommandBar() {
   }
 
   return (
-    <div className="border-t border-zinc-800 bg-zinc-950/80 px-6 py-3 backdrop-blur">
-      {error && <div className="mb-2 text-xs text-red-400">{error}</div>}
+    <div className="border-t border-hive-border bg-hive-near-black px-6 py-3">
+      {error && <div className="mb-2 font-mono text-xs text-hive-bearish">{error}</div>}
       {matches.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2 text-xs">
           {matches.map((cmd) => (
@@ -48,7 +48,7 @@ export function CommandBar() {
               key={cmd}
               type="button"
               onClick={() => setText(cmd)}
-              className="rounded border border-zinc-800 bg-zinc-900 px-2 py-0.5 font-mono text-zinc-300 hover:border-amber-400 hover:text-amber-300"
+              className="border border-hive-border bg-hive-black px-2 py-0.5 font-mono text-hive-text-secondary transition-colors hover:border-hive-honey hover:text-hive-honey"
             >
               {cmd}
             </button>
@@ -56,7 +56,7 @@ export function CommandBar() {
         </div>
       )}
       <form onSubmit={submit} className="flex items-center gap-3">
-        <span className="font-mono text-sm text-zinc-500 select-none">
+        <span className="font-mono text-sm text-hive-text-dim select-none">
           {isSlash ? 'cmd' : 'chat'} ›
         </span>
         <input
@@ -69,12 +69,12 @@ export function CommandBar() {
               : 'message the agent, or start with / for a command'
           }
           disabled={isPending}
-          className="flex-1 bg-transparent font-mono text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none disabled:opacity-50"
+          className="flex-1 bg-transparent font-mono text-sm text-hive-text-primary placeholder:text-hive-text-dim focus:outline-none disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={isPending || !text.trim()}
-          className="rounded border border-zinc-800 bg-zinc-900 px-3 py-1 text-xs uppercase tracking-wider text-zinc-300 transition-colors hover:border-amber-400 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className="border border-hive-border bg-transparent px-3 py-1 font-mono text-xs uppercase tracking-wider text-hive-text-secondary transition-colors hover:border-hive-honey hover:text-hive-honey disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isPending ? 'sending…' : isSlash ? 'run' : 'send'}
         </button>

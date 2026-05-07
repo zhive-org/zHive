@@ -184,7 +184,7 @@ export function buildApp(options: BuildAppOptions): Hono {
         }
         if (!isAuthorized(c, authToken)) {
           return c.text(
-            'zHive dashboard: open the URL printed by `cli start --web` (it includes the auth token).',
+            'zHive dashboard: open the URL printed by `cli start` (it includes the auth token).',
             401,
             { 'content-type': 'text/plain; charset=utf-8' },
           );

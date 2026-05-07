@@ -1,1 +1,48 @@
 @import 'tailwindcss';
+
+@theme {
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  --color-hive-black: #000000;
+  --color-hive-near-black: #0b0b0c;
+  --color-hive-dark-gray: #111111;
+  --color-hive-honey: #f5a623;
+  --color-hive-honey-dim: rgba(245, 166, 35, 0.12);
+  --color-hive-white: #cccccc;
+  --color-hive-text-primary: #f2f2f2;
+  --color-hive-text-secondary: #a6a6a6;
+  --color-hive-text-dim: #555555;
+  --color-hive-bullish: #27c587;
+  --color-hive-bearish: #e14b4b;
+  --color-hive-pending: #f5c842;
+  --color-hive-cyan: #22d3ee;
+  --color-hive-controversial: #c084fc;
+  --color-hive-border: rgba(204, 204, 204, 0.12);
+
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+body {
+  font-family: var(--font-body);
+}
+
+::selection {
+  background-color: rgba(245, 166, 35, 0.3);
+  color: #f2f2f2;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}

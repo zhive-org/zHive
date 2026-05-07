@@ -8,11 +8,15 @@ interface RoeChartProps {
   height?: number;
 }
 
+const HONEY = '#F5A623';
+const HONEY_FILL = 'rgba(245,166,35,0.10)';
+const AXIS_STROKE = '#555555';
+const GRID_STROKE = 'rgba(204,204,204,0.08)';
+
 export function RoeChart({ series, height = 220 }: RoeChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<uPlot | null>(null);
 
-  // Initialize the plot once.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -20,7 +24,7 @@ export function RoeChart({ series, height = 220 }: RoeChartProps) {
     const opts: uPlot.Options = {
       width: el.clientWidth,
       height,
-      padding: [12, 12, 8, 8],
+      padding: [12, 16, 8, 8],
       cursor: { drag: { x: false, y: false }, points: { size: 6 } },
       legend: { show: false },
       scales: {
@@ -29,25 +33,27 @@ export function RoeChart({ series, height = 220 }: RoeChartProps) {
       },
       axes: [
         {
-          stroke: '#52525b',
-          grid: { stroke: 'rgba(63,63,70,0.4)', width: 1 },
-          ticks: { stroke: 'rgba(63,63,70,0.4)' },
+          stroke: AXIS_STROKE,
+          font: '11px "JetBrains Mono", monospace',
+          grid: { stroke: GRID_STROKE, width: 1 },
+          ticks: { stroke: GRID_STROKE },
           values: (_u, splits) => splits.map((s) => `${s}s`),
         },
         {
-          stroke: '#52525b',
-          grid: { stroke: 'rgba(63,63,70,0.4)', width: 1 },
-          ticks: { stroke: 'rgba(63,63,70,0.4)' },
-          values: (_u, splits) =>
-            splits.map((s) => `${s > 0 ? '+' : ''}${s.toFixed(2)}%`),
+          stroke: AXIS_STROKE,
+          font: '11px "JetBrains Mono", monospace',
+          size: 64,
+          grid: { stroke: GRID_STROKE, width: 1 },
+          ticks: { stroke: GRID_STROKE },
+          values: (_u, splits) => splits.map((s) => `${s > 0 ? '+' : ''}${s.toFixed(2)}%`),
         },
       ],
       series: [
         {},
         {
-          stroke: '#fbbf24',
+          stroke: HONEY,
           width: 2,
-          fill: 'rgba(251,191,36,0.08)',
+          fill: HONEY_FILL,
           points: { show: false },
         },
       ],
@@ -68,12 +74,9 @@ export function RoeChart({ series, height = 220 }: RoeChartProps) {
       plotRef.current?.destroy();
       plotRef.current = null;
     };
-    // We deliberately omit `series` and `height` — the plot is initialized once
-    // and updated via setData below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Push new data on each series update.
   useEffect(() => {
     plotRef.current?.setData([series.t, series.roeDelta]);
   }, [series]);

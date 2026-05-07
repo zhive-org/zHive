@@ -267,7 +267,7 @@ describe('buildApp', () => {
         const app = buildApp({ dashboardRoot: tmpDir, authToken: TOKEN });
         const res = await fetch(app, '/');
         expect(res.status).toBe(401);
-        expect(await res.text()).toContain('cli start --web');
+        expect(await res.text()).toContain('cli start');
       } finally {
         await rm(tmpDir, { recursive: true, force: true });
       }

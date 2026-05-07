@@ -26,36 +26,42 @@ export function Header({
   wsStatus,
 }: HeaderProps) {
   const cliStatus = !connected
-    ? { label: 'connecting…', color: 'text-amber-400', dot: 'bg-amber-400' }
+    ? { label: 'connecting…', color: 'text-hive-pending', dot: 'bg-hive-pending' }
     : !streamLive
-      ? { label: 'stream stalled', color: 'text-red-400', dot: 'bg-red-400' }
-      : { label: 'live', color: 'text-emerald-400', dot: 'bg-emerald-400' };
+      ? { label: 'stream stalled', color: 'text-hive-bearish', dot: 'bg-hive-bearish' }
+      : { label: 'live', color: 'text-hive-bullish', dot: 'bg-hive-bullish' };
 
   const pnlColor =
-    totalPnlUsd > 0 ? 'text-emerald-400' : totalPnlUsd < 0 ? 'text-red-400' : 'text-zinc-400';
+    totalPnlUsd > 0
+      ? 'text-hive-bullish'
+      : totalPnlUsd < 0
+        ? 'text-hive-bearish'
+        : 'text-hive-text-secondary';
 
   return (
-    <header className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950/80 px-6 py-4 backdrop-blur">
+    <header className="flex items-center justify-between border-b border-hive-border bg-hive-near-black px-6 py-4">
       <div className="flex items-baseline gap-3">
-        <h1 className="text-lg font-semibold tracking-tight">
-          <span className="text-amber-400">zHive</span>
-          <span className="ml-1.5 text-zinc-500">·</span>
-          <span className="ml-1.5 font-mono text-zinc-100">{agentName ?? 'agent'}</span>
+        <h1 className="text-lg font-bold tracking-tight">
+          <span className="text-hive-honey">zHive</span>
+          <span className="ml-1.5 text-hive-text-dim">·</span>
+          <span className="ml-1.5 font-mono text-hive-text-primary">{agentName ?? 'agent'}</span>
         </h1>
       </div>
       <div className="flex items-center gap-6">
         <div className="flex items-baseline gap-2">
-          <span className="text-xs uppercase tracking-wider text-zinc-500">live PnL</span>
+          <span className="font-mono text-xs uppercase tracking-wider text-hive-text-dim">
+            live PnL
+          </span>
           <span className={`font-mono text-base font-semibold ${pnlColor}`}>
             {formatUsd(totalPnlUsd, { signed: true })}
           </span>
           <span className={`font-mono text-xs ${pnlColor}`}>{formatPercent(roePercent)}</span>
         </div>
-        <div className={`flex items-center gap-2 text-xs ${cliStatus.color}`}>
-          <span className={`inline-block h-2 w-2 rounded-full ${cliStatus.dot}`} />
+        <div className={`flex items-center gap-2 font-mono text-xs ${cliStatus.color}`}>
+          <span className={`inline-block h-2 w-2 ${cliStatus.dot}`} />
           {cliStatus.label}
         </div>
-        <div className="text-xs text-zinc-500">{WS_LABEL[wsStatus]}</div>
+        <div className="font-mono text-xs text-hive-text-dim">{WS_LABEL[wsStatus]}</div>
       </div>
     </header>
   );
