@@ -22,12 +22,12 @@ const TradeDecisionSchema = z.object({
   sl: z
     .number()
     .describe(
-      'Stop loss as % PnL on margin (leverage-adjusted). Example: 10 at 10x leverage triggers on a 1% adverse price move. Must be < 100 to avoid liquidation.',
+      'Stop loss as % PnL on margin leverage-adjusted between 0 - 100. Example: 10 at 10x leverage triggers on a 1% adverse price move. Must be < 100 to avoid liquidation.',
     ),
   tp: z
     .number()
     .describe(
-      'Take profit as % PnL on margin. Example: 20 at 10x leverage triggers on a 2% favorable price move.',
+      'Take profit as % PnL on margin (> 0). Example: 20 at 10x leverage triggers on a 2% favorable price move.',
     ),
 });
 
