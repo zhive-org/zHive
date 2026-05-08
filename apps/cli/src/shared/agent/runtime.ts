@@ -23,11 +23,12 @@ export interface AgentRuntime {
 }
 
 export async function initializeAgentRuntime(agentDir?: string): Promise<AgentRuntime> {
-  const config = await loadAgentConfig(agentDir);
-  const memory = await loadMemory(agentDir);
-  const model = await getModel();
+  // Parallelize independent I/O: config + memory don't depend on each other,
+  // and once we have neither, model loading + skill discovery + tool building
+  // all run in parallel too. Trims ~hundreds of ms off the boot path.
+  const [config, memory] = await Promise.all([loadAgentConfig(agentDir), loadMemory(agentDir)]);
+  const [model, skillRegistry] = await Promise.all([getModel(), loadSkills(agentDir)]);
 
-  const skillRegistry = await loadSkills(agentDir);
   const tools = createBuiltinTools();
   const executeSkillTool = createExecuteSkillTool(skillRegistry, {
     model,
@@ -39,7 +40,7 @@ export async function initializeAgentRuntime(agentDir?: string): Promise<AgentRu
   return runtime;
 }
 
-function createBuiltinTools(): Record<string, Tool> {
+export function createBuiltinTools(): Record<string, Tool> {
   const tools: Record<string, Tool> = {};
 
   if (process.env.EXPERIMENTAL_FETCH_RULES_TOOL === 'true') {

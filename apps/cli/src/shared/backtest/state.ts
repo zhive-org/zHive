@@ -89,3 +89,9 @@ export function tryStartBacktestSession(
   if (active) return { running: { ...active } };
   return { handle: startBacktestSession(init) };
 }
+
+/** Drop the active-backtest singleton. Called on agent-exit so a stale
+ * progress handle can't outlive the agent it ran inside. */
+export function resetBacktestState(): void {
+  active = null;
+}

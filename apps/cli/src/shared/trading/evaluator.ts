@@ -107,10 +107,23 @@ export class AssetEvaluator {
             output: Output.object({ schema: TradeDecisionArraySchema }),
           });
 
-          // Build a map of returned decisions
+          // Build a map of the price the LLM was shown, per coin. Mid is
+          // preferred; mark is the fallback when mid is unavailable. This
+          // matches the prompt format in buildUserPrompt().
+          const priceByCoin = new Map<string, number>();
+          for (const entry of assetEntries) {
+            const mid = entry.ctx.midPx !== null ? Number(entry.ctx.midPx) : NaN;
+            const mark = Number(entry.ctx.markPx);
+            const chosen = Number.isFinite(mid) ? mid : Number.isFinite(mark) ? mark : null;
+            if (chosen !== null) priceByCoin.set(entry.coin, chosen);
+          }
+
+          // Build a map of returned decisions, attaching the price the agent
+          // reasoned with so downstream callers (event bus / dashboard) can
+          // audit "what price did the agent see?"
           const decisionMap = new Map<string, TradeDecision>();
           for (const d of output.decisions) {
-            decisionMap.set(d.asset, d);
+            decisionMap.set(d.asset, { ...d, priceUsed: priceByCoin.get(d.asset) });
           }
 
           // Return decisions for all requested coins, defaulting to HOLD if missing

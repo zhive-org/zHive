@@ -1,4 +1,10 @@
-import type { ApiState, WebEventsSince } from './types';
+import type {
+  AgentConfigUpdate,
+  AgentProfile,
+  ApiState,
+  CredentialsUpdate,
+  WebEventsSince,
+} from './types';
 
 async function asJsonError(res: Response): Promise<never> {
   const body = (await res.json().catch(() => ({}))) as { error?: string };
@@ -19,6 +25,12 @@ export async function fetchApiState(): Promise<ApiState> {
   return readJson<ApiState>(res, '/api/state');
 }
 
+export async function fetchAgentProfile(): Promise<AgentProfile> {
+  const res = await fetch('/api/agent/profile', { credentials: 'same-origin' });
+  if (!res.ok) await asJsonError(res);
+  return readJson<AgentProfile>(res, '/api/agent/profile');
+}
+
 export async function selectAgent(name: string): Promise<void> {
   const res = await fetch('/api/agents/select', {
     method: 'POST',
@@ -26,11 +38,48 @@ export async function selectAgent(name: string): Promise<void> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ name }),
   });
+  // 202 Accepted is the normal response — server is initializing async.
+  if (!res.ok && res.status !== 202) await asJsonError(res);
+}
+
+export async function exitAgent(): Promise<void> {
+  const res = await fetch('/api/agents/exit', {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
   if (!res.ok) await asJsonError(res);
 }
 
-export async function fetchEvents(since: number): Promise<WebEventsSince> {
-  const res = await fetch(`/api/events?since=${since}`, { credentials: 'same-origin' });
+async function putJson(path: string, body: unknown): Promise<void> {
+  const res = await fetch(path, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) await asJsonError(res);
+}
+
+export async function updateAgentConfig(partial: AgentConfigUpdate): Promise<void> {
+  await putJson('/api/agent/config', partial);
+}
+
+export async function updateAgentSoul(content: string): Promise<void> {
+  await putJson('/api/agent/soul', { content });
+}
+
+export async function updateAgentStrategy(content: string): Promise<void> {
+  await putJson('/api/agent/strategy', { content });
+}
+
+export async function updateAgentCredentials(args: CredentialsUpdate): Promise<void> {
+  await putJson('/api/agent/credentials', args);
+}
+
+export async function fetchEvents(since: number, generation?: number): Promise<WebEventsSince> {
+  const params = new URLSearchParams({ since: String(since) });
+  if (generation !== undefined) params.set('gen', String(generation));
+  const res = await fetch(`/api/events?${params.toString()}`, { credentials: 'same-origin' });
   if (!res.ok) await asJsonError(res);
   return readJson<WebEventsSince>(res, '/api/events');
 }

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const HOST = '127.0.0.1';
+export const DISPLAY_HOST = 'localhost';
 export const AUTH_COOKIE = 'zhive_auth';
 
 export const MIME_TYPES: Record<string, string> = {
@@ -192,6 +193,12 @@ export async function listenLocalhost(options: ListenOptions): Promise<ListenHan
 
   const stop = (): Promise<void> =>
     new Promise<void>((resolve, reject) => {
+      // Force-drop keep-alive sockets so close() doesn't hang up to ~5s waiting
+      // for the SPA's polling sockets to time out (Node http.Server.close() by
+      // default waits for existing connections to drain on their own).
+      const maybeCloseAll = (server as unknown as { closeAllConnections?: () => void })
+        .closeAllConnections;
+      maybeCloseAll?.call(server);
       server.close((err) => {
         if (err) reject(err);
         else resolve();
@@ -202,6 +209,6 @@ export async function listenLocalhost(options: ListenOptions): Promise<ListenHan
 }
 
 export function buildBaseUrl(port: number, authToken: string | null | undefined): string {
-  const baseUrl = `http://${HOST}:${port}`;
+  const baseUrl = `http://${DISPLAY_HOST}:${port}`;
   return authToken ? `${baseUrl}/?token=${authToken}` : baseUrl;
 }

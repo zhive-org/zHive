@@ -167,3 +167,20 @@ export function hyperliquidClient(dex?: string): HyperliquidClient {
   _clientsByDex.set(dex, created);
   return created;
 }
+
+/**
+ * Stop and drop every cached HyperliquidClient. Called at the ready→selecting
+ * boundary so the next agent's `useMids(coins)` opens fresh sockets for
+ * whatever dexes its watchlist + positions imply, and stale subscribers (and
+ * their mids state) don't carry over.
+ */
+export function resetHyperliquidClients(): void {
+  if (_defaultClient) {
+    _defaultClient.stop();
+    _defaultClient = null;
+  }
+  for (const client of _clientsByDex.values()) {
+    client.stop();
+  }
+  _clientsByDex.clear();
+}

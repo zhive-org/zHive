@@ -1,10 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { useEffect, useMemo, useState } from 'react';
 import open from 'open';
-import { AgentRuntime } from '../../../shared/agent/runtime';
-import { startWebServer, type WebServerHandle } from '../web/server';
-import type { WebEventBus } from '../web/events';
-import type { WebControl } from '../web/control';
+import { type BuildAppOptions, startWebServer, type WebServerHandle } from '../web/server';
 import { extractErrorMessage } from '../../../shared/utils';
 
 export type WebServerStatus =
@@ -15,28 +12,34 @@ export type WebServerStatus =
 
 interface UseWebServerArgs {
   port: number | undefined;
-  runtime: AgentRuntime | undefined;
-  eventBus: WebEventBus;
-  control: WebControl;
+  /** Lazy accessors for the unified server. The HTTP server reads these on
+   * every request, so it can bind once and survive any number of agent
+   * select/exit cycles. */
+  getRuntimeState: BuildAppOptions['getRuntimeState'];
+  getAgents: BuildAppOptions['getAgents'];
+  onSelect: BuildAppOptions['onSelect'];
+  onExit: BuildAppOptions['onExit'];
+  isStarting: BuildAppOptions['isStarting'];
   openInBrowser?: boolean;
-  /** Optional pre-existing token (e.g. inherited from the picker server so the
-   * already-open browser tab stays authenticated across the server swap). */
+  /** Optional pre-existing token. If omitted, a fresh one is generated and
+   * persists for the lifetime of the Ink app. */
   authToken?: string;
 }
 
 export function useWebServer({
   port,
-  runtime,
-  eventBus,
-  control,
+  getRuntimeState,
+  getAgents,
+  onSelect,
+  onExit,
+  isStarting,
   openInBrowser,
   authToken: providedAuthToken,
 }: UseWebServerArgs): WebServerStatus {
   const [state, setState] = useState<WebServerStatus>({ status: 'disabled' });
   // Stable token for the lifetime of the Ink app. Regenerated only when the
   // process restarts — old browser tabs become unauthenticated, which is the
-  // intended behavior. If the caller passed one in (handoff from picker), use
-  // that instead so the open browser tab keeps its cookie.
+  // intended behavior.
   const authToken = useMemo(
     () => providedAuthToken ?? randomBytes(24).toString('base64url'),
     [providedAuthToken],
@@ -47,13 +50,20 @@ export function useWebServer({
       setState({ status: 'disabled' });
       return;
     }
-    if (!runtime) return;
 
     let cancelled = false;
     let handle: WebServerHandle | null = null;
 
     setState({ status: 'starting' });
-    startWebServer({ port, eventBus, control, authToken })
+    startWebServer({
+      port,
+      authToken,
+      getRuntimeState,
+      getAgents,
+      onSelect,
+      onExit,
+      isStarting,
+    })
       .then((started) => {
         if (cancelled) {
           void started.stop();
@@ -76,7 +86,11 @@ export function useWebServer({
       cancelled = true;
       if (handle) void handle.stop();
     };
-  }, [port, runtime, eventBus, control, authToken, openInBrowser]);
+    // The accessors are intentionally NOT in the deps: they read mutable refs
+    // and don't need to be referentially stable. Restarting the server on
+    // every render would defeat the whole "single server" goal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [port, authToken, openInBrowser]);
 
   return state;
 }

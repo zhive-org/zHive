@@ -1,7 +1,7 @@
 import * as ai from 'ai';
 import { type SystemModelMessage } from 'ai';
 import { wrapAISDK } from 'langsmith/experimental/vercel';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AgentRuntime } from '../../../shared/agent';
 import { getModel } from '../../../shared/config/ai-providers';
 import { extractErrorMessage } from '../../../shared/utils';
@@ -81,6 +81,23 @@ export function useChat({
   const chatCountSinceExtractRef = useRef(0);
   const extractingRef = useRef(false);
   const recentPredictionsRef = useRef<string[]>([]);
+
+  // Reset all per-agent state whenever the active agent changes (including
+  // to/from `undefined` during exit→pick cycles). Without this, a switch from
+  // agent A to agent B would carry A's chat history, memory snapshot, and
+  // pending memory-extraction state into B's session.
+  const agentName = runtime?.config.name;
+  useEffect(() => {
+    setChatActivity([]);
+    setChatStreaming(false);
+    setChatBuffer('');
+    setOverlay(null);
+    sessionMessagesRef.current = [];
+    memoryRef.current = '';
+    chatCountSinceExtractRef.current = 0;
+    extractingRef.current = false;
+    recentPredictionsRef.current = [];
+  }, [agentName]);
 
   // ─── Activity helpers ───────────────────────────────
   const addChatActivity = useCallback(

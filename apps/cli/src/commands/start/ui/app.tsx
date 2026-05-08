@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
 import { Box, Static, Text } from 'ink';
 import { loadMemory } from '@zhive/sdk';
 import { useAgent } from '../hooks/useAgent';
 import { PollText, Spinner } from './Spinner';
 import { CommandInput } from './CommandInput';
 import { border, colors, symbols } from '../../shared/theme';
-import { HIVE_FRONTEND_URL } from '../../../shared/config/constant';
+import { HIVE_API_URL, HIVE_FRONTEND_URL } from '../../../shared/config/constant';
 import { formatTime } from '../../../shared/utils';
 import { useChat } from '../hooks/useChat';
 import { activityFormatter } from '../hooks/utils';
@@ -14,33 +15,133 @@ import { WatchlistView } from '../../../components/WatchlistView';
 import { useAgentRuntime } from '../hooks/useAgentRuntime';
 import { useWebServer } from '../hooks/useWebServer';
 import { WebEventBus } from '../web/events';
-import type { WebControl, WebState } from '../web/control';
+import { attachErrorBridge } from '../web/error-bridge';
+import type {
+  AgentConfigUpdate,
+  AgentProfileResponse,
+  AgentTradingRank,
+  CredentialsUpdate,
+  WebControl,
+  WebState,
+} from '../web/control';
+import type { PickerAgentSummary } from '../web/server';
 import { executeSlashCommand, type SlashCommandCallbacks } from '../services/command-registry';
 import { ZhiveExchange } from '../../../shared/trading/exchange/zhive';
 import type { DetailedPosition } from '../../../shared/trading/types';
+import { TtlCache } from '../../../shared/cache/ttl-cache';
+import { AgentConfig, loadAgentConfig } from '../../../shared/config/agent';
+import { loadAgentEnv, getAgentProviderKeys, updateEnvVar } from '../../../shared/config/env-loader';
+import { getModel } from '../../../shared/config/ai-providers';
+import { loadConfig as sdkLoadConfig, saveConfig as sdkSaveConfig } from '@zhive/sdk';
+import { promises as fsp } from 'fs';
+import * as nodePath from 'path';
+import { loadSkills } from '../../../shared/agent/skills/loader';
+import { createBuiltinTools, type AgentRuntime } from '../../../shared/agent/runtime';
+import { createExecuteSkillTool } from '../../../shared/tools/execute-skill';
+import { resetAgentScopedState, resetSharedCaches } from '../../../shared/reset-caches';
 
 const POSITIONS_TTL_MS = 5_000;
+const AGENT_PROFILE_TTL_MS = 60_000;
+
+interface HiveAgentLookup {
+  id: string;
+  bio?: string;
+  avatar_url?: string;
+}
+
+interface HiveAgentRankResponse {
+  rank: number;
+  total_trades: number;
+  total_pnl_usd: number;
+  roi_pct: number;
+  win_rate_pct: number;
+  sharpe_ratio: number;
+  max_drawdown_pct: number;
+  profit_factor: number | null;
+}
+
+async function fetchAgentTradingRank(name: string): Promise<AgentTradingRank | null> {
+  // Two-step lookup mirrors zhive-app: name → id → rank. Best-effort —
+  // any failure returns null so the dashboard still renders the agent card.
+  try {
+    const agentRes = await axios.get<HiveAgentLookup>(
+      `${HIVE_API_URL}/agent/${encodeURIComponent(name)}`,
+      { timeout: 5_000 },
+    );
+    const agentId = agentRes.data?.id;
+    if (!agentId) return null;
+    const rankRes = await axios.get<HiveAgentRankResponse>(
+      `${HIVE_API_URL}/leaderboard/v2/rank/${encodeURIComponent(agentId)}`,
+      { timeout: 5_000 },
+    );
+    const r = rankRes.data;
+    return {
+      rank: r.rank,
+      total_trades: r.total_trades,
+      total_pnl_usd: r.total_pnl_usd,
+      roi_pct: r.roi_pct,
+      win_rate_pct: r.win_rate_pct,
+      sharpe_ratio: r.sharpe_ratio,
+      max_drawdown_pct: r.max_drawdown_pct,
+      profit_factor: r.profit_factor,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function toPickerSummary(agent: AgentConfig): PickerAgentSummary {
+  return {
+    name: agent.name,
+    created: agent.created.toISOString(),
+    bio: agent.bio,
+    avatarUrl: agent.avatarUrl,
+  };
+}
 
 // ─── Main TUI App ────────────────────────────────────
 
 export interface AppProps {
+  /** Pre-scanned agent list shown in the web picker. Empty/single-element
+   * lists are fine — the picker handles both. */
+  agents?: AgentConfig[];
+  /** If set, the App auto-runs `selectAgent(initialAgent)` on mount,
+   * skipping the picker. Used by the `--agent <name>` flag and by the
+   * "cwd is an agent dir" auto-detection. */
+  initialAgent?: string;
   webPort?: number;
   openInBrowser?: boolean;
-  /** Reuse this auth token instead of generating one (handoff from a prior
-   * picker server so the open browser tab keeps its cookie). */
+  /** Reuse this auth token instead of generating one (deprecated picker
+   * handoff — kept for back-compat with callers; the unified server doesn't
+   * need a handoff anymore). */
   webAuthToken?: string;
 }
 
-export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }) => {
-  const { runtime, reloadRuntime } = useAgentRuntime();
+export const App: React.FC<AppProps> = ({
+  agents = [],
+  initialAgent,
+  webPort,
+  openInBrowser,
+  webAuthToken,
+}) => {
+  const { runtime, reloadRuntime, setRuntime } = useAgentRuntime();
+  const [isStarting, setIsStarting] = useState(false);
   const [termWidth, setTermWidth] = useState(process.stdout.columns || 60);
   const eventBus = useMemo(() => new WebEventBus(), []);
   const exchangeRef = useRef<{ apiKey: string; client: Promise<ZhiveExchange> } | null>(null);
   const positionsCacheRef = useRef<{ ts: number; positions: DetailedPosition[] } | null>(null);
+  const profileCacheRef = useRef<TtlCache<AgentProfileResponse> | null>(null);
+  if (!profileCacheRef.current) {
+    profileCacheRef.current = new TtlCache<AgentProfileResponse>(AGENT_PROFILE_TTL_MS);
+  }
 
-  const { connected, agentName, modelInfo, activePollActivities, settledPollActivities } = useAgent(
-    { runtime, eventBus },
-  );
+  const {
+    connected,
+    agentName,
+    modelInfo,
+    activePollActivities,
+    settledPollActivities,
+  } = useAgent({ runtime, eventBus });
 
   const {
     input,
@@ -115,24 +216,232 @@ export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }
           positionsCacheRef.current = { ts: now, positions };
         }
         const memory = await loadMemory();
+        // Pick the first provider key the agent declares in its .env. The
+        // model loader iterates this set in declaration order, so the first
+        // is the active one. Returns null if the agent inherits a key from
+        // the user's shell instead — the SPA handles both.
+        const providerEnvVar = Array.from(getAgentProviderKeys())[0] ?? null;
         return {
           agentName: runtime.config.name,
+          bio: runtime.config.bio,
+          avatarUrl: runtime.config.avatarUrl ?? null,
           watchlist: runtime.config.watchList,
           positions,
           memory,
+          soulContent: runtime.config.soulContent,
+          strategyContent: runtime.config.strategyContent,
+          sectors: runtime.config.agentProfile.sectors,
+          sentiment: runtime.config.agentProfile.sentiment,
+          timeframes: runtime.config.agentProfile.timeframes,
+          providerEnvVar,
         };
       },
+      async updateConfig(partial: AgentConfigUpdate): Promise<void> {
+        if (!runtime) throw new Error('Runtime not ready');
+        const stored = await sdkLoadConfig();
+        if (!stored) throw new Error('config.json not found');
+        // Mutable subset only — `name`, `apiKey`, `version` are intentionally
+        // not in `AgentConfigUpdate` so a malformed PUT can't rename the
+        // agent or drop its credentials.
+        const next = stored as typeof stored & { watchList?: string[] };
+        if (partial.bio !== undefined) next.bio = partial.bio;
+        if (partial.avatarUrl !== undefined) next.avatarUrl = partial.avatarUrl;
+        if (partial.sectors !== undefined) next.sectors = partial.sectors;
+        if (partial.sentiment !== undefined) next.sentiment = partial.sentiment;
+        if (partial.timeframes !== undefined) next.timeframes = partial.timeframes;
+        if (partial.watchList !== undefined) next.watchList = partial.watchList;
+        await sdkSaveConfig(next);
+        await reloadRuntime();
+      },
+      async updateSoul(content: string): Promise<void> {
+        if (!runtime) throw new Error('Runtime not ready');
+        await fsp.writeFile(nodePath.join(runtime.config.dir, 'SOUL.md'), content, 'utf-8');
+        await reloadRuntime();
+      },
+      async updateStrategy(content: string): Promise<void> {
+        if (!runtime) throw new Error('Runtime not ready');
+        await fsp.writeFile(nodePath.join(runtime.config.dir, 'STRATEGY.md'), content, 'utf-8');
+        await reloadRuntime();
+      },
+      async updateCredentials(args: CredentialsUpdate): Promise<void> {
+        if (!runtime) throw new Error('Runtime not ready');
+        // Branch on what the caller actually wants to change. Both fields
+        // optional so the caller can rotate just one.
+        if (args.apiKey !== undefined) {
+          const stored = await sdkLoadConfig();
+          if (!stored) throw new Error('config.json not found');
+          stored.apiKey = args.apiKey;
+          await sdkSaveConfig(stored);
+        }
+        if (args.providerEnvVar && args.providerKey !== undefined) {
+          updateEnvVar(runtime.config.dir, args.providerEnvVar, args.providerKey);
+          // Reload .env into process.env AND drop the cached language model
+          // so the next inference picks up the new key.
+          await loadAgentEnv();
+          resetSharedCaches();
+        }
+        await reloadRuntime();
+      },
+      async getAgentProfile(): Promise<AgentProfileResponse> {
+        if (!runtime) {
+          throw new Error('Runtime not ready');
+        }
+        const name = runtime.config.name;
+        const profileCache = profileCacheRef.current!;
+        return profileCache.getOrFetch(name, async () => {
+          const tradingRank = await fetchAgentTradingRank(name);
+          return {
+            name,
+            bio: runtime.config.bio,
+            avatarUrl: runtime.config.avatarUrl ?? null,
+            frontendUrl: `${HIVE_FRONTEND_URL}/agent/${encodeURIComponent(name)}`,
+            tradingRank,
+          };
+        });
+      },
     }),
-    [runtime, eventBus, handleChatSubmit, clearChat],
+    [runtime, eventBus, handleChatSubmit, clearChat, reloadRuntime],
   );
+
+  // ─── Agent select / exit ────────────────────────────
+  // Stable refs so the lazy server accessors below see fresh state without
+  // re-binding the listener on every render.
+  const runtimeRef = useRef(runtime);
+  const controlRef = useRef(control);
+  const isStartingRef = useRef(isStarting);
+  const agentsRef = useRef(agents);
+  useEffect(() => {
+    runtimeRef.current = runtime;
+  }, [runtime]);
+  useEffect(() => {
+    controlRef.current = control;
+  }, [control]);
+  useEffect(() => {
+    isStartingRef.current = isStarting;
+  }, [isStarting]);
+  useEffect(() => {
+    agentsRef.current = agents;
+  }, [agents]);
+
+  const selectAgent = useCallback(
+    async (name: string): Promise<void> => {
+      const agent = agentsRef.current.find((a) => a.name === name);
+      if (!agent) {
+        eventBus.push({ type: 'error', errorMessage: `Agent not found: ${name}` });
+        return;
+      }
+      if (runtimeRef.current || isStartingRef.current) {
+        // Guard against double-fire from the picker (rapid clicks).
+        return;
+      }
+      // Write the ref synchronously so the next /api/state response from the
+      // server sees `phase: 'starting'` even if React hasn't yet committed
+      // the setIsStarting state update. The useEffect below will reconcile
+      // either way.
+      isStartingRef.current = true;
+      setIsStarting(true);
+      try {
+        process.chdir(agent.dir);
+        await loadAgentEnv();
+        // Load config first to get apiKey, then parallelize everything else
+        // including the exchange handshake so the dashboard renders fully
+        // populated on the first /api/state poll instead of empty-then-late.
+        const config = await loadAgentConfig();
+        const [memory, model, skills, exchange] = await Promise.all([
+          loadMemory(),
+          getModel(),
+          loadSkills(),
+          ZhiveExchange.create({ apiKey: config.apiKey }),
+        ]);
+        const positions = await exchange.fetchPositions();
+
+        const builtinTools = createBuiltinTools();
+        const executeSkillTool = createExecuteSkillTool(skills, {
+          model,
+          tools: builtinTools,
+        });
+        const allTools = { ...builtinTools, executeSkillTool };
+        const next: AgentRuntime = {
+          config,
+          memory,
+          tools: allTools,
+          skills,
+          model,
+        };
+
+        // Pre-fill caches that getState() consults so the SPA's first
+        // /api/state poll is a synchronous object read, not a 1-3s round trip.
+        exchangeRef.current = { apiKey: config.apiKey, client: Promise.resolve(exchange) };
+        positionsCacheRef.current = { ts: Date.now(), positions };
+        // Write the runtime ref synchronously so getRuntimeState() returns
+        // the new runtime on the very next request — even before React's
+        // commit phase runs the syncing useEffect.
+        runtimeRef.current = next;
+        setRuntime(next);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        eventBus.push({ type: 'error', errorMessage: `Failed to start agent: ${errorMessage}` });
+      } finally {
+        isStartingRef.current = false;
+        setIsStarting(false);
+      }
+    },
+    [eventBus, setRuntime],
+  );
+
+  const exitAgent = useCallback(async (): Promise<void> => {
+    if (!runtimeRef.current && !isStartingRef.current) return;
+    // Clear the runtime ref FIRST, synchronously, so any /api/state request
+    // arriving between this call and React's commit returns `phase:
+    // 'selecting'` immediately. Otherwise the SPA's invalidate-and-refetch
+    // could race React and snapshot the still-ready state, delaying the
+    // picker by a full 30s poll cycle.
+    runtimeRef.current = undefined;
+    // useAgent's effect cleanup will stop the trading agent when runtime
+    // becomes undefined, so we don't have to touch agentRef here.
+    profileCacheRef.current?.clear?.();
+    exchangeRef.current = null;
+    positionsCacheRef.current = null;
+    resetAgentScopedState(eventBus);
+    setRuntime(undefined);
+  }, [eventBus, setRuntime]);
+
+  // Auto-select on mount when a flag/cwd-detection pre-chose an agent.
+  // Empty deps: only runs once at mount, mirroring how `--agent` worked
+  // with the old selectAgentInBrowser path.
+  useEffect(() => {
+    if (initialAgent) {
+      void selectAgent(initialAgent);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Web server (binds once at mount, never restarts on agent switch) ─
+  const getRuntimeState = useCallback(() => {
+    if (!runtimeRef.current) return null;
+    return { control: controlRef.current, eventBus };
+  }, [eventBus]);
+  const getAgents = useCallback(() => agentsRef.current.map(toPickerSummary), []);
+  const onSelect = useCallback(
+    (name: string) => {
+      void selectAgent(name);
+    },
+    [selectAgent],
+  );
+  const onExit = useCallback(() => {
+    void exitAgent();
+  }, [exitAgent]);
+  const isStartingFn = useCallback(() => isStartingRef.current, []);
 
   const webServer = useWebServer({
     port: webPort,
-    runtime,
-    eventBus,
-    control,
-    openInBrowser,
     authToken: webAuthToken,
+    openInBrowser,
+    getRuntimeState,
+    getAgents,
+    onSelect,
+    onExit,
+    isStarting: isStartingFn,
   });
 
   // ─── Terminal resize tracking ───────────────────────
@@ -146,22 +455,54 @@ export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }
     };
   }, []);
 
+  // ─── Error bridge: console.error / unhandled / uncaught → eventBus ──
+  // Mirrors process-level errors into the dashboard's ActivityFeed so the
+  // user doesn't have to flip back to the terminal to spot a 429 or stack
+  // trace from a third-party SDK.
+  useEffect(() => {
+    const handle = attachErrorBridge(eventBus);
+    return () => {
+      handle.detach();
+    };
+  }, [eventBus]);
+
   // When stdin is not a TTY (piped by hive-cli start), skip interactive input
   const isInteractive = process.stdin.isTTY === true;
+
+  // When the web dashboard is up, the rich TUI is duplicate work — the user
+  // has the full UI in the browser. Trim the terminal down to a status pane
+  // (URL, connection, fatal errors) so it stops fighting the dashboard for
+  // attention. The --no-web path skips this and renders the rich TUI as
+  // before.
+  const webMode = webPort !== undefined && webServer.status === 'listening';
 
   const boxWidth = termWidth;
 
   const agentPrefix = `${agentName}:`;
   const visibleChatActivity = chatActivity.slice(-15);
 
-  const connectedDisplay = connected ? 'Connected to zHive' : 'connecting...';
-  const nameDisplay = `${agentName} agent`;
+  const hasAgent = !!runtime;
+  const connectedDisplay = !hasAgent
+    ? isStarting
+      ? 'starting agent...'
+      : 'no agent — open the dashboard to pick one'
+    : connected
+      ? 'Connected to zHive'
+      : 'connecting...';
+  const nameDisplay = hasAgent ? `${agentName} agent` : 'zhive';
   const headerFill = Math.max(0, boxWidth - nameDisplay.length - connectedDisplay.length - 12);
 
   return (
     <>
-      {/* Settled poll activities — rendered once into scrollback, never re-rendered */}
-      <Static items={settledPollActivities}>
+      {/* Settled poll activities — rendered once into scrollback, never
+          re-rendered. Suppressed in web mode by passing an empty list so we
+          don't double-log everything to the terminal that's already streaming
+          to the dashboard. NOTE: <Static> must always be mounted — Ink's
+          reconciler caches `rootNode.staticNode` and never clears it, so
+          conditionally unmounting it leaves the renderer reading stale Yoga
+          dimensions (a uint64 sentinel converts to ~3.7e19), and Output.get()
+          tries to allocate that many rows → OOM in seconds. */}
+      <Static items={webMode ? [] : settledPollActivities}>
         {(item, i) => {
           const formatted = activityFormatter.format(item);
           if (formatted.length === 0) return <Box key={`settled-${item.id ?? i}`} />;
@@ -179,22 +520,24 @@ export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }
             {nameDisplay}
           </Text>
           <Text color={colors.gray}> {`${border.horizontal.repeat(3)} `}</Text>
-          <Text color={connected ? colors.green : colors.honey}>{connectedDisplay}</Text>
+          <Text color={hasAgent && connected ? colors.green : colors.honey}>
+            {connectedDisplay}
+          </Text>
           <Text color={colors.gray}>
             {' '}
             {border.horizontal.repeat(Math.max(0, headerFill))}
             {border.topRight}
           </Text>
         </Box>
-        {modelInfo && (
+        {hasAgent && modelInfo && (
           <Box paddingLeft={1}>
             <Text color={colors.gray}>{symbols.hive} </Text>
             <Text color={colors.cyan}>{modelInfo.modelId}</Text>
-            <Text color={colors.gray}> {'\u00d7'} </Text>
+            <Text color={colors.gray}> {'×'} </Text>
             <Text color={colors.purple}>zData</Text>
           </Box>
         )}
-        {connected && (
+        {hasAgent && connected && (
           <Box paddingLeft={1}>
             <Text color={colors.gray}>
               {symbols.hive} View all {agentName}'s activity at{' '}
@@ -219,43 +562,55 @@ export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }
         )}
 
         <Box flexDirection="column" paddingLeft={1} paddingRight={1} minHeight={2}>
-          {!connected && <Spinner label="Initiating neural link..." />}
-          {activePollActivities.map((item, i) => {
-            if (item.type !== 'megathread') {
-              const formatted = activityFormatter.format(item);
-              if (formatted.length === 0) return <Box key={`active-${item.id ?? i}`} />;
-              return <Text key={`active-${item.id ?? i}`}>{formatted.join('\n')}</Text>;
-            }
-            return (
-              <Box key={`active-${item.id ?? i}`} flexDirection="column">
-                <Box>
-                  <Text color={colors.gray} dimColor>
-                    {formatTime(item.timestamp)}{' '}
-                  </Text>
-                  <Text color={colors.controversial}>{symbols.hive} </Text>
-                  <PollText
-                    color={colors.controversial}
-                    text={activityFormatter.getText(item)}
-                    animate={false}
-                  />
-                  <Text> </Text>
-                </Box>
-                {activityFormatter.getDetail(item) && (
-                  <Box marginLeft={13}>
+          {hasAgent && !connected && <Spinner label="Initiating neural link..." />}
+          {!hasAgent && !isStarting && (
+            <Text color={colors.gray}>
+              {symbols.hive} waiting for agent selection in the web dashboard...
+            </Text>
+          )}
+          {!hasAgent && isStarting && <Spinner label="Starting agent..." />}
+          {/* Active poll activities suppressed in web mode — the dashboard's
+              ActivityFeed renders the same events. */}
+          {!webMode &&
+            hasAgent &&
+            activePollActivities.map((item, i) => {
+              if (item.type !== 'megathread') {
+                const formatted = activityFormatter.format(item);
+                if (formatted.length === 0) return <Box key={`active-${item.id ?? i}`} />;
+                return <Text key={`active-${item.id ?? i}`}>{formatted.join('\n')}</Text>;
+              }
+              return (
+                <Box key={`active-${item.id ?? i}`} flexDirection="column">
+                  <Box>
+                    <Text color={colors.gray} dimColor>
+                      {formatTime(item.timestamp)}{' '}
+                    </Text>
+                    <Text color={colors.controversial}>{symbols.hive} </Text>
                     <PollText
-                      color={colors.gray}
-                      text={`"${activityFormatter.getDetail(item)}"`}
+                      color={colors.controversial}
+                      text={activityFormatter.getText(item)}
                       animate={false}
                     />
+                    <Text> </Text>
                   </Box>
-                )}
-              </Box>
-            );
-          })}
+                  {activityFormatter.getDetail(item) && (
+                    <Box marginLeft={13}>
+                      <PollText
+                        color={colors.gray}
+                        text={`"${activityFormatter.getDetail(item)}"`}
+                        animate={false}
+                      />
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
         </Box>
 
-        {/* Overlay (e.g. /positions) - takes over chat area & input when active */}
-        {overlay?.type === 'positions' && (
+        {/* Overlay (e.g. /positions) - takes over chat area & input when active.
+            Suppressed in web mode — overlays were terminal-only affordances
+            for slash commands; the equivalent UI lives in the dashboard. */}
+        {!webMode && hasAgent && overlay?.type === 'positions' && (
           <>
             <Box>
               <Text color={colors.gray}>
@@ -269,7 +624,7 @@ export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }
           </>
         )}
 
-        {overlay?.type === 'watchlist' && (
+        {!webMode && hasAgent && overlay?.type === 'watchlist' && (
           <>
             <Box>
               <Text color={colors.gray}>
@@ -287,8 +642,9 @@ export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }
           </>
         )}
 
-        {/* Chat section - visible after first message */}
-        {!overlay && (chatActivity.length > 0 || chatStreaming) && (
+        {/* Chat section - visible after first message.
+            Suppressed in web mode — the dashboard hosts chat. */}
+        {!webMode && hasAgent && !overlay && (chatActivity.length > 0 || chatStreaming) && (
           <>
             <Box>
               <Text color={colors.gray}>
@@ -354,15 +710,16 @@ export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }
           </>
         )}
 
-        {/* Input Bar — only when stdin is a real TTY */}
+        {/* Input Bar — only when stdin is a real TTY AND an agent is loaded.
+            Suppressed in web mode — chat input lives in the dashboard. */}
         <Box>
           <Text color={colors.gray}>
-            {isInteractive ? border.teeLeft : border.bottomLeft}
+            {!webMode && isInteractive && hasAgent ? border.teeLeft : border.bottomLeft}
             {border.horizontal.repeat(boxWidth - 2)}
-            {isInteractive ? border.teeRight : border.bottomRight}
+            {!webMode && isInteractive && hasAgent ? border.teeRight : border.bottomRight}
           </Text>
         </Box>
-        {isInteractive && !overlay && (
+        {!webMode && isInteractive && hasAgent && !overlay && (
           <>
             <Box paddingLeft={1}>
               <CommandInput
@@ -387,4 +744,4 @@ export const App: React.FC<AppProps> = ({ webPort, openInBrowser, webAuthToken }
       </Box>
     </>
   );
-}
+};

@@ -241,3 +241,14 @@ export function getModel(): Promise<LanguageModel> {
   _modelPromise = _loadModelForTier('runtime');
   return _modelPromise;
 }
+
+/**
+ * Drop the cached model promises so the next `getModel()` / `getScreenModel()`
+ * re-resolves against the (potentially-different) provider keys in `process.env`.
+ * Used on agent-exit so a switch to an agent with a different provider doesn't
+ * keep the previous agent's loaded model.
+ */
+export function resetModelCache(): void {
+  _modelPromise = null;
+  _screenModelPromise = null;
+}

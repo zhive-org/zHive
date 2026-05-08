@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Header } from './Header';
+import { AgentInfoCard } from './AgentInfoCard';
 import { ActivityFeed } from './ActivityFeed';
 import { ChatPanel } from './ChatPanel';
 import { CommandBar } from './CommandBar';
@@ -15,9 +16,10 @@ import type { WebState } from '../lib/types';
 interface DashboardProps {
   state: WebState;
   connected: boolean;
+  onOpenSettings: () => void;
 }
 
-export function Dashboard({ state, connected }: DashboardProps) {
+export function Dashboard({ state, connected, onOpenSettings }: DashboardProps) {
   const stream = useEventStream();
 
   const positions = state.positions;
@@ -41,6 +43,7 @@ export function Dashboard({ state, connected }: DashboardProps) {
         totalPnlUsd={pnl.totalPnlUsd}
         roePercent={pnl.roePercent}
         wsStatus={wsStatus}
+        onOpenSettings={onOpenSettings}
       />
       <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-4 lg:grid-cols-[1fr_320px]">
         <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
@@ -59,6 +62,7 @@ export function Dashboard({ state, connected }: DashboardProps) {
           <ChatPanel events={stream.events} agentName={state.agentName} />
         </div>
         <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+          <AgentInfoCard />
           <PositionsTable positions={pnl.positionsValued} mids={mids} />
           <WatchlistPanel watchlist={state.watchlist} mids={mids} />
         </aside>

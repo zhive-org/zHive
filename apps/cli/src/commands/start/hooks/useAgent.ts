@@ -3,6 +3,7 @@ import { AgentRuntime } from '../../../shared/agent/runtime';
 import { ModelInfo, resolveModelInfo } from '../../../shared/config/ai-providers';
 import { TradingAgent, TradingAgentCallbacks } from '../../../shared/trading/agent';
 import { extractErrorMessage } from '../../../shared/utils';
+import type { WebEventBus } from '../web/events';
 import { PollActivityItem } from './types';
 import { usePollActivity } from './usePollActivity';
 
@@ -84,6 +85,7 @@ export function useAgent({
               asset: decision.asset,
               reasoning: decision.reasoning,
               sizeUsd,
+              priceUsed: decision.priceUsed,
             },
             timestamp,
           );

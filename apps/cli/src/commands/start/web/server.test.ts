@@ -2,9 +2,14 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { buildApp } from './server';
+import { buildApp, type PickerAgentSummary } from './server';
 import { WebEventBus } from './events';
 import type { WebControl, WebState } from './control';
+
+const AGENTS: PickerAgentSummary[] = [
+  { name: 'sundae', created: '2026-01-01T00:00:00.000Z', bio: 'cone collector' },
+  { name: 'comet', created: '2026-02-01T00:00:00.000Z', bio: null },
+];
 
 function fakeControl(overrides: Partial<WebControl> = {}): WebControl {
   return {
@@ -12,10 +17,29 @@ function fakeControl(overrides: Partial<WebControl> = {}): WebControl {
     submitChat: vi.fn().mockResolvedValue(undefined),
     getState: vi.fn().mockResolvedValue({
       agentName: 'test',
+      bio: null,
+      avatarUrl: null,
       watchlist: ['BTC', 'ETH'],
       positions: [],
       memory: '',
+      soulContent: '',
+      strategyContent: '',
+      sectors: ['crypto'],
+      sentiment: 'neutral',
+      timeframes: ['4h'],
+      providerEnvVar: null,
     } satisfies WebState),
+    getAgentProfile: vi.fn().mockResolvedValue({
+      name: 'test',
+      bio: null,
+      avatarUrl: null,
+      frontendUrl: 'https://www.zhive.ai/agent/test',
+      tradingRank: null,
+    }),
+    updateConfig: vi.fn().mockResolvedValue(undefined),
+    updateSoul: vi.fn().mockResolvedValue(undefined),
+    updateStrategy: vi.fn().mockResolvedValue(undefined),
+    updateCredentials: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -53,6 +77,23 @@ describe('buildApp', () => {
       expect(body.events.map((e: { seq: number }) => e.seq)).toEqual([2]);
       expect(body.latest).toBe(2);
       expect(body.oldestSeq).toBe(1);
+      expect(body.generation).toBe(1);
+    });
+
+    it('backfills events when ?gen mismatches the bus generation', async () => {
+      const bus = new WebEventBus();
+      bus.push({ type: 'message', text: 'old' });
+      bus.reset();
+      bus.push({ type: 'message', text: 'new-1' });
+      bus.push({ type: 'message', text: 'new-2' });
+      const app = buildApp({ eventBus: bus, dashboardRoot: null });
+
+      // Stale cursor (since=99 from previous gen) + stale gen=1 → server
+      // returns the new gen's full buffer instead of filtering it away.
+      const res = await fetch(app, '/api/events?since=99&gen=1');
+      const body = await res.json();
+      expect(body.events.map((e: { seq: number }) => e.seq)).toEqual([1, 2]);
+      expect(body.generation).toBe(2);
     });
   });
 
@@ -119,6 +160,30 @@ describe('buildApp', () => {
       const body = await res.json();
       expect(body.agentName).toBe('test');
       expect(body.watchlist).toEqual(['BTC', 'ETH']);
+    });
+
+    it('GET /api/agent/profile returns the profile snapshot', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+
+      const res = await fetch(app, '/api/agent/profile');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.name).toBe('test');
+      expect(body.frontendUrl).toBe('https://www.zhive.ai/agent/test');
+      expect(body.tradingRank).toBeNull();
+    });
+
+    it('GET /api/agent/profile returns 503 when getAgentProfile throws', async () => {
+      const control = fakeControl({
+        getAgentProfile: vi.fn().mockRejectedValue(new Error('not ready')),
+      });
+      const app = buildApp({ control, dashboardRoot: null });
+
+      const res = await fetch(app, '/api/agent/profile');
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.error).toBe('not ready');
     });
 
     it('GET /api/state returns 503 when getState throws', async () => {
@@ -325,6 +390,263 @@ describe('buildApp', () => {
       });
       expect(res.status).toBe(413);
       expect(control.submitChat).not.toHaveBeenCalled();
+    });
+
+    it('dynamic mode: /api/state returns selecting when no runtime', async () => {
+      const app = buildApp({
+        getRuntimeState: () => null,
+        getAgents: () => AGENTS,
+        isStarting: () => false,
+        dashboardRoot: null,
+      });
+      const res = await fetch(app, '/api/state');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.phase).toBe('selecting');
+      expect(body.agents).toEqual(AGENTS);
+    });
+
+    it('dynamic mode: /api/state returns starting when isStarting() is true', async () => {
+      const app = buildApp({
+        getRuntimeState: () => null,
+        getAgents: () => AGENTS,
+        isStarting: () => true,
+        dashboardRoot: null,
+      });
+      const res = await fetch(app, '/api/state');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.phase).toBe('starting');
+      expect(body.agents).toEqual(AGENTS);
+    });
+
+    it('dynamic mode: /api/state returns ready once runtime is available', async () => {
+      const control = fakeControl();
+      const bus = new WebEventBus();
+      const app = buildApp({
+        getRuntimeState: () => ({ control, eventBus: bus }),
+        getAgents: () => AGENTS,
+        isStarting: () => false,
+        dashboardRoot: null,
+      });
+      const res = await fetch(app, '/api/state');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.phase).toBe('ready');
+      expect(body.agentName).toBe('test');
+    });
+
+    it('dynamic mode: /api/agents/select returns 202 and calls onSelect', async () => {
+      const onSelect = vi.fn().mockResolvedValue(undefined);
+      const app = buildApp({
+        getRuntimeState: () => null,
+        getAgents: () => AGENTS,
+        onSelect,
+        dashboardRoot: null,
+      });
+      const res = await fetch(app, '/api/agents/select', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'sundae' }),
+      });
+      expect(res.status).toBe(202);
+      expect(onSelect).toHaveBeenCalledWith('sundae');
+    });
+
+    it('dynamic mode: /api/agents/select rejects unknown agents with 400', async () => {
+      const onSelect = vi.fn();
+      const app = buildApp({
+        getRuntimeState: () => null,
+        getAgents: () => AGENTS,
+        onSelect,
+        dashboardRoot: null,
+      });
+      const res = await fetch(app, '/api/agents/select', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'nope' }),
+      });
+      expect(res.status).toBe(400);
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('dynamic mode: /api/agents/exit returns 200 and calls onExit', async () => {
+      const control = fakeControl();
+      const bus = new WebEventBus();
+      const onExit = vi.fn().mockResolvedValue(undefined);
+      const app = buildApp({
+        getRuntimeState: () => ({ control, eventBus: bus }),
+        getAgents: () => AGENTS,
+        onExit,
+        dashboardRoot: null,
+      });
+      const res = await fetch(app, '/api/agents/exit', { method: 'POST' });
+      expect(res.status).toBe(200);
+      expect(onExit).toHaveBeenCalledTimes(1);
+    });
+
+    it('dynamic mode: runtime endpoints return 503 when no runtime', async () => {
+      const app = buildApp({
+        getRuntimeState: () => null,
+        getAgents: () => AGENTS,
+        dashboardRoot: null,
+      });
+      const events = await fetch(app, '/api/events');
+      expect(events.status).toBe(503);
+      const command = await fetch(app, '/api/command', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: '/help' }),
+      });
+      expect(command.status).toBe(503);
+      const chat = await fetch(app, '/api/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: 'hi' }),
+      });
+      expect(chat.status).toBe(503);
+      const profile = await fetch(app, '/api/agent/profile');
+      expect(profile.status).toBe(503);
+    });
+
+    // ─── Config edit endpoints ──────────────────────
+
+    it('PUT /api/agent/config validates fields and forwards to updateConfig', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/agent/config', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ bio: 'new bio', sentiment: 'bullish', watchList: ['BTC'] }),
+      });
+      expect(res.status).toBe(200);
+      expect(control.updateConfig).toHaveBeenCalledWith({
+        bio: 'new bio',
+        sentiment: 'bullish',
+        watchList: ['BTC'],
+      });
+    });
+
+    it('PUT /api/agent/config rejects invalid sentiment with 400', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/agent/config', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sentiment: 'turbo' }),
+      });
+      expect(res.status).toBe(400);
+      expect(control.updateConfig).not.toHaveBeenCalled();
+    });
+
+    it('PUT /api/agent/config rejects non-string watchList entries with 400', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/agent/config', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ watchList: ['BTC', 42] }),
+      });
+      expect(res.status).toBe(400);
+      expect(control.updateConfig).not.toHaveBeenCalled();
+    });
+
+    it('PUT /api/agent/soul forwards content to updateSoul', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/agent/soul', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ content: '# new soul' }),
+      });
+      expect(res.status).toBe(200);
+      expect(control.updateSoul).toHaveBeenCalledWith('# new soul');
+    });
+
+    it('PUT /api/agent/soul rejects missing content with 400', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/agent/soul', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      expect(res.status).toBe(400);
+      expect(control.updateSoul).not.toHaveBeenCalled();
+    });
+
+    it('PUT /api/agent/strategy forwards content to updateStrategy', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/agent/strategy', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ content: '# new strategy' }),
+      });
+      expect(res.status).toBe(200);
+      expect(control.updateStrategy).toHaveBeenCalledWith('# new strategy');
+    });
+
+    it('PUT /api/agent/credentials forwards apiKey-only update', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/agent/credentials', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ apiKey: 'sk-test-rotated' }),
+      });
+      expect(res.status).toBe(200);
+      expect(control.updateCredentials).toHaveBeenCalledWith({ apiKey: 'sk-test-rotated' });
+    });
+
+    it('PUT /api/agent/credentials rejects invalid env var name with 400', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/agent/credentials', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ providerEnvVar: 'has spaces', providerKey: 'x' }),
+      });
+      expect(res.status).toBe(400);
+      expect(control.updateCredentials).not.toHaveBeenCalled();
+    });
+
+    it('PUT /api/agent/credentials rejects empty body with 400', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/agent/credentials', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      expect(res.status).toBe(400);
+      expect(control.updateCredentials).not.toHaveBeenCalled();
+    });
+
+    it('config edit endpoints return 503 in dynamic mode when no runtime', async () => {
+      const app = buildApp({
+        getRuntimeState: () => null,
+        getAgents: () => AGENTS,
+        dashboardRoot: null,
+      });
+      const config = await fetch(app, '/api/agent/config', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ bio: 'x' }),
+      });
+      expect(config.status).toBe(503);
+      const soul = await fetch(app, '/api/agent/soul', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ content: 'x' }),
+      });
+      expect(soul.status).toBe(503);
+      const creds = await fetch(app, '/api/agent/credentials', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ apiKey: 'x' }),
+      });
+      expect(creds.status).toBe(503);
     });
 
     it('catches rejections from executeCommand and reports via the event bus', async () => {

@@ -88,6 +88,18 @@ class PriceBufferStore {
     this._notify(key);
   }
 
+  /**
+   * Drop every buffered series and notify subscribers. Used at agent boundary
+   * (ready → selecting) so the next agent's mini-charts don't carry forward
+   * the prior agent's price history.
+   */
+  public clearAll(): void {
+    const keys = Array.from(this._buffers.keys());
+    this._buffers.clear();
+    this._lastAppendMs.clear();
+    for (const key of keys) this._notify(key);
+  }
+
   public registerStallHandler(key: string, stall: () => void): () => void {
     this._stallHandlers.set(key, stall);
     this._ensureHeartbeat();

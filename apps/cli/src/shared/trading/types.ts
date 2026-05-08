@@ -65,6 +65,12 @@ export interface TradeDecision {
   reasoning: string;
   tp?: number | null;
   sl?: number | null;
+  /** Mid (or mark, when mid is unavailable) the runtime fed into the
+   * evaluator's prompt for this asset. Set by the evaluator after the LLM
+   * returns; not part of the LLM-output schema. Used for after-the-fact
+   * audit ("what price did the agent see?") since the dashboard's WS feed
+   * sees a different snapshot. */
+  priceUsed?: number;
 }
 
 export interface AssetInfo {
