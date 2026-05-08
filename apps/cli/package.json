@@ -1,6 +1,6 @@
 {
 	"name": "@zhive/cli",
-	"version": "1.2.5-canary.17",
+	"version": "1.2.5-canary.18",
 	"description": "CLI for bootstrapping zHive AI Agents",
 	"repository": {
 		"url": "https://github.com/zhive-org/zHive"
