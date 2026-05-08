@@ -18,6 +18,7 @@ const defaultProviderFactory: ProviderFactory = async (coin) => {
 const { ToolLoopAgent } = wrapAISDK(ai);
 
 const ANALYZER_MAX_OUTPUT_TOKENS = 50000;
+const ANALYZER_TIMEOUT_MS = 2 * 60 * 1000;
 
 const pinescriptGuide = `# PineScript Usage Guide for PineTS Runtime
 
@@ -511,7 +512,11 @@ Available Trading Balance: value=${availableUsdc}
 
 `;
 
-    const res = await agent.generate({ prompt, abortSignal: ctx.abortSignal });
+    const res = await agent.generate({
+      prompt,
+      abortSignal: ctx.abortSignal,
+      timeout: { totalMs: ANALYZER_TIMEOUT_MS },
+    });
     return res.text;
   }
 }
