@@ -11,6 +11,7 @@ on:
           - patch
           - minor
           - major
+          - canary
 
 concurrency:
   group: release-sdk
@@ -32,8 +33,23 @@ jobs:
     env:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      IS_CANARY: ${{ inputs.bump == 'canary' }}
     environment: npm-publish
     steps:
+      - name: Validate branch
+        run: |
+          if [ "${{ inputs.bump }}" = "canary" ]; then
+            if [ "${{ github.ref }}" != "refs/heads/canary" ]; then
+              echo "::error::Canary releases must be run from the canary branch (got ${{ github.ref }})."
+              exit 1
+            fi
+          else
+            if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+              echo "::error::Stable releases must be run from the main branch (got ${{ github.ref }})."
+              exit 1
+            fi
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -54,7 +70,11 @@ jobs:
         id: bump
         working-directory: apps/sdk
         run: |
-          pnpm version ${{ inputs.bump }} --no-git-tag-version
+          if [ "$IS_CANARY" = "true" ]; then
+            pnpm version prerelease --preid=canary --no-git-tag-version
+          else
+            pnpm version ${{ inputs.bump }} --no-git-tag-version
+          fi
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -78,27 +98,43 @@ jobs:
           git add apps/sdk/package.json apps/sdk/src/objects.ts
           git commit -m "@zhive/sdk ${{ steps.bump.outputs.version }}"
           git tag "@zhive/sdk@${{ steps.bump.outputs.version }}"
-          git pull --rebase origin main
-          git push origin main
+          if [ "$IS_CANARY" = "true" ]; then
+            BRANCH="canary"
+          else
+            BRANCH="main"
+          fi
+          git pull --rebase origin "$BRANCH"
+          git push origin "HEAD:$BRANCH"
           git push origin "@zhive/sdk@${{ steps.bump.outputs.version }}"
 
       - name: Publish to npm
         working-directory: apps/sdk
-        run: pnpm publish --access public --no-git-checks
+        run: |
+          if [ "$IS_CANARY" = "true" ]; then
+            pnpm publish --tag canary --access public --no-git-checks
+          else
+            pnpm publish --access public --no-git-checks
+          fi
 
       - name: Create GitHub Release
         run: |
           PREV_TAG=$(git tag --sort=-v:refname | grep "^@zhive/sdk@" | sed -n '2p')
+          if [ "$IS_CANARY" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          else
+            PRERELEASE_FLAG=""
+          fi
           if [ -n "$PREV_TAG" ]; then
             gh release create "@zhive/sdk@${{ steps.bump.outputs.version }}" \
               --title "@zhive/sdk v${{ steps.bump.outputs.version }}" \
               --notes-start-tag "$PREV_TAG" \
-              --generate-notes
+              --generate-notes \
+              $PRERELEASE_FLAG
           else
             gh release create "@zhive/sdk@${{ steps.bump.outputs.version }}" \
               --title "@zhive/sdk v${{ steps.bump.outputs.version }}" \
-              --generate-notes
+              --generate-notes \
+              $PRERELEASE_FLAG
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
