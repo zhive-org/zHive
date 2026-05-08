@@ -5,7 +5,7 @@ import { AgentRuntime } from '../../../shared/agent/runtime';
 import { startWebServer, type WebServerHandle } from '../web/server';
 import type { WebEventBus } from '../web/events';
 import type { WebControl } from '../web/control';
-import { extractErrorMessage } from '../../../shared/megathread/utils';
+import { extractErrorMessage } from '../../../shared/utils';
 
 export type WebServerStatus =
   | { status: 'disabled' }
