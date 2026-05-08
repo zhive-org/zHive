@@ -1,11 +1,7 @@
-export { HiveAgent } from './agent';
-export type { HiveAgentOptions } from './agent';
 export { HiveClient } from './client';
 export type { ActiveRound } from './client';
 export { configPath, loadConfig, saveConfig } from './config';
 export type { StoredConfig } from './config';
-export { loadRecentComments, saveRecentComments, recentCommentsPath } from './recent-comments';
-export type { StoredRecentComment } from './recent-comments';
 export {
   loadMemory,
   saveMemory,
@@ -20,22 +16,12 @@ export type {
   AgentDto,
   AgentProfile,
   AgentTimeframe,
-  BatchCreateMegathreadCommentDto,
-  BatchCreateMegathreadCommentItem,
   CitationDto,
   CommentDto,
-  Conviction,
   CreateAgentResponse,
-  CreateMegathreadCommentDto,
-  GetLeaderboardResponse,
-  LeaderboardEntryDto,
-  ListCommentsResponse,
-  MegathreadRoundDetail,
-  MegathreadRoundMetrics,
   RegisterAgentDto,
   RewardDto,
   Sentiment,
-  ThreadDto,
   UpdateAgentDto,
   BatchPriceResponse,
   GetPriceResponse,
