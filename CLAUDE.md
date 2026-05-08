@@ -2,87 +2,69 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build & Dev Commands
+## Repo Layout
 
-This is a pnpm 9 monorepo orchestrated by Turborepo.
+pnpm + Turborepo monorepo (Node ≥18, pnpm 9, TypeScript 5.9).
 
-```sh
-pnpm install              # install all dependencies
-pnpm build                # build all workspaces (turbo run build)
-pnpm lint                 # lint all workspaces
-pnpm check-types          # typecheck all workspaces
-pnpm format               # prettier format all .ts/.tsx/.md files
+- `apps/cli` — `@zhive/cli`, the user-facing CLI/TUI and trading runtime. Bundled with `tsup` to a single ESM bin (`dist/index.js`). React/Ink for the TUI.
+- `apps/sdk` — `@zhive/sdk`, HTTP client + agent config/memory helpers consumed by the CLI. Built with plain `tsc`.
+- `packages/objects` — internal source-of-truth for shared DTOs (Mongo-backed types from the platform). **Not** a runtime dependency of the SDK: a `prebuild` script (`apps/sdk/scripts/generate-objects.js`) bundles selected DTO files into `apps/sdk/src/objects.ts` so the published SDK stays dep-free.
+- `skills/`, `templates/` (under `apps/cli`) — Markdown skill templates shipped with the CLI; the `create` wizard scaffolds agent dirs from `apps/cli/templates`.
 
-# Filter to a single workspace
-pnpm build --filter=@zhive/cli
-pnpm build --filter=@zhive/sdk
-pnpm build --filter=@zhive/objects
-```
+## Common Commands
 
-### Testing
-
-All workspaces use **Vitest**. Tests are colocated with source files as `*.test.ts`.
+Run from the repo root unless noted:
 
 ```sh
-# Run tests for a specific workspace
-cd apps/cli && pnpm test          # vitest --run --passWithNoTests
-cd apps/sdk && pnpm test          # vitest run
-
-# Run a single test file
-cd apps/cli && npx vitest --run src/shared/config/agent.test.ts
+pnpm install                 # bootstrap all workspaces
+pnpm build                   # turbo build (respects ^build deps; SDK runs prebuild → tsc, CLI runs tsup)
+pnpm test                    # turbo test (vitest in CLI + SDK)
+pnpm check-types             # turbo tsc --noEmit across workspaces
+pnpm format                  # prettier over **/*.{ts,tsx,md}
+pnpm dev                     # turbo dev (persistent; runs CLI in tsx watch mode)
 ```
 
-The CLI workspace has a vitest config at `apps/cli/vitest.config.ts` with `globals: true` and 60s timeouts.
+Single-package work (run inside `apps/cli`, `apps/sdk`, or `packages/objects`):
 
-## Architecture
+```sh
+pnpm --filter @zhive/cli dev       # tsx src/index.ts with DEV=true
+pnpm --filter @zhive/cli test      # vitest --run
+pnpm --filter @zhive/cli test -- path/to/file.test.ts   # single test file
+pnpm --filter @zhive/cli test -- -t "pattern"           # by test name
+pnpm --filter @zhive/sdk test
+```
 
-### Workspaces
+CLI release is via `apps/cli/scripts/deploy.cjs` (`pnpm --filter @zhive/cli deploy`); the repo currently ships `-canary.*` versions on the `canary` branch.
 
-- **`packages/objects`** — Pure TypeScript DTOs, enums, and interfaces shared across the platform. No runtime dependencies. Built with plain `tsc`.
+## Architecture (CLI runtime)
 
-- **`apps/sdk`** (`@zhive/sdk`) — Distributable SDK for building zHive AI agents. Provides `HiveAgent` (polling agent loop), `HiveClient` (axios HTTP client), and config/memory persistence utilities.
+The interesting code lives in `apps/cli/src`. The CLI is a Commander program (`src/index.ts`) composed of subcommand factories under `src/commands/<name>/commands/index.ts` (e.g. `create`, `start`, `backtest`, `agent`, `doctor`, `indicator`, `market`, `ta`, `platform`, `list`).
 
-- **`apps/cli`** (`@zhive/cli`) — Interactive CLI for creating, managing, and running agents. Uses Commander.js for commands and Ink (React for terminal) for TUI rendering.
+Trading-runtime layering (under `src/shared/`):
 
-### DTO Bundling (objects → sdk)
+- `agent/runtime.ts` — top-level tick loop driving an agent. Loads agent config + memory via `@zhive/sdk`, then calls into the trading layer per tick.
+- `trading/agent.ts` + `trading/evaluator.ts` — the LLM-driven evaluator. Builds a prompt from `STRATEGY.md` + watchlist + open positions and asks the model (via `ai` SDK + provider packages) to emit one `TradeDecision` per asset. Decisions are typed as `LONG | SHORT | CLOSE | HOLD` with `sizeUsd`, `leverage`, optional `tp`/`sl` expressed as **percent PnL on margin** (not price).
+- `trading/exchange/` + `shared/hyperliquid/service.ts` — exchange adapter that turns decisions into orders via `@nktkas/hyperliquid` (uses `viem` for signing). `TradeExecutor` is the boundary the runtime calls; it has a known NaN guard gap in `executeMarketClose` (see memory note).
+- `trading/risk.ts`, `trading/analyzer.ts` — sizing, leverage, and TP/SL conversion to price levels.
+- `tools/` — tools exposed to the LLM during evaluation: `market` (price/OHLC), indicator math via `indicatorts`, `pinescript` (Pine via `pinets`), `mindshare`, `agent-files`, `read-skill`, `execute-skill`. Skills are Markdown files at `skills/<id>/SKILL.md` inside an agent dir; `executeSkill` runs the skill body as additional instructions.
+- `backtest/` — replay engine (`exchange.ts`, `candle-store.ts`) that drives the same evaluator/runtime against historical Hyperliquid candles for the `backtest` command. Has its own paper-trading exchange + comprehensive tests.
+- `chat/`, `cache/`, `memory/`, `config/`, `ta/` — supporting subsystems (agentic chat UI, tool/result caching, agent `MEMORY.md` topic-partitioned writer, config loader, technical-analysis helpers).
 
-`@zhive/sdk` does **not** depend on `@zhive/objects` at runtime. Instead, `apps/sdk/scripts/generate-objects.js` concatenates selected source files from `packages/objects` into `apps/sdk/src/objects.ts` (stripping imports). This runs automatically via `prebuild`. **Do not edit `src/objects.ts` directly** — edit files in `packages/objects/` and rebuild.
+The TUI (`src/components/*.tsx`) is rendered with Ink; `start` mounts the dashboard and feeds it events from `agent/runtime.ts`.
 
-### Agent Configuration via Markdown
+## SDK ↔ objects coupling
 
-Agent personality and strategy are defined in Markdown files parsed by regex at startup:
-- **`SOUL.md`** — Agent personality/voice. Bio extracted from `## Bio` section.
-- **`STRATEGY.md`** — Trading strategy. Sentiment, sectors, and timeframes extracted via regex.
+When DTOs change in `packages/objects`, you must regenerate the SDK's bundled `objects.ts` (the SDK does **not** import `@zhive/objects` at runtime to keep the published bundle dep-free):
 
-### AI Integration
+```sh
+pnpm --filter @zhive/sdk run prebuild   # or just `pnpm --filter @zhive/sdk build`
+```
 
-The CLI uses **Vercel AI SDK** (`ai` package) for LLM inference. The agent loop in `apps/cli/src/shared/agent/analysis.ts`:
-1. `screenMegathreadRound()` — cheap `generateObject` call to decide engage/skip
-2. `processMegathreadRound()` — agentic tool loop with structured output
+The `prebuild` script copies a curated allowlist of DTO files (see top of `apps/sdk/scripts/generate-objects.js`) into `apps/sdk/src/objects.ts` with a "do not edit by hand" header. Don't hand-edit that file.
 
-Supported providers: OpenAI, Anthropic, Google, xAI, OpenRouter (configured in `shared/config/ai-providers.ts`).
+## Conventions
 
-### Skills System
-
-Agents can have a `skills/` directory with `SKILL.md` files (YAML frontmatter + body). Skills are exposed to the agent as an `executeSkill` tool that spins up a subagent.
-
-### TUI / Headless Duality
-
-`MegathreadReporter` interface (in `shared/agent/handler.ts`) abstracts UI callbacks. The `start` command renders an Ink React app; the `run` command uses console.log reporting. Both share the same handler logic.
-
-### Filesystem-Backed State
-
-Agent state is stored as flat files in the agent's working directory:
-- `config.json` — API keys/credentials (with corruption recovery and legacy migration)
-- `MEMORY.md` — agent memory (200-line soft limit)
-- `recent-comments.json` — recent prediction tracking
-
-### Polling Model
-
-`HiveAgent` polls for unpredicted megathread rounds at 4-hour interval boundaries with a 10-second buffer, using `setTimeout` scheduling (not WebSocket).
-
-## TypeScript Configuration
-
-- **SDK and objects**: `module: commonjs`, `moduleResolution: node`
-- **CLI**: `module: NodeNext`, `moduleResolution: NodeNext`, JSX via `react-jsx`
-- All target ES2021
+- ESM throughout (`"type": "module"` in CLI). Imports inside the CLI use relative paths without extensions; tsup handles bundling.
+- Tests are colocated as `*.test.ts` next to the code (e.g. `service.test.ts`, `exchange.test.ts`, SDK `memory.test.ts`).
+- The CLI is published as a single bundled binary, so the `external` list in `apps/cli/tsup.config.ts` is auto-derived from `package.json` deps — adding a new runtime dep just requires a `package.json` update, no tsup change.
+- Prettier config at repo root governs all `.ts/.tsx/.md`. There is no shared ESLint config; the SDK and `objects` package each carry their own.
