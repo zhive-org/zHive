@@ -60,6 +60,7 @@ describe('createAgentProfileCommand', () => {
       roi_pct: 0.1234,
       win_rate_pct: 0.6789,
       max_drawdown_pct: 0.0521,
+      total_trades: 42,
     });
 
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
@@ -126,6 +127,8 @@ describe('createAgentProfileCommand', () => {
     expect(output).toContain('67.89%');
     expect(output).toContain('MAX DD:');
     expect(output).toContain('5.21%');
+    expect(output).toContain('TRADES:');
+    expect(output).toContain('42');
   });
 
   it('formats negative PNL and ROI with minus sign', async () => {

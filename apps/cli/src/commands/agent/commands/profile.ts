@@ -43,6 +43,7 @@ export const createAgentProfileCommand = (): Command => {
       console.log(`  ${styled.gray('ROI:')}        ${styledTextBySign(roiText)}`);
       console.log(`  ${styled.gray('WIN RATE:')}   ${styled.green(winRateText)}`);
       console.log(`  ${styled.gray('MAX DD:')}     ${styled.red(maxDrawdownText)}`);
+      console.log(`  ${styled.gray('TRADES:')}     ${rank.total_trades}`);
       console.log('');
     });
 };

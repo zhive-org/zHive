@@ -16,6 +16,7 @@ const COL = {
   roi: 10,
   winRate: 10,
   maxDd: 10,
+  trades: 8,
   provider: 0,
   created: 14,
 } as const;
@@ -115,11 +116,26 @@ export function ListApp(): React.ReactElement {
   const roiW = COL.roi;
   const winRateW = COL.winRate;
   const maxDdW = COL.maxDd;
+  const tradesW = COL.trades;
   const createdW = COL.created;
 
   const sep = border.horizontal;
   const totalWidth =
-    nameW + 1 + pnlW + 1 + roiW + 1 + winRateW + 1 + maxDdW + 1 + providerW + 1 + createdW;
+    nameW +
+    1 +
+    pnlW +
+    1 +
+    roiW +
+    1 +
+    winRateW +
+    1 +
+    maxDdW +
+    1 +
+    tradesW +
+    1 +
+    providerW +
+    1 +
+    createdW;
 
   const topBorder = `${border.topLeft}${sep.repeat(totalWidth)}${border.topRight}`;
   const midBorder = `${border.teeLeft}${sep.repeat(totalWidth)}${border.teeRight}`;
@@ -163,6 +179,10 @@ export function ListApp(): React.ReactElement {
         </Text>
         <Text color={colors.honey}>{v}</Text>
         <Text color={colors.white} bold>
+          {cell('Trades', tradesW)}
+        </Text>
+        <Text color={colors.honey}>{v}</Text>
+        <Text color={colors.white} bold>
           {cell('Provider', providerW)}
         </Text>
         <Text color={colors.honey}>{v}</Text>
@@ -183,6 +203,7 @@ export function ListApp(): React.ReactElement {
         const roiText = r !== null ? formatSignedPct(roiValue) : '-';
         const winRateText = r !== null ? `${(r.win_rate_pct * 100).toFixed(2)}%` : '-';
         const maxDdText = r !== null ? `${(r.max_drawdown_pct * 100).toFixed(2)}%` : '-';
+        const tradesText = r !== null ? `${r.total_trades}` : '-';
 
         const pnlColor =
           r === null
@@ -215,6 +236,10 @@ export function ListApp(): React.ReactElement {
             <Text color={winRateColor}>{cell(winRateText, winRateW)}</Text>
             <Text color={colors.honey}>{v}</Text>
             <Text color={maxDdColor}>{cell(maxDdText, maxDdW)}</Text>
+            <Text color={colors.honey}>{v}</Text>
+            <Text color={r === null ? colors.grayDim : colors.white}>
+              {cell(tradesText, tradesW)}
+            </Text>
             <Text color={colors.honey}>{v}</Text>
             <Text color={colors.gray}>{cell(row.info.provider, providerW)}</Text>
             <Text color={colors.honey}>{v}</Text>
