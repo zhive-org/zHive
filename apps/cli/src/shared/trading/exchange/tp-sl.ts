@@ -25,7 +25,8 @@ export function stopLossTriggerPrice(
   leverage: number,
 ): number {
   const move = pnlPctToPriceMovePct(slPnlPct, leverage);
-  return side === 'long' ? entryPrice * (1 - move) : entryPrice * (1 + move);
+  const sl = side === 'long' ? entryPrice * (1 - move) : entryPrice * (1 + move);
+  return Math.max(sl, 0);
 }
 
 /**
@@ -40,5 +41,6 @@ export function takeProfitTriggerPrice(
   leverage: number,
 ): number {
   const move = pnlPctToPriceMovePct(tpPnlPct, leverage);
-  return side === 'long' ? entryPrice * (1 + move) : entryPrice * (1 - move);
+  const tp = side === 'long' ? entryPrice * (1 + move) : entryPrice * (1 - move);
+  return Math.max(tp, 0);
 }
