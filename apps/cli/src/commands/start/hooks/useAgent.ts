@@ -61,11 +61,21 @@ export function useAgent({
           const timestamp = new Date();
           addLog({ type: 'message', text, timestamp });
           eventBus?.push({ type: 'message', text }, timestamp);
+          eventBus?.push(
+            { type: 'analyzing', state: 'started', assetCount: assets.length },
+            timestamp,
+          );
+        },
+        onEvalReturned() {
+          eventBus?.push({ type: 'analyzing', state: 'completed' }, new Date());
         },
         onError(message) {
           const timestamp = new Date();
           addLog({ type: 'error', errorMessage: message, timestamp });
           eventBus?.push({ type: 'error', errorMessage: message }, timestamp);
+          // Ensure the dashboard's thinking animation stops if the LLM call
+          // errored out before onEvalReturned fired.
+          eventBus?.push({ type: 'analyzing', state: 'completed' }, timestamp);
         },
         onEvalCompleted(decision) {
           const sizeUsd = decision.action === 'HOLD' ? undefined : decision.sizeUsd;

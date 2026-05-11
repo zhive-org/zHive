@@ -13,7 +13,8 @@ export type WebEventPayload =
     }
   | { type: 'online'; name: string; bio: string }
   | { type: 'chat'; role: 'user' | 'agent' | 'error' | 'tool'; text: string }
-  | { type: 'system'; kind: 'clear-chat' };
+  | { type: 'system'; kind: 'clear-chat' }
+  | { type: 'analyzing'; state: 'started' | 'completed'; assetCount?: number };
 
 export type WebEvent = { seq: number; timestamp: string } & WebEventPayload;
 

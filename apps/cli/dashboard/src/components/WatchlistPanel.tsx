@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { LivelineMiniChart } from './LivelineMiniChart';
 import { formatUsd } from '../lib/format';
 
@@ -28,7 +29,18 @@ export function WatchlistPanel({ watchlist, mids }: WatchlistPanelProps) {
   );
 }
 
-function WatchlistRow({ coin, livePrice }: { coin: string; livePrice: number | undefined }) {
+// Memoized at row granularity so a single coin's price tick doesn't
+// re-render the rows for the OTHER coins. `mids` is a fresh `Map` on
+// every WS tick — without per-row memo, `mids.get(coin)` returns the
+// same number for unchanged coins but the row still re-renders because
+// the parent did, cascading into Liveline.
+const WatchlistRow = memo(function WatchlistRow({
+  coin,
+  livePrice,
+}: {
+  coin: string;
+  livePrice: number | undefined;
+}) {
   return (
     <div className="px-3 py-2">
       <div className="flex items-baseline justify-between gap-2">
@@ -42,4 +54,4 @@ function WatchlistRow({ coin, livePrice }: { coin: string; livePrice: number | u
       </div>
     </div>
   );
-}
+});

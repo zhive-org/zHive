@@ -94,7 +94,14 @@ class HyperliquidClient {
             const price = Number(priceStr);
             if (Number.isFinite(price)) this._mids.set(coin, price);
           }
-          this._setStatus('live');
+          // `_setStatus` short-circuits when next === this._status, so once
+          // we've flipped to 'live' on the first message it will NOT notify
+          // again — and subscribers stop hearing about subsequent mids
+          // updates. Notify explicitly after applying the new mids so the
+          // useMids hook re-computes its snapshot for every WS tick, not
+          // just on the connecting→live transition.
+          if (this._status === 'live') this._notify();
+          else this._setStatus('live');
         }
       } catch {
         // Ignore malformed messages — they shouldn't end the stream.

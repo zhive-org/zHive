@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Liveline } from 'liveline';
 import type { LivelinePoint, Momentum } from 'liveline';
 import { formatUsd } from '../lib/format';
@@ -54,7 +54,7 @@ function getLivelineMomentum(points: LivelinePoint[]): Momentum {
   return last >= first ? 'up' : 'down';
 }
 
-export function LivelineMiniChart({ symbol, livePrice, className }: LivelineMiniChartProps) {
+function LivelineMiniChartInner({ symbol, livePrice, className }: LivelineMiniChartProps) {
   const { data, value, activeWindowSecs } = useLivelineData(livePrice, {
     maxPoints: 720,
     windowSecs: WINDOW_SECS,
@@ -87,3 +87,12 @@ export function LivelineMiniChart({ symbol, livePrice, className }: LivelineMini
     </div>
   );
 }
+
+// React.memo skips re-renders when symbol/livePrice/className haven't
+// changed by value. Without it, every mids WS tick (~1Hz per coin)
+// re-renders EVERY watchlist row, including the ones whose price didn't
+// change — N coins × per-tick re-renders for no reason, and each one
+// touches Liveline's prop interface even though our hoist made the props
+// referentially stable. Memo turns this into "only re-render the row
+// whose price actually changed."
+export const LivelineMiniChart = memo(LivelineMiniChartInner);

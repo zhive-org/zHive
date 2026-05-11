@@ -27,6 +27,10 @@ class PriceBufferStore {
   private _stallHandlers: Map<string, () => void> = new Map();
   private _heartbeatId: number | null = null;
   private _emptyBuffer: LivelinePoint[] = [];
+  /** Highest buffer length we've ever observed per key, so the seed branch
+   * can warn when it's about to wipe non-trivial history. Diagnostic only —
+   * does NOT participate in buffer semantics. */
+  private _historyHighWaterMark: Map<string, number> = new Map();
 
   public subscribe(key: string, cb: () => void): () => void {
     let set = this._listeners.get(key);
@@ -55,11 +59,19 @@ class PriceBufferStore {
     const prev = this._buffers.get(key);
 
     if (!prev || prev.length === 0) {
+      // Diagnostic: if we're re-seeding a key that previously had a non-empty
+      // buffer, something cleared it. Help track down "history wipe" reports.
+      const hadHistory = this._historyHighWaterMark.get(key);
+      if (hadHistory !== undefined && hadHistory > 1) {
+        // eslint-disable-next-line no-console
+        console.warn(`[priceBufferStore] re-seeding ${key} after history of ${hadHistory} points`);
+      }
       const seeded = buildFlatWindow(point.time, point.value, policy.initialWindowSecs);
       // Replace the last seed point's time with the actual tick time so live value ends at `now`.
       seeded[seeded.length - 1] = point;
       this._buffers.set(key, seeded);
       this._lastAppendMs.set(key, Date.now());
+      this._historyHighWaterMark.set(key, seeded.length);
       this._notify(key);
       return;
     }
@@ -78,6 +90,8 @@ class PriceBufferStore {
         : appended;
     this._buffers.set(key, capped);
     this._lastAppendMs.set(key, Date.now());
+    const hwm = this._historyHighWaterMark.get(key) ?? 0;
+    if (capped.length > hwm) this._historyHighWaterMark.set(key, capped.length);
     this._notify(key);
   }
 
@@ -85,6 +99,9 @@ class PriceBufferStore {
     if (!this._buffers.has(key)) return;
     this._buffers.delete(key);
     this._lastAppendMs.delete(key);
+    // Diagnostic instrumentation only — drops the high-water mark so the
+    // next legitimate seed doesn't warn about a "wipe".
+    this._historyHighWaterMark.delete(key);
     this._notify(key);
   }
 
@@ -97,6 +114,7 @@ class PriceBufferStore {
     const keys = Array.from(this._buffers.keys());
     this._buffers.clear();
     this._lastAppendMs.clear();
+    this._historyHighWaterMark.clear();
     for (const key of keys) this._notify(key);
   }
 

@@ -12,6 +12,11 @@ export type TradingAgentCallbacks = {
   onError?: (err: string) => void;
   onSleep?: (sleepTimeMs: number) => void;
   onEvalStarted?: (assets: string[]) => void;
+  /** Fires once per tick the moment the LLM evaluator returns, before any
+   * per-decision callbacks. Used by the dashboard to clear its "thinking"
+   * animation — `onEvalCompleted` fires per-decision and would race the
+   * thinking indicator against the first decision row. */
+  onEvalReturned?: (decisions: TradeDecision[]) => void;
   onEvalCompleted?: (decision: TradeDecision) => void;
 };
 
@@ -106,6 +111,7 @@ export class TradingAgent {
     const ctx = { abortSignal: this.abortController.signal };
 
     const decisions = await this.evaluator.evaluate(ctx, assets, account);
+    this.callbacks.onEvalReturned?.(decisions);
 
     for (let i = 0; i < decisions.length; i++) {
       const decision = decisions[i];
