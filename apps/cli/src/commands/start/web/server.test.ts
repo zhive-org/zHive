@@ -36,6 +36,17 @@ function fakeControl(overrides: Partial<WebControl> = {}): WebControl {
       frontendUrl: 'https://www.zhive.ai/agent/test',
       tradingRank: null,
     }),
+    getAgentPortfolio: vi.fn().mockResolvedValue({
+      agent_id: 'agent_test_id',
+      starting_equity_usd: 10_000,
+      current_equity_usd: 10_000,
+      all_time_pnl_usd: 0,
+      open_position_count: 0,
+      total_trades: 0,
+      daily_pnl: [],
+    }),
+    getAgentPositions: vi.fn().mockResolvedValue({ entries: [], next_cursor: null }),
+    getAgentClosedTrades: vi.fn().mockResolvedValue({ entries: [], next_cursor: null }),
     updateConfig: vi.fn().mockResolvedValue(undefined),
     updateSoul: vi.fn().mockResolvedValue(undefined),
     updateStrategy: vi.fn().mockResolvedValue(undefined),
@@ -184,6 +195,66 @@ describe('buildApp', () => {
       expect(res.status).toBe(503);
       const body = await res.json();
       expect(body.error).toBe('not ready');
+    });
+
+    it('GET /api/agent/portfolio forwards range and returns the upstream shape', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+
+      const res = await fetch(app, '/api/agent/portfolio?range=30d');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.starting_equity_usd).toBe(10_000);
+      expect(body.daily_pnl).toEqual([]);
+      expect(control.getAgentPortfolio).toHaveBeenCalledWith('30d');
+    });
+
+    it('GET /api/agent/portfolio defaults to range=all when missing or invalid', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+
+      await fetch(app, '/api/agent/portfolio');
+      expect(control.getAgentPortfolio).toHaveBeenLastCalledWith('all');
+
+      await fetch(app, '/api/agent/portfolio?range=bogus');
+      expect(control.getAgentPortfolio).toHaveBeenLastCalledWith('all');
+    });
+
+    it('GET /api/agent/portfolio returns 503 when getAgentPortfolio throws', async () => {
+      const control = fakeControl({
+        getAgentPortfolio: vi.fn().mockRejectedValue(new Error('upstream down')),
+      });
+      const app = buildApp({ control, dashboardRoot: null });
+
+      const res = await fetch(app, '/api/agent/portfolio?range=7d');
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.error).toBe('upstream down');
+    });
+
+    it('GET /api/agent/positions returns the upstream page', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+
+      const res = await fetch(app, '/api/agent/positions');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toEqual({ entries: [], next_cursor: null });
+      expect(control.getAgentPositions).toHaveBeenCalled();
+    });
+
+    it('GET /api/agent/closed-trades forwards timeframe and defaults to all', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+
+      await fetch(app, '/api/agent/closed-trades?timeframe=7d');
+      expect(control.getAgentClosedTrades).toHaveBeenLastCalledWith('7d');
+
+      await fetch(app, '/api/agent/closed-trades');
+      expect(control.getAgentClosedTrades).toHaveBeenLastCalledWith('all');
+
+      await fetch(app, '/api/agent/closed-trades?timeframe=bogus');
+      expect(control.getAgentClosedTrades).toHaveBeenLastCalledWith('all');
     });
 
     it('GET /api/state returns 503 when getState throws', async () => {
@@ -390,6 +461,43 @@ describe('buildApp', () => {
       });
       expect(res.status).toBe(413);
       expect(control.submitChat).not.toHaveBeenCalled();
+    });
+
+    it('dynamic mode: /api/agents/stats returns the cached snapshot', async () => {
+      const stats = {
+        sundae: {
+          agent_id: 'id_sundae',
+          agent_name: 'sundae',
+          total_trades: 12,
+          total_pnl_usd: 320,
+          roi_pct: 3.2,
+          sharpe_ratio: 0,
+          max_drawdown_pct: 0,
+          win_rate_pct: 0.5,
+          profit_factor: null,
+          avg_hold_duration_ms: 0,
+        },
+        comet: null,
+      };
+      const app = buildApp({
+        getRuntimeState: () => null,
+        getAgents: () => AGENTS,
+        getAgentsStats: () => stats,
+        dashboardRoot: null,
+      });
+      const res = await fetch(app, '/api/agents/stats');
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual(stats);
+    });
+
+    it('dynamic mode: /api/agents/stats is omitted when getAgentsStats is not provided', async () => {
+      const app = buildApp({
+        getRuntimeState: () => null,
+        getAgents: () => AGENTS,
+        dashboardRoot: null,
+      });
+      const res = await fetch(app, '/api/agents/stats');
+      expect(res.status).toBe(404);
     });
 
     it('dynamic mode: /api/state returns selecting when no runtime', async () => {

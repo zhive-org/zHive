@@ -1,7 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { Box, Static, Text } from 'ink';
-import { loadMemory } from '@zhive/sdk';
+import {
+  HiveClient,
+  loadMemory,
+  type AgentPortfolioRange,
+  type AgentPortfolioV2Dto,
+  type AgentTradingStatsV2BatchEntryDto,
+  type ClosedTradesPageDto,
+  type ClosedTradesTimeframe,
+  type PositionsPageDto,
+} from '@zhive/sdk';
 import { useAgent } from '../hooks/useAgent';
 import { PollText, Spinner } from './Spinner';
 import { CommandInput } from './CommandInput';
@@ -24,7 +33,7 @@ import type {
   WebControl,
   WebState,
 } from '../web/control';
-import type { PickerAgentSummary } from '../web/server';
+import type { AgentsStatsMap, PickerAgentSummary } from '../web/server';
 import { executeSlashCommand, type SlashCommandCallbacks } from '../services/command-registry';
 import { ZhiveExchange } from '../../../shared/trading/exchange/zhive';
 import type { DetailedPosition } from '../../../shared/trading/types';
@@ -42,6 +51,10 @@ import { resetAgentScopedState, resetSharedCaches } from '../../../shared/reset-
 
 const POSITIONS_TTL_MS = 5_000;
 const AGENT_PROFILE_TTL_MS = 60_000;
+const AGENT_PORTFOLIO_TTL_MS = 60_000;
+const AGENT_POSITIONS_TTL_MS = 5_000;
+const AGENT_CLOSED_TRADES_TTL_MS = 30_000;
+const PICKER_STATS_REFRESH_MS = 60_000;
 
 interface HiveAgentLookup {
   id: string;
@@ -134,6 +147,31 @@ export const App: React.FC<AppProps> = ({
   if (!profileCacheRef.current) {
     profileCacheRef.current = new TtlCache<AgentProfileResponse>(AGENT_PROFILE_TTL_MS);
   }
+  const portfolioCacheRef = useRef<TtlCache<AgentPortfolioV2Dto> | null>(null);
+  if (!portfolioCacheRef.current) {
+    portfolioCacheRef.current = new TtlCache<AgentPortfolioV2Dto>(AGENT_PORTFOLIO_TTL_MS);
+  }
+  const agentPositionsCacheRef = useRef<TtlCache<PositionsPageDto> | null>(null);
+  if (!agentPositionsCacheRef.current) {
+    agentPositionsCacheRef.current = new TtlCache<PositionsPageDto>(AGENT_POSITIONS_TTL_MS);
+  }
+  const closedTradesCacheRef = useRef<TtlCache<ClosedTradesPageDto> | null>(null);
+  if (!closedTradesCacheRef.current) {
+    closedTradesCacheRef.current = new TtlCache<ClosedTradesPageDto>(AGENT_CLOSED_TRADES_TTL_MS);
+  }
+  // Public Hive client — no API key needed for the leaderboard/portfolio
+  // reads we use here (both are unauthenticated endpoints upstream).
+  const publicHiveClientRef = useRef<HiveClient | null>(null);
+  if (!publicHiveClientRef.current) {
+    publicHiveClientRef.current = new HiveClient(HIVE_API_URL);
+  }
+  // Resolved Mongo agent_ids keyed by agent name. Populated lazily on the
+  // first portfolio request for each agent; survives an agent boundary so
+  // we don't refetch the lookup on every picker → dashboard transition.
+  const agentIdCacheRef = useRef<Map<string, string>>(new Map());
+  // Latest batched picker stats snapshot. The background loop fills this;
+  // the server's /api/agents/stats reads from it synchronously.
+  const agentsStatsRef = useRef<AgentsStatsMap>({});
 
   const {
     connected,
@@ -154,6 +192,29 @@ export const App: React.FC<AppProps> = ({
     closeOverlay,
     clearChat,
   } = useChat({ runtime, reloadRuntime, eventBus });
+
+  // Resolve the active agent's Mongo `agent_id`, throwing if no runtime is
+  // mounted. Caches the lookup per-name so the Hive `/agent/:name` call
+  // happens at most once per agent lifetime, then survives the TtlCache
+  // expiries for downstream portfolio/positions/closed-trades calls.
+  const resolveActiveAgentId = useCallback(async (): Promise<string> => {
+    if (!runtime) {
+      throw new Error('Runtime not ready');
+    }
+    const name = runtime.config.name;
+    const cached = agentIdCacheRef.current.get(name);
+    if (cached) return cached;
+    const res = await axios.get<{ id?: string }>(
+      `${HIVE_API_URL}/agent/${encodeURIComponent(name)}`,
+      { timeout: 5_000 },
+    );
+    const resolved = res.data?.id;
+    if (!resolved) {
+      throw new Error(`Agent not registered with zHive: ${name}`);
+    }
+    agentIdCacheRef.current.set(name, resolved);
+    return resolved;
+  }, [runtime]);
 
   const control = useMemo<WebControl>(
     () => ({
@@ -299,8 +360,26 @@ export const App: React.FC<AppProps> = ({
           };
         });
       },
+      async getAgentPortfolio(range: AgentPortfolioRange): Promise<AgentPortfolioV2Dto> {
+        const agentId = await resolveActiveAgentId();
+        return portfolioCacheRef.current!.getOrFetch(`${agentId}:${range}`, () =>
+          publicHiveClientRef.current!.trading.getAgentPortfolioV2(agentId, range),
+        );
+      },
+      async getAgentPositions(): Promise<PositionsPageDto> {
+        const agentId = await resolveActiveAgentId();
+        return agentPositionsCacheRef.current!.getOrFetch(agentId, () =>
+          publicHiveClientRef.current!.trading.getAgentPositions(agentId),
+        );
+      },
+      async getAgentClosedTrades(timeframe: ClosedTradesTimeframe): Promise<ClosedTradesPageDto> {
+        const agentId = await resolveActiveAgentId();
+        return closedTradesCacheRef.current!.getOrFetch(`${agentId}:${timeframe}`, () =>
+          publicHiveClientRef.current!.trading.getAgentClosedTrades(agentId, timeframe),
+        );
+      },
     }),
-    [runtime, eventBus, handleChatSubmit, clearChat, reloadRuntime],
+    [runtime, eventBus, handleChatSubmit, clearChat, reloadRuntime, resolveActiveAgentId],
   );
 
   // ─── Agent select / exit ────────────────────────────
@@ -422,6 +501,7 @@ export const App: React.FC<AppProps> = ({
     return { control: controlRef.current, eventBus };
   }, [eventBus]);
   const getAgents = useCallback(() => agentsRef.current.map(toPickerSummary), []);
+  const getAgentsStats = useCallback<() => AgentsStatsMap>(() => agentsStatsRef.current, []);
   const onSelect = useCallback(
     (name: string) => {
       void selectAgent(name);
@@ -439,10 +519,41 @@ export const App: React.FC<AppProps> = ({
     openInBrowser,
     getRuntimeState,
     getAgents,
+    getAgentsStats,
     onSelect,
     onExit,
     isStarting: isStartingFn,
   });
+
+  // ─── Background picker stats refresh ────────────────
+  // Fan-out a single batched Hive call for all known agent names. Runs on
+  // mount and every 60s. The picker UI polls `/api/agents/stats`, which
+  // just reads `agentsStatsRef.current` synchronously, so the upstream
+  // round-trip never sits in the request path.
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async (): Promise<void> => {
+      const names = agentsRef.current.map((a) => a.name);
+      if (names.length === 0) return;
+      try {
+        const entries = await publicHiveClientRef.current!.trading.getStatByNames(names);
+        if (cancelled) return;
+        const next: AgentsStatsMap = {};
+        for (const name of names) next[name] = null;
+        for (const entry of entries) next[entry.agent_name] = entry;
+        agentsStatsRef.current = next;
+      } catch {
+        // Best-effort — leave the previous snapshot in place on transient
+        // Hive failures rather than wiping the picker UI to blanks.
+      }
+    };
+    void refresh();
+    const id = setInterval(() => void refresh(), PICKER_STATS_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   // ─── Terminal resize tracking ───────────────────────
   useEffect(() => {

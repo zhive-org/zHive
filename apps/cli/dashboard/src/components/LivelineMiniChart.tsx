@@ -10,6 +10,18 @@ const WINDOW_SECS = 30;
 // 1s initial window — keeps liveline's visible-point filter happy on first paint.
 const INITIAL_WINDOW_SECS = 1;
 
+// Stable references for `<Liveline>` props. The mids WS feed re-renders the
+// chart's parent on every tick; if these were inline-literal each render,
+// Liveline sees a new prop reference and treats it as a "config changed"
+// signal — which in practice resets its internal animation/canvas state
+// and produces visible flicker + lost history. Hoisting to module scope
+// gives Liveline reference-stable inputs so it only updates when `data`
+// or `value` actually change.
+const LIVELINE_PADDING = { top: 4, bottom: 4, left: 4, right: 4 };
+const LIVELINE_STYLE = { width: '100%', height: '100%' };
+const LIVELINE_DEGEN = { scale: 0.7, downMomentum: true } as const;
+const formatLivelineValue = (v: number): string => formatUsd(v);
+
 interface LivelineMiniChartProps {
   symbol: string;
   livePrice: number | null | undefined;
@@ -65,12 +77,12 @@ export function LivelineMiniChart({ symbol, livePrice, className }: LivelineMini
         grid={false}
         fill
         momentum={momentum}
-        degen={{ scale: 0.7, downMomentum: true }}
+        degen={LIVELINE_DEGEN}
         badge={false}
         scrub={false}
-        formatValue={(v) => formatUsd(v)}
-        padding={{ top: 4, bottom: 4, left: 4, right: 4 }}
-        style={{ width: '100%', height: '100%' }}
+        formatValue={formatLivelineValue}
+        padding={LIVELINE_PADDING}
+        style={LIVELINE_STYLE}
       />
     </div>
   );

@@ -17,6 +17,7 @@ interface UseWebServerArgs {
    * select/exit cycles. */
   getRuntimeState: BuildAppOptions['getRuntimeState'];
   getAgents: BuildAppOptions['getAgents'];
+  getAgentsStats?: BuildAppOptions['getAgentsStats'];
   onSelect: BuildAppOptions['onSelect'];
   onExit: BuildAppOptions['onExit'];
   isStarting: BuildAppOptions['isStarting'];
@@ -30,6 +31,7 @@ export function useWebServer({
   port,
   getRuntimeState,
   getAgents,
+  getAgentsStats,
   onSelect,
   onExit,
   isStarting,
@@ -60,6 +62,7 @@ export function useWebServer({
       authToken,
       getRuntimeState,
       getAgents,
+      getAgentsStats,
       onSelect,
       onExit,
       isStarting,

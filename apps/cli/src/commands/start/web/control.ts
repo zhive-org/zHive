@@ -1,5 +1,23 @@
-import type { Sentiment, AgentTimeframe } from '@zhive/sdk';
+import type {
+  AgentPortfolioRange,
+  AgentPortfolioV2Dto,
+  AgentTimeframe,
+  AgentTradingStatsV2BatchEntryDto,
+  ClosedTradesPageDto,
+  ClosedTradesTimeframe,
+  PositionsPageDto,
+  Sentiment,
+} from '@zhive/sdk';
 import type { DetailedPosition } from '../../../shared/trading/types';
+
+export type {
+  AgentPortfolioRange,
+  AgentPortfolioV2Dto,
+  AgentTradingStatsV2BatchEntryDto,
+  ClosedTradesPageDto,
+  ClosedTradesTimeframe,
+  PositionsPageDto,
+};
 
 export interface WebState {
   agentName: string;
@@ -72,6 +90,14 @@ export interface WebControl {
   submitChat: (text: string) => Promise<void>;
   getState: () => Promise<WebState>;
   getAgentProfile: () => Promise<AgentProfileResponse>;
+  /** Public portfolio snapshot + daily PnL series. Returns the upstream
+   * `AgentPortfolioV2Dto` shape verbatim so the SPA can render the equity
+   * card without server-side reshaping. */
+  getAgentPortfolio: (range: AgentPortfolioRange) => Promise<AgentPortfolioV2Dto>;
+  /** Live open-positions snapshot from `/v2/position/agent/:agentId`. */
+  getAgentPositions: () => Promise<PositionsPageDto>;
+  /** Closed-trades history from `/v2/order/trades/closed?agent_id=…`. */
+  getAgentClosedTrades: (timeframe: ClosedTradesTimeframe) => Promise<ClosedTradesPageDto>;
   /** Merge a partial config into `config.json` and reload the runtime. */
   updateConfig: (partial: AgentConfigUpdate) => Promise<void>;
   /** Overwrite `SOUL.md` and reload the runtime. */

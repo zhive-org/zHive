@@ -3,14 +3,14 @@ import { Header } from './Header';
 import { AgentInfoCard } from './AgentInfoCard';
 import { ActivityFeed } from './ActivityFeed';
 import { ChatPanel } from './ChatPanel';
+import { ClosedTradesTable } from './ClosedTradesTable';
 import { CommandBar } from './CommandBar';
-import { PositionsTable } from './PositionsTable';
+import { OpenPositionsCard } from './OpenPositionsCard';
 import { WatchlistPanel } from './WatchlistPanel';
-import { RoeChart } from './RoeChart';
+import { RealizedPnlChart } from './RealizedPnlChart';
 import { useEventStream } from '../lib/useEventStream';
 import { useMids } from '../lib/useMids';
 import { usePnl } from '../lib/usePnl';
-import { useRoeSeries } from '../lib/useRoeSeries';
 import type { WebState } from '../lib/types';
 
 interface DashboardProps {
@@ -30,44 +30,53 @@ export function Dashboard({ state, connected, onOpenSettings }: DashboardProps) 
   const { mids, status: wsStatus, tick } = useMids(coins);
 
   const pnl = usePnl(positions, mids, tick);
-  const series = useRoeSeries(pnl.roePercent);
 
   const streamLive = !stream.isError;
 
   return (
-    <div className="flex h-screen flex-col bg-hive-black">
-      <Header
-        agentName={state.agentName}
-        connected={connected}
-        streamLive={streamLive}
-        totalPnlUsd={pnl.totalPnlUsd}
-        roePercent={pnl.roePercent}
-        wsStatus={wsStatus}
-        onOpenSettings={onOpenSettings}
-      />
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-4 lg:grid-cols-[1fr_320px]">
-        <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
-          <section className="shrink-0 border border-hive-border bg-hive-near-black">
-            <div className="flex items-center justify-between border-b border-hive-border px-4 py-2">
-              <h2 className="font-mono text-xs font-medium uppercase tracking-wider text-hive-text-secondary">
-                ROE Δ · 30s window
-              </h2>
-              <span className="font-mono text-xs text-hive-text-dim">
-                {positions.length === 0 ? 'no open positions' : `${positions.length} pos.`}
-              </span>
-            </div>
-            <RoeChart series={series} />
-          </section>
-          <ActivityFeed events={stream.events} />
+    <div className="flex min-h-screen flex-col bg-hive-black">
+      {/* Header stays pinned so the live PnL line is visible while the user
+       * scrolls through activity history below. */}
+      <div className="sticky top-0 z-10 bg-hive-black">
+        <Header
+          agentName={state.agentName}
+          connected={connected}
+          streamLive={streamLive}
+          totalPnlUsd={pnl.totalPnlUsd}
+          roePercent={pnl.roePercent}
+          wsStatus={wsStatus}
+          onOpenSettings={onOpenSettings}
+        />
+      </div>
+
+      <main className="grid flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {/* Center column — stacks vertically. No max-height; the page itself
+         * scrolls. `min-w-0` is load-bearing: grid's default `1fr` is
+         * `minmax(min-content, 1fr)`, which lets uPlot's ResizeObserver
+         * feedback-loop the chart container infinitely wider. The explicit
+         * `minmax(0,1fr)` on the parent + `min-w-0` here clamps it. */}
+        <div className="flex min-w-0 flex-col gap-4">
+          <RealizedPnlChart />
+          <OpenPositionsCard />
+          <ClosedTradesTable />
+          <WatchlistPanel watchlist={state.watchlist} mids={mids} />
+          <div className="flex min-h-[560px] min-w-0 flex-col">
+            <ActivityFeed events={stream.events} />
+          </div>
           <ChatPanel events={stream.events} agentName={state.agentName} />
         </div>
-        <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+
+        {/* Right rail — sticky agent snapshot. Watchlist moved into the
+         * center column so live-line widgets aren't fighting for the
+         * narrower 320px lane. */}
+        <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-[88px] lg:max-h-[calc(100vh-104px)] lg:overflow-y-auto">
           <AgentInfoCard />
-          <PositionsTable positions={pnl.positionsValued} mids={mids} />
-          <WatchlistPanel watchlist={state.watchlist} mids={mids} />
         </aside>
       </main>
-      <CommandBar />
+
+      <div className="sticky bottom-0 z-10 bg-hive-black">
+        <CommandBar />
+      </div>
     </div>
   );
 }

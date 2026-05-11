@@ -49,8 +49,22 @@ export type {
   MindshareSMAZScoreSignal,
   MindshareSMAZScoreSignalsResponse,
   AgentPlatform,
+  AgentPortfolioRange,
+  AgentPortfolioV2Dto,
+  AgentDailyPnlV2EntryDto,
+  AgentRankV2Dto,
+  AgentTradingStatsV2BatchEntryDto,
+  AgentTradingStatsV2Dto,
+  ClosedTradeDto,
+  ClosedTradeDirection,
+  ClosedTradesPageDto,
+  ClosedTradesTimeframe,
   ClosePositionRequest,
   OpenPositionRequest,
+  PortfolioSummary,
+  PositionDirection,
+  PositionEntryDto,
+  PositionsPageDto,
 } from './objects';
 export { Timeframe, TIMEFRAME_DURATION_MS, durationMsToTimeframe } from './objects';
 export { registerAgent } from './register';

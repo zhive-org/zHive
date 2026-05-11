@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import type { WebEventBus } from './events';
-import type { WebControl } from './control';
+import type {
+  AgentPortfolioRange,
+  AgentTradingStatsV2BatchEntryDto,
+  ClosedTradesTimeframe,
+  WebControl,
+} from './control';
 import { SLASH_COMMANDS } from '../services/command-registry';
 import {
   addApiGuard,
@@ -9,6 +14,24 @@ import {
   defaultDashboardRoot,
   listenLocalhost,
 } from './web-shared';
+
+const VALID_PORTFOLIO_RANGES: ReadonlySet<AgentPortfolioRange> = new Set([
+  '7d',
+  '30d',
+  '90d',
+  'all',
+]);
+
+const VALID_CLOSED_TRADES_TIMEFRAMES: ReadonlySet<ClosedTradesTimeframe> = new Set([
+  '24h',
+  '7d',
+  '30d',
+  'all',
+]);
+
+/** Per-name stats map returned by `/api/agents/stats`. Picker agents that
+ * haven't traded (or aren't on the leaderboard yet) map to `null`. */
+export type AgentsStatsMap = Record<string, AgentTradingStatsV2BatchEntryDto | null>;
 
 export const DEFAULT_WEB_PORT = 7878;
 const MAX_CHAT_BYTES = 8 * 1024;
@@ -59,6 +82,11 @@ export interface BuildAppOptions {
   /** Picker phase. Provide together with `getRuntimeState` so /api/state
    * can return `phase: 'selecting'` while no agent is loaded. */
   getAgents?: () => PickerAgentSummary[];
+  /** Batched trading-stats provider for `/api/agents/stats`. Returns the
+   * current cached snapshot keyed by agent name (or `null` for agents not
+   * yet on the leaderboard). The TUI owns the underlying refresh loop +
+   * cache — this just exposes whatever is currently buffered. */
+  getAgentsStats?: () => AgentsStatsMap;
   /** Called with the chosen agent name. Fire-and-forget — the caller flips
    * `isStarting` and eventually `getRuntimeState` themselves. */
   onSelect?: (name: string) => Promise<void> | void;
@@ -113,6 +141,16 @@ export function buildApp(options: BuildAppOptions): Hono {
   // ─── Picker endpoints ─────────────────────────────────
   // Mounted only when `getAgents` is provided.
   if (options.getAgents) {
+    // Per-agent rank/stats for the picker UI. The TUI's background loop
+    // owns the upstream fetch + cache; this endpoint just returns the
+    // currently-buffered snapshot, so it's always cheap and never blocks
+    // on Hive. Missing names are simply absent from the response.
+    if (options.getAgentsStats) {
+      app.get('/api/agents/stats', (c) => {
+        return c.json(options.getAgentsStats!());
+      });
+    }
+
     app.post('/api/agents/select', async (c) => {
       const body = await c.req.json().catch(() => null);
       const name = typeof body?.name === 'string' ? body.name.trim() : '';
@@ -223,6 +261,58 @@ export function buildApp(options: BuildAppOptions): Hono {
     try {
       const profile = await control.getAgentProfile();
       return c.json(profile);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return c.json({ ok: false, error: message }, 503);
+    }
+  });
+
+  app.get('/api/agent/portfolio', async (c) => {
+    const { control } = resolveRuntime();
+    if (!control) {
+      return dynamic ? c.json({ ok: false, error: 'agent not selected' }, 503) : c.notFound();
+    }
+    const rangeParam = c.req.query('range');
+    const range: AgentPortfolioRange =
+      rangeParam && VALID_PORTFOLIO_RANGES.has(rangeParam as AgentPortfolioRange)
+        ? (rangeParam as AgentPortfolioRange)
+        : 'all';
+    try {
+      const portfolio = await control.getAgentPortfolio(range);
+      return c.json(portfolio);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return c.json({ ok: false, error: message }, 503);
+    }
+  });
+
+  app.get('/api/agent/positions', async (c) => {
+    const { control } = resolveRuntime();
+    if (!control) {
+      return dynamic ? c.json({ ok: false, error: 'agent not selected' }, 503) : c.notFound();
+    }
+    try {
+      const page = await control.getAgentPositions();
+      return c.json(page);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return c.json({ ok: false, error: message }, 503);
+    }
+  });
+
+  app.get('/api/agent/closed-trades', async (c) => {
+    const { control } = resolveRuntime();
+    if (!control) {
+      return dynamic ? c.json({ ok: false, error: 'agent not selected' }, 503) : c.notFound();
+    }
+    const tfParam = c.req.query('timeframe');
+    const timeframe: ClosedTradesTimeframe =
+      tfParam && VALID_CLOSED_TRADES_TIMEFRAMES.has(tfParam as ClosedTradesTimeframe)
+        ? (tfParam as ClosedTradesTimeframe)
+        : 'all';
+    try {
+      const page = await control.getAgentClosedTrades(timeframe);
+      return c.json(page);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return c.json({ ok: false, error: message }, 503);

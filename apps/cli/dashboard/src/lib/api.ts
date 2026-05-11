@@ -1,8 +1,14 @@
 import type {
   AgentConfigUpdate,
+  AgentPortfolio,
   AgentProfile,
   ApiState,
+  ClosedTradesPage,
+  ClosedTradesTimeframe,
   CredentialsUpdate,
+  PickerAgentsStats,
+  PortfolioRange,
+  PositionsPage,
   WebEventsSince,
 } from './types';
 
@@ -29,6 +35,34 @@ export async function fetchAgentProfile(): Promise<AgentProfile> {
   const res = await fetch('/api/agent/profile', { credentials: 'same-origin' });
   if (!res.ok) await asJsonError(res);
   return readJson<AgentProfile>(res, '/api/agent/profile');
+}
+
+export async function fetchAgentsStats(): Promise<PickerAgentsStats> {
+  const res = await fetch('/api/agents/stats', { credentials: 'same-origin' });
+  if (!res.ok) await asJsonError(res);
+  return readJson<PickerAgentsStats>(res, '/api/agents/stats');
+}
+
+export async function fetchAgentPortfolio(range: PortfolioRange): Promise<AgentPortfolio> {
+  const qs = new URLSearchParams({ range });
+  const res = await fetch(`/api/agent/portfolio?${qs}`, { credentials: 'same-origin' });
+  if (!res.ok) await asJsonError(res);
+  return readJson<AgentPortfolio>(res, '/api/agent/portfolio');
+}
+
+export async function fetchAgentPositions(): Promise<PositionsPage> {
+  const res = await fetch('/api/agent/positions', { credentials: 'same-origin' });
+  if (!res.ok) await asJsonError(res);
+  return readJson<PositionsPage>(res, '/api/agent/positions');
+}
+
+export async function fetchAgentClosedTrades(
+  timeframe: ClosedTradesTimeframe,
+): Promise<ClosedTradesPage> {
+  const qs = new URLSearchParams({ timeframe });
+  const res = await fetch(`/api/agent/closed-trades?${qs}`, { credentials: 'same-origin' });
+  if (!res.ok) await asJsonError(res);
+  return readJson<ClosedTradesPage>(res, '/api/agent/closed-trades');
 }
 
 export async function selectAgent(name: string): Promise<void> {
