@@ -30,7 +30,9 @@ export function ActivityFeed({ events }: ActivityFeedProps) {
     for (let i = events.length - 1; i >= 0; i--) {
       const e = events[i];
       if (e.type === 'analyzing') {
-        return e.state === 'started' ? { assetCount: e.assetCount } : null;
+        return e.state === 'started'
+          ? { assetCount: e.assetCount, assets: e.assets }
+          : null;
       }
     }
     return null;
@@ -53,11 +55,11 @@ export function ActivityFeed({ events }: ActivityFeedProps) {
         <h2 className="font-mono text-xs font-medium uppercase tracking-wider text-hive-text-secondary">
           Activity
         </h2>
-        <div className="flex items-center gap-3">
-          {analyzing && <ThinkingBadge assetCount={analyzing.assetCount} />}
-          <span className="font-mono text-xs text-hive-text-dim">{visible.length} events</span>
-        </div>
+        <span className="font-mono text-xs text-hive-text-dim">{visible.length} events</span>
       </div>
+      {analyzing && (
+        <ThinkingBanner assetCount={analyzing.assetCount} assets={analyzing.assets} />
+      )}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-4 font-mono text-sm">
         {visible.length === 0 && !analyzing && (
           <p className="text-hive-text-dim">Waiting for the agent to come online…</p>
@@ -65,39 +67,103 @@ export function ActivityFeed({ events }: ActivityFeedProps) {
         {visible.map((e) => (
           <ActivityRow key={e.seq} event={e} />
         ))}
-        {analyzing && <ThinkingRow assetCount={analyzing.assetCount} />}
       </div>
     </section>
   );
 }
 
-function ThinkingBadge({ assetCount }: { assetCount?: number }) {
+function HexIcon({ className }: { className?: string }) {
   return (
-    <span className="flex items-center gap-1.5 border border-hive-honey/40 bg-hive-honey-dim px-2 py-0.5 font-mono text-xs text-hive-honey">
-      <span className="relative inline-flex h-1.5 w-1.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-hive-honey opacity-75" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-hive-honey" />
-      </span>
-      analyzing{assetCount ? ` ${assetCount}` : ''}
-    </span>
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      className={className}
+      aria-hidden
+    >
+      <polygon
+        points="12,2.5 21.2,7.5 21.2,16.5 12,21.5 2.8,16.5 2.8,7.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <polygon
+        points="12,7.5 16.5,10 16.5,14 12,16.5 7.5,14 7.5,10"
+        fill="currentColor"
+        opacity="0.35"
+      />
+    </svg>
   );
 }
 
-function ThinkingRow({ assetCount }: { assetCount?: number }) {
+function ThinkingBanner({
+  assetCount,
+  assets,
+}: {
+  assetCount?: number;
+  assets?: string[];
+}) {
+  const visibleChips = (assets ?? []).slice(0, 6);
+  const hiddenCount = assets ? Math.max(0, assets.length - visibleChips.length) : 0;
   return (
-    <div className="mt-1 flex items-center gap-2 leading-relaxed text-hive-honey">
-      <span className="text-hive-text-dim">···</span>
-      <span className="font-semibold">thinking</span>
-      <span className="inline-flex items-end gap-0.5" aria-hidden>
-        <span className="h-1 w-1 animate-bounce rounded-full bg-hive-honey [animation-delay:-0.3s]" />
-        <span className="h-1 w-1 animate-bounce rounded-full bg-hive-honey [animation-delay:-0.15s]" />
-        <span className="h-1 w-1 animate-bounce rounded-full bg-hive-honey" />
-      </span>
-      {assetCount && (
-        <span className="text-hive-text-secondary">
-          evaluating {assetCount} {assetCount === 1 ? 'asset' : 'assets'}…
+    <div
+      className="relative shrink-0 overflow-hidden border-b border-hive-honey/30 bg-hive-near-black animate-hive-glow"
+      role="status"
+      aria-live="polite"
+    >
+      {/* Slow-traveling shimmer band, narrow enough that the baseline stays
+       * visible — feels like a scan line crossing the surface. */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-full">
+        <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-hive-honey/15 to-transparent animate-hive-shimmer" />
+      </div>
+      <div className="relative flex items-center gap-3 px-4 py-2.5">
+        <span className="inline-flex h-5 w-5 items-center justify-center text-hive-honey animate-hive-breathe">
+          <HexIcon className="h-4 w-4" />
         </span>
-      )}
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-hive-honey">
+            analyzing
+          </span>
+          <span className="font-mono text-[11px] text-hive-text-dim">›</span>
+          <span className="font-mono text-[11px] text-hive-text-secondary">
+            <span className="text-hive-text-primary">{assetCount ?? 0}</span>{' '}
+            {assetCount === 1 ? 'asset' : 'assets'} in flight
+          </span>
+          <span className="inline-flex items-end gap-0.5 pl-0.5" aria-hidden>
+            <span
+              className="block h-1 w-1 rounded-full bg-hive-honey animate-hive-scan"
+              style={{ animationDelay: '0s' }}
+            />
+            <span
+              className="block h-1 w-1 rounded-full bg-hive-honey animate-hive-scan"
+              style={{ animationDelay: '0.2s' }}
+            />
+            <span
+              className="block h-1 w-1 rounded-full bg-hive-honey animate-hive-scan"
+              style={{ animationDelay: '0.4s' }}
+            />
+          </span>
+        </div>
+        {visibleChips.length > 0 && (
+          <div className="ml-auto flex items-center gap-1">
+            {visibleChips.map((asset, i) => (
+              <span
+                key={`${asset}-${i}`}
+                style={{ animationDelay: `${i * 0.18}s` }}
+                className="border border-hive-honey/30 bg-hive-black px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-hive-honey animate-hive-scan"
+              >
+                {asset}
+              </span>
+            ))}
+            {hiddenCount > 0 && (
+              <span className="font-mono text-[10px] text-hive-text-dim">
+                +{hiddenCount}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -62,7 +62,7 @@ export function useAgent({
           addLog({ type: 'message', text, timestamp });
           eventBus?.push({ type: 'message', text }, timestamp);
           eventBus?.push(
-            { type: 'analyzing', state: 'started', assetCount: assets.length },
+            { type: 'analyzing', state: 'started', assetCount: assets.length, assets },
             timestamp,
           );
         },
