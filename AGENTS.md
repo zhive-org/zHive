@@ -1,6 +1,6 @@
-# CLAUDE.md
+# zHive (zhive-org)
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
 
 ## Repo Layout
 
@@ -32,9 +32,24 @@ pnpm --filter @zhive/cli test      # vitest --run
 pnpm --filter @zhive/cli test -- path/to/file.test.ts   # single test file
 pnpm --filter @zhive/cli test -- -t "pattern"           # by test name
 pnpm --filter @zhive/sdk test
+pnpm --filter @zhive/cli deploy    # publish CLI via apps/cli/scripts/deploy.cjs
 ```
 
-CLI release is via `apps/cli/scripts/deploy.cjs` (`pnpm --filter @zhive/cli deploy`); the repo currently ships `-canary.*` versions on the `canary` branch.
+CLI release is via `apps/cli/scripts/deploy.cjs` (`pnpm --filter @zhive/cli deploy`). Pre-release work happens on the `canary` branch, which ships `-canary.*` versions; promote to `latest` from `main`.
+
+### Runtime commands (post-install)
+
+The CLI is also invoked directly by users:
+
+```sh
+zhive create                              # interactive agent wizard
+zhive start                               # launch agent + TUI dashboard
+zhive backtest --agent <name> \
+  --from 2026-01-01 --to 2026-01-31 \
+  --interval 14400000                     # historical replay (interval in ms)
+```
+
+See `README.md` for the full backtest flag reference.
 
 ## Architecture (CLI runtime)
 
@@ -44,7 +59,8 @@ Trading-runtime layering (under `src/shared/`):
 
 - `agent/runtime.ts` — top-level tick loop driving an agent. Loads agent config + memory via `@zhive/sdk`, then calls into the trading layer per tick.
 - `trading/agent.ts` + `trading/evaluator.ts` — the LLM-driven evaluator. Builds a prompt from `STRATEGY.md` + watchlist + open positions and asks the model (via `ai` SDK + provider packages) to emit one `TradeDecision` per asset. Decisions are typed as `LONG | SHORT | CLOSE | HOLD` with `sizeUsd`, `leverage`, optional `tp`/`sl` expressed as **percent PnL on margin** (not price).
-- `trading/exchange/` + `shared/hyperliquid/service.ts` — exchange adapter that turns decisions into orders via `@nktkas/hyperliquid` (uses `viem` for signing). `TradeExecutor` is the boundary the runtime calls; it has a known NaN guard gap in `executeMarketClose` (see memory note).
+- `trading/exchange/` + `shared/hyperliquid/service.ts` — exchange adapter that turns decisions into orders via `@nktkas/hyperliquid` (uses `viem` for signing). `TradeExecutor` is the boundary the runtime calls.
+  - **Footgun:** `_executeMarketClose` in `apps/cli/src/shared/trading/exchange/hyperliquid.ts` (and the equivalent in `exchange/zhive.ts`) reads `mids[d.asset]` and the position size without guarding against `NaN` / missing mids. If `parseFloat(mid)` or `formatSize(position.size, ...)` produces `NaN`, the resulting limit order will be malformed — validate both before submitting any new close path.
 - `trading/risk.ts`, `trading/analyzer.ts` — sizing, leverage, and TP/SL conversion to price levels.
 - `tools/` — tools exposed to the LLM during evaluation: `market` (price/OHLC), indicator math via `indicatorts`, `pinescript` (Pine via `pinets`), `mindshare`, `agent-files`, `read-skill`, `execute-skill`. Skills are Markdown files at `skills/<id>/SKILL.md` inside an agent dir; `executeSkill` runs the skill body as additional instructions.
 - `backtest/` — replay engine (`exchange.ts`, `candle-store.ts`) that drives the same evaluator/runtime against historical Hyperliquid candles for the `backtest` command. Has its own paper-trading exchange + comprehensive tests.
@@ -60,7 +76,9 @@ When DTOs change in `packages/objects`, you must regenerate the SDK's bundled `o
 pnpm --filter @zhive/sdk run prebuild   # or just `pnpm --filter @zhive/sdk build`
 ```
 
-The `prebuild` script copies a curated allowlist of DTO files (see top of `apps/sdk/scripts/generate-objects.js`) into `apps/sdk/src/objects.ts` with a "do not edit by hand" header. Don't hand-edit that file.
+The `prebuild` script copies a curated allowlist of DTO files (see top of `apps/sdk/scripts/generate-objects.js`) into `apps/sdk/src/objects.ts` with a "do not edit by hand" header.
+
+> **Generated file — do not hand-edit `apps/sdk/src/objects.ts`.** Any edits will be overwritten by the next SDK build. To change DTOs, edit the source under `packages/objects/src/` and re-run the SDK build.
 
 ## Conventions
 
