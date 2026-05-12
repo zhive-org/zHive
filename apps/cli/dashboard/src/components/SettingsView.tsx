@@ -6,19 +6,12 @@ import {
   updateAgentStrategy,
   updateAgentCredentials,
 } from '../lib/api';
-import type {
-  AgentTimeframe,
-  Sentiment,
-  WebState,
-} from '../lib/types';
+import type { WebState } from '../lib/types';
 
 interface SettingsViewProps {
   state: WebState;
   onClose: () => void;
 }
-
-const SENTIMENTS: Sentiment[] = ['very-bullish', 'bullish', 'neutral', 'bearish', 'very-bearish'];
-const TIMEFRAMES: AgentTimeframe[] = ['4h', '24h', '7d'];
 
 export function SettingsView({ state, onClose }: SettingsViewProps) {
   return (
@@ -43,19 +36,21 @@ export function SettingsView({ state, onClose }: SettingsViewProps) {
       </header>
 
       <main className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto flex max-w-3xl flex-col gap-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6">
           <WatchlistSection state={state} />
           <ProfileSection state={state} />
-          <MarkdownSection
-            title="SOUL.md — personality"
-            initialContent={state.soulContent}
-            onSave={updateAgentSoul}
-          />
-          <MarkdownSection
-            title="STRATEGY.md — trading strategy"
-            initialContent={state.strategyContent}
-            onSave={updateAgentStrategy}
-          />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <MarkdownSection
+              title="SOUL.md — personality"
+              initialContent={state.soulContent}
+              onSave={updateAgentSoul}
+            />
+            <MarkdownSection
+              title="STRATEGY.md — trading strategy"
+              initialContent={state.strategyContent}
+              onSave={updateAgentStrategy}
+            />
+          </div>
           <CredentialsSection state={state} />
         </div>
       </main>
@@ -193,36 +188,24 @@ function WatchlistSection({ state }: { state: WebState }) {
   );
 }
 
-// ─── Profile (bio, sectors, sentiment, timeframes) ────
+// ─── Profile (bio) ─────────────────────────────────────
 
 function ProfileSection({ state }: { state: WebState }) {
   const queryClient = useQueryClient();
   const [bio, setBio] = useState(state.bio ?? '');
-  const [sectors, setSectors] = useState<string[]>(state.sectors);
-  const [sectorDraft, setSectorDraft] = useState('');
-  const [sentiment, setSentiment] = useState<Sentiment>(state.sentiment);
-  const [timeframes, setTimeframes] = useState<AgentTimeframe[]>(state.timeframes);
+  const [avatarUrl, setAvatarUrl] = useState(state.avatarUrl ?? '');
+  const [avatarBroken, setAvatarBroken] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: () => updateAgentConfig({ bio, sectors, sentiment, timeframes }),
+    mutationFn: () => updateAgentConfig({ bio, avatarUrl }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['state'] });
       void queryClient.invalidateQueries({ queryKey: ['agent-profile'] });
     },
   });
 
-  const toggleTimeframe = (tf: AgentTimeframe): void => {
-    setTimeframes(
-      timeframes.includes(tf) ? timeframes.filter((x) => x !== tf) : [...timeframes, tf],
-    );
-  };
-
-  const addSector = (): void => {
-    const trimmed = sectorDraft.trim();
-    if (!trimmed || sectors.includes(trimmed)) return;
-    setSectors([...sectors, trimmed]);
-    setSectorDraft('');
-  };
+  const trimmedUrl = avatarUrl.trim();
+  const showPreview = trimmedUrl.length > 0 && !avatarBroken;
 
   return (
     <SectionShell title="profile">
@@ -236,86 +219,35 @@ function ProfileSection({ state }: { state: WebState }) {
         />
       </label>
 
-      <div className="flex flex-col gap-1 font-mono text-xs">
-        <span className="uppercase tracking-wider text-hive-text-dim">sentiment</span>
-        <div className="flex flex-wrap gap-2">
-          {SENTIMENTS.map((s) => (
-            <label key={s} className="flex items-center gap-1">
-              <input
-                type="radio"
-                name="sentiment"
-                checked={sentiment === s}
-                onChange={() => setSentiment(s)}
-                className="accent-hive-honey"
-              />
-              <span className="text-hive-text-secondary">{s}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1 font-mono text-xs">
-        <span className="uppercase tracking-wider text-hive-text-dim">timeframes</span>
-        <div className="flex flex-wrap gap-2">
-          {TIMEFRAMES.map((tf) => (
-            <label key={tf} className="flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={timeframes.includes(tf)}
-                onChange={() => toggleTimeframe(tf)}
-                className="accent-hive-honey"
-              />
-              <span className="text-hive-text-secondary">{tf}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2 font-mono text-xs">
-        <span className="uppercase tracking-wider text-hive-text-dim">sectors</span>
-        <div className="flex flex-wrap gap-2">
-          {sectors.length === 0 ? (
-            <span className="text-hive-text-dim">none</span>
+      <div className="flex items-start gap-3 font-mono text-xs">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border border-hive-border bg-hive-black">
+          {showPreview ? (
+            <img
+              src={trimmedUrl}
+              alt="avatar preview"
+              className="h-full w-full object-cover"
+              onError={() => setAvatarBroken(true)}
+            />
           ) : (
-            sectors.map((sector) => (
-              <span
-                key={sector}
-                className="flex items-center gap-2 border border-hive-border bg-hive-black px-2 py-0.5 text-hive-text-secondary"
-              >
-                {sector}
-                <button
-                  type="button"
-                  onClick={() => setSectors(sectors.filter((s) => s !== sector))}
-                  aria-label={`remove ${sector}`}
-                  className="text-hive-text-dim hover:text-hive-bearish"
-                >
-                  ×
-                </button>
-              </span>
-            ))
+            <span className="text-hive-text-dim">—</span>
           )}
         </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            addSector();
-          }}
-          className="flex items-center gap-2"
-        >
+        <label className="flex flex-1 flex-col gap-1">
+          <span className="uppercase tracking-wider text-hive-text-dim">avatar url</span>
           <input
-            value={sectorDraft}
-            onChange={(e) => setSectorDraft(e.target.value)}
-            placeholder="add sector (e.g. crypto, stock)"
-            className="flex-1 border border-hive-border bg-hive-black px-2 py-1 text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
+            type="url"
+            value={avatarUrl}
+            onChange={(e) => {
+              setAvatarUrl(e.target.value);
+              setAvatarBroken(false);
+            }}
+            placeholder="https://example.com/avatar.png"
+            className="border border-hive-border bg-hive-black px-2 py-1 text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
           />
-          <button
-            type="submit"
-            disabled={!sectorDraft.trim()}
-            className="border border-hive-border bg-transparent px-2 py-1 text-hive-text-secondary transition-colors hover:border-hive-honey hover:text-hive-honey disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            add
-          </button>
-        </form>
+          {trimmedUrl.length > 0 && avatarBroken && (
+            <span className="text-hive-bearish">couldn't load image</span>
+          )}
+        </label>
       </div>
 
       <SaveButton

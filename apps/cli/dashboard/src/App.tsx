@@ -70,10 +70,6 @@ export function App() {
   }
 
   return (
-    <Dashboard
-      state={data}
-      connected={!stateQuery.isError}
-      onOpenSettings={() => setView('settings')}
-    />
+    <Dashboard state={data} onOpenSettings={() => setView('settings')} />
   );
 }

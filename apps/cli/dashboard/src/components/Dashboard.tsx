@@ -8,6 +8,7 @@ import { CommandBar } from './CommandBar';
 import { OpenPositionsCard } from './OpenPositionsCard';
 import { WatchlistPanel } from './WatchlistPanel';
 import { RealizedPnlChart } from './RealizedPnlChart';
+import { TradingStatsStrip } from './TradingStatsStrip';
 import { useEventStream } from '../lib/useEventStream';
 import { useMids } from '../lib/useMids';
 import { usePnl } from '../lib/usePnl';
@@ -15,11 +16,10 @@ import type { WebState } from '../lib/types';
 
 interface DashboardProps {
   state: WebState;
-  connected: boolean;
   onOpenSettings: () => void;
 }
 
-export function Dashboard({ state, connected, onOpenSettings }: DashboardProps) {
+export function Dashboard({ state, onOpenSettings }: DashboardProps) {
   const stream = useEventStream();
 
   const positions = state.positions;
@@ -27,11 +27,9 @@ export function Dashboard({ state, connected, onOpenSettings }: DashboardProps) 
     () => Array.from(new Set([...positions.map((p) => p.coin), ...state.watchlist])),
     [positions, state.watchlist],
   );
-  const { mids, status: wsStatus, tick } = useMids(coins);
+  const { mids, tick } = useMids(coins);
 
   const pnl = usePnl(positions, mids, tick);
-
-  const streamLive = !stream.isError;
 
   return (
     <div className="flex min-h-screen flex-col bg-hive-black">
@@ -40,11 +38,8 @@ export function Dashboard({ state, connected, onOpenSettings }: DashboardProps) 
       <div className="sticky top-0 z-10 bg-hive-black">
         <Header
           agentName={state.agentName}
-          connected={connected}
-          streamLive={streamLive}
           totalPnlUsd={pnl.totalPnlUsd}
           roePercent={pnl.roePercent}
-          wsStatus={wsStatus}
           onOpenSettings={onOpenSettings}
         />
       </div>
@@ -60,6 +55,7 @@ export function Dashboard({ state, connected, onOpenSettings }: DashboardProps) 
          * feedback-loop the chart container infinitely wider. The explicit
          * `minmax(0,1fr)` on the parent + `min-w-0` here clamps it. */}
         <div className="flex min-w-0 flex-col gap-4">
+          <TradingStatsStrip />
           <RealizedPnlChart />
           <OpenPositionsCard />
           <ClosedTradesTable />

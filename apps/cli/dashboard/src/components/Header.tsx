@@ -1,32 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { exitAgent } from '../lib/api';
 import { formatPercent, formatUsd } from '../lib/format';
-import type { WsStatus } from '../lib/hyperliquid';
 
 interface HeaderProps {
   agentName: string | undefined;
-  connected: boolean;
-  streamLive: boolean;
   totalPnlUsd: number;
   roePercent: number;
-  wsStatus: WsStatus;
   onOpenSettings: () => void;
 }
 
-const WS_LABEL: Record<WsStatus, string> = {
-  connecting: 'mids: connecting',
-  live: 'mids: live',
-  stalled: 'mids: stalled',
-  reconnecting: 'mids: reconnecting',
-};
-
 export function Header({
   agentName,
-  connected,
-  streamLive,
   totalPnlUsd,
   roePercent,
-  wsStatus,
   onOpenSettings,
 }: HeaderProps) {
   // Click → return to picker. While in the dashboard, /api/state polls
@@ -41,12 +27,6 @@ export function Header({
       void queryClient.invalidateQueries({ queryKey: ['state'] });
     },
   });
-
-  const cliStatus = !connected
-    ? { label: 'connecting…', color: 'text-hive-pending', dot: 'bg-hive-pending' }
-    : !streamLive
-      ? { label: 'stream stalled', color: 'text-hive-bearish', dot: 'bg-hive-bearish' }
-      : { label: 'live', color: 'text-hive-bullish', dot: 'bg-hive-bullish' };
 
   const pnlColor =
     totalPnlUsd > 0
@@ -93,11 +73,6 @@ export function Header({
           </span>
           <span className={`font-mono text-xs ${pnlColor}`}>{formatPercent(roePercent)}</span>
         </div>
-        <div className={`flex items-center gap-2 font-mono text-xs ${cliStatus.color}`}>
-          <span className={`inline-block h-2 w-2 ${cliStatus.dot}`} />
-          {cliStatus.label}
-        </div>
-        <div className="font-mono text-xs text-hive-text-dim">{WS_LABEL[wsStatus]}</div>
       </div>
     </header>
   );
