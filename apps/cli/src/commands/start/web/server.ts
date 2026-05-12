@@ -33,7 +33,7 @@ const VALID_CLOSED_TRADES_TIMEFRAMES: ReadonlySet<ClosedTradesTimeframe> = new S
  * haven't traded (or aren't on the leaderboard yet) map to `null`. */
 export type AgentsStatsMap = Record<string, AgentTradingStatsV2BatchEntryDto | null>;
 
-export const DEFAULT_WEB_PORT = 7878;
+export const DEFAULT_WEB_PORT = 9999;
 const MAX_CHAT_BYTES = 8 * 1024;
 /** SOUL.md / STRATEGY.md cap. Markdown bodies are bounded by what an LLM
  * usefully consumes — well under 64KiB in practice. */

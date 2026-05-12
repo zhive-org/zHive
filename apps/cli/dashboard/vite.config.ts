@@ -12,8 +12,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://127.0.0.1:7878',
-      '/healthz': 'http://127.0.0.1:7878',
+      '/api': 'http://127.0.0.1:9999',
+      '/healthz': 'http://127.0.0.1:9999',
     },
   },
 });
