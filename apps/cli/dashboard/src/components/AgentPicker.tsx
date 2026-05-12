@@ -1,12 +1,20 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { fetchAgentsStats, selectAgent } from '../lib/api';
 import { formatPercent, formatUsd } from '../lib/format';
-import type { PickerAgentStats, PickerAgentSummary } from '../lib/types';
+import type { PickerAgentStats, PickerAgentsStats, PickerAgentSummary } from '../lib/types';
 
 interface AgentPickerProps {
   agents: PickerAgentSummary[];
 }
+
+type SortKey = 'created' | 'equity' | 'pnl';
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'created', label: 'created' },
+  { key: 'equity', label: 'equity' },
+  { key: 'pnl', label: 'PnL' },
+];
 
 function formatCreated(iso: string): string {
   const d = new Date(iso);
@@ -18,6 +26,36 @@ function formatCreated(iso: string): string {
 }
 
 const STARTING_EQUITY_USD = 10_000;
+
+function sortAgents(
+  agents: PickerAgentSummary[],
+  key: SortKey,
+  stats: PickerAgentsStats | undefined,
+): PickerAgentSummary[] {
+  const copy = [...agents];
+  if (key === 'created') {
+    copy.sort((a, b) => new Date(a.created).getTime() - new Date(b.created).getTime());
+    return copy;
+  }
+  // Stats-based sorts: highest first. Agents without a leaderboard entry
+  // (null/undefined stats) fall to the bottom, then are ordered by created.
+  const valueFor = (name: string): number | null => {
+    const s = stats?.[name];
+    if (!s) return null;
+    return key === 'equity' ? STARTING_EQUITY_USD + s.total_pnl_usd : s.total_pnl_usd;
+  };
+  copy.sort((a, b) => {
+    const va = valueFor(a.name);
+    const vb = valueFor(b.name);
+    if (va === null && vb === null) {
+      return new Date(a.created).getTime() - new Date(b.created).getTime();
+    }
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    return vb - va;
+  });
+  return copy;
+}
 
 function deriveEquity(stats: PickerAgentStats): number {
   // Mirror the backend's composition: equity = starting + realized.
@@ -55,8 +93,6 @@ function StatsRow({ stats }: { stats: PickerAgentStats | null | undefined }) {
     );
   }
   if (stats === undefined) {
-    // Loading — stats haven't been fetched yet. Render a neutral placeholder
-    // line of the same height to avoid layout shift when the data lands.
     return (
       <span className="font-mono text-[10px] uppercase tracking-wider text-hive-text-dim">
         loading…
@@ -84,6 +120,8 @@ function StatsRow({ stats }: { stats: PickerAgentStats | null | undefined }) {
 
 export function AgentPicker({ agents }: AgentPickerProps) {
   const [pendingName, setPendingName] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('created');
+  const [focusedName, setFocusedName] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: selectAgent,
@@ -101,9 +139,57 @@ export function AgentPicker({ agents }: AgentPickerProps) {
     refetchInterval: 60_000,
   });
 
-  const sorted = [...agents].sort(
-    (a, b) => new Date(a.created).getTime() - new Date(b.created).getTime(),
+  const sorted = useMemo(
+    () => sortAgents(agents, sortKey, statsQuery.data),
+    [agents, sortKey, statsQuery.data],
   );
+
+  // Default keyboard focus to the first row, and recover gracefully if a
+  // sort change drops the previously-focused name off the list.
+  useEffect(() => {
+    if (sorted.length === 0) {
+      setFocusedName(null);
+      return;
+    }
+    if (!focusedName || !sorted.some((a) => a.name === focusedName)) {
+      setFocusedName(sorted[0].name);
+    }
+  }, [sorted, focusedName]);
+
+  const handleSelect = useCallback(
+    (name: string) => {
+      if (mutation.isPending) return;
+      mutation.mutate(name);
+    },
+    [mutation],
+  );
+
+  useEffect(() => {
+    if (sorted.length === 0 || mutation.isPending) return;
+    const onKey = (e: KeyboardEvent): void => {
+      const idx = sorted.findIndex((a) => a.name === focusedName);
+      if (idx === -1) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedName(sorted[Math.min(sorted.length - 1, idx + 1)].name);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedName(sorted[Math.max(0, idx - 1)].name);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSelect(sorted[idx].name);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sorted, focusedName, mutation.isPending, handleSelect]);
+
+  // Scroll the focused row into view when keyboard nav moves it.
+  const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+  useEffect(() => {
+    if (!focusedName) return;
+    rowRefs.current.get(focusedName)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [focusedName]);
 
   return (
     <div className="flex h-screen flex-col bg-hive-black">
@@ -117,11 +203,32 @@ export function AgentPicker({ agents }: AgentPickerProps) {
 
       <main className="flex flex-1 items-start justify-center overflow-y-auto p-6">
         <div className="w-full max-w-4xl">
-          <div className="mb-4 flex items-baseline justify-between">
+          <div className="mb-4 flex items-baseline justify-between gap-4">
             <h2 className="font-mono text-xs font-medium uppercase tracking-wider text-hive-text-secondary">
               {agents.length} {agents.length === 1 ? 'agent' : 'agents'}
             </h2>
-            <span className="font-mono text-xs text-hive-text-dim">click an agent to start</span>
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-hive-text-dim">
+                sort
+              </span>
+              {SORT_OPTIONS.map((opt) => {
+                const active = sortKey === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setSortKey(opt.key)}
+                    className={`font-mono text-xs uppercase tracking-wider transition-colors ${
+                      active
+                        ? 'text-hive-honey'
+                        : 'text-hive-text-dim hover:text-hive-text-secondary'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {agents.length === 0 ? (
@@ -133,36 +240,55 @@ export function AgentPicker({ agents }: AgentPickerProps) {
             <ul className="flex flex-col gap-2">
               {sorted.map((agent) => {
                 const isPending = pendingName === agent.name;
-                const isDisabled = mutation.isPending;
-                // statsQuery.data is undefined until the first response lands.
-                // After that, agents missing from the map mean "no leaderboard
-                // entry yet" — surface as `null` so StatsRow shows the empty
-                // state instead of the loading placeholder.
+                const isFocused = focusedName === agent.name;
+                const isDimmed = mutation.isPending && !isPending;
                 const stats =
                   statsQuery.data === undefined
                     ? undefined
                     : (statsQuery.data[agent.name] ?? null);
+
+                const stateClass = isPending
+                  ? 'border-hive-honey bg-hive-honey-dim animate-hive-glow scale-[1.01] z-10'
+                  : isFocused
+                    ? 'border-hive-honey bg-hive-honey-dim'
+                    : 'border-hive-border bg-hive-near-black hover:border-hive-honey/70 hover:bg-hive-honey-dim/40';
+                const dimClass = isDimmed ? 'opacity-30 blur-[1px]' : 'opacity-100';
+
                 return (
-                  <li key={agent.name}>
+                  <li
+                    key={agent.name}
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(agent.name, el);
+                      else rowRefs.current.delete(agent.name);
+                    }}
+                  >
                     <button
                       type="button"
-                      disabled={isDisabled}
-                      onClick={() => mutation.mutate(agent.name)}
-                      className="group flex w-full items-center gap-4 border border-hive-border bg-hive-near-black px-4 py-3 text-left transition-colors hover:border-hive-honey hover:bg-hive-honey-dim disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={mutation.isPending}
+                      onMouseEnter={() => setFocusedName(agent.name)}
+                      onFocus={() => setFocusedName(agent.name)}
+                      onClick={() => handleSelect(agent.name)}
+                      className={`group relative flex w-full items-center gap-4 border px-4 py-4 text-left transition-all duration-200 disabled:cursor-not-allowed ${stateClass} ${dimClass}`}
                     >
                       {agent.avatarUrl ? (
                         <img
                           src={agent.avatarUrl}
                           alt=""
-                          className="h-12 w-12 shrink-0 border border-hive-border bg-hive-black object-cover"
+                          className="h-16 w-16 shrink-0 border border-hive-border bg-hive-black object-cover"
                         />
                       ) : (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-hive-border bg-hive-black font-mono text-lg text-hive-honey">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center border border-hive-border bg-hive-black font-heading text-2xl font-bold text-hive-honey">
                           {agent.name.slice(0, 1).toUpperCase()}
                         </div>
                       )}
                       <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate font-mono text-sm font-medium text-hive-text-primary group-hover:text-hive-honey">
+                        <span
+                          className={`truncate font-heading text-base font-bold transition-colors ${
+                            isFocused || isPending
+                              ? 'text-hive-honey'
+                              : 'text-hive-text-primary group-hover:text-hive-honey'
+                          }`}
+                        >
                           {agent.name}
                         </span>
                         {agent.bio && (
@@ -176,15 +302,22 @@ export function AgentPicker({ agents }: AgentPickerProps) {
                       </div>
                       <StatsRow stats={stats} />
                       {isPending && (
-                        <span className="ml-3 shrink-0 font-mono text-xs text-hive-honey">
-                          starting…
-                        </span>
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-end pr-6 font-mono text-xs uppercase tracking-widest text-hive-honey">
+                          <span className="animate-hive-breathe">starting…</span>
+                        </div>
                       )}
                     </button>
                   </li>
                 );
               })}
             </ul>
+          )}
+
+          {agents.length > 0 && !mutation.isPending && (
+            <p className="mt-4 text-center font-mono text-[10px] uppercase tracking-widest text-hive-text-dim">
+              <span className="text-hive-text-secondary">↑ ↓</span> navigate ·{' '}
+              <span className="text-hive-text-secondary">enter</span> select
+            </p>
           )}
 
           {mutation.isError && (
