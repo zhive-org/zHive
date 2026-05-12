@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { normalizeCoinKey } from './coin';
 import type { DetailedPosition } from './types';
 
 export interface PnlSnapshot {
@@ -14,7 +15,12 @@ export function computePnl(positions: DetailedPosition[], mids: Map<string, numb
   const positionsValued: PnlSnapshot['positionsValued'] = [];
 
   for (const p of positions) {
-    const live = mids.get(p.coin) ?? p.markPrice ?? p.entryPrice;
+    // The zhive adapter hands us `"BTC-PERP"` (and similar `-PERP` suffixes)
+    // for `p.coin`, but Hyperliquid's mids stream keys are unsuffixed
+    // (`"BTC"`). Try the raw key first (in case any caller already passed a
+    // base symbol), then the normalized form.
+    const liveMid = mids.get(p.coin) ?? mids.get(normalizeCoinKey(p.coin));
+    const live = liveMid ?? p.markPrice ?? p.entryPrice;
     const signedSize = p.side === 'long' ? p.size : -p.size;
     const livePnl = signedSize * (live - p.entryPrice);
     // ROE is return-on-equity: PnL relative to the margin posted, NOT the

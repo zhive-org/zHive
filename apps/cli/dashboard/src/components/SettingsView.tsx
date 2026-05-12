@@ -8,6 +8,8 @@ import {
   updateAgentCredentials,
 } from '../lib/api';
 import type { AvailableTickers, WebState } from '../lib/types';
+import { PageHeader } from './primitives/PageHeader';
+import { SectionHeader } from './primitives/SectionHeader';
 
 interface SettingsViewProps {
   state: WebState;
@@ -16,38 +18,34 @@ interface SettingsViewProps {
 
 export function SettingsView({ state, onClose }: SettingsViewProps) {
   return (
-    <div className="flex h-screen flex-col bg-hive-black">
-      <header className="flex items-center justify-between border-b border-hive-border bg-hive-near-black px-6 py-4">
-        <div className="flex items-baseline gap-3">
+    <div className="flex h-screen flex-col bg-hive-black font-mono text-hive-text-primary">
+      <PageHeader
+        leading={
           <button
             type="button"
             onClick={onClose}
-            className="self-center border border-hive-border bg-hive-black px-2 py-1 font-mono text-xs text-hive-text-secondary transition-colors hover:border-hive-honey hover:text-hive-honey"
+            className="border border-hive-border bg-hive-black px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-hive-text-secondary transition-colors hover:border-hive-honey hover:text-hive-honey"
           >
             ← back
           </button>
-          <h1 className="text-lg font-bold tracking-tight">
-            <span className="text-hive-honey">zHive</span>
-            <span className="ml-1.5 text-hive-text-dim">·</span>
-            <span className="ml-1.5 font-mono text-hive-text-primary">
-              {state.agentName} settings
-            </span>
-          </h1>
-        </div>
-      </header>
+        }
+        title={`${state.agentName} / settings`}
+      />
 
       <main className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-px bg-hive-border">
           <WatchlistSection state={state} />
           <ProfileSection state={state} />
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-px bg-hive-border lg:grid-cols-2">
             <MarkdownSection
-              title="SOUL.md — personality"
+              title="soul.md · personality"
+              hint="text/markdown"
               initialContent={state.soulContent}
               onSave={updateAgentSoul}
             />
             <MarkdownSection
-              title="STRATEGY.md — trading strategy"
+              title="strategy.md · trading strategy"
+              hint="text/markdown"
               initialContent={state.strategyContent}
               onSave={updateAgentStrategy}
             />
@@ -61,14 +59,18 @@ export function SettingsView({ state, onClose }: SettingsViewProps) {
 
 // ─── Reusable bits ────────────────────────────────────
 
-function SectionShell({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionShell({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="border border-hive-border bg-hive-near-black">
-      <div className="border-b border-hive-border px-4 py-2">
-        <h2 className="font-mono text-xs font-medium uppercase tracking-wider text-hive-text-secondary">
-          {title}
-        </h2>
-      </div>
+    <section className="bg-hive-near-black">
+      <SectionHeader title={title} right={hint} />
       <div className="flex flex-col gap-3 p-4">{children}</div>
     </section>
   );
@@ -97,12 +99,14 @@ function SaveButton({
         type="button"
         disabled={isPending || disabled}
         onClick={onClick}
-        className="border border-hive-border bg-transparent px-3 py-1 font-mono text-xs uppercase tracking-wider text-hive-text-secondary transition-colors hover:border-hive-honey hover:text-hive-honey disabled:cursor-not-allowed disabled:opacity-40"
+        className="border border-hive-border bg-transparent px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-hive-text-secondary transition-colors hover:border-hive-honey hover:text-hive-honey disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? 'saving…' : label}
       </button>
       {isSuccess && !isPending && (
-        <span className="font-mono text-xs text-hive-bullish">saved</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-hive-bullish">
+          ● saved
+        </span>
       )}
       {isError && (
         <span className="font-mono text-xs text-hive-bearish">
@@ -110,6 +114,14 @@ function SaveButton({
         </span>
       )}
     </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-hive-text-dim">
+      {children}
+    </span>
   );
 }
 
@@ -224,7 +236,7 @@ function WatchlistSection({ state }: { state: WebState }) {
   const tickersError = tickersQuery.error instanceof Error ? tickersQuery.error.message : null;
 
   return (
-    <SectionShell title="watchlist">
+    <SectionShell title="watchlist" hint={`${coins.length}/5 assets`}>
       <div className="flex flex-wrap gap-2">
         {coins.length === 0 ? (
           <span className="font-mono text-xs text-hive-text-dim">empty — add a coin below</span>
@@ -262,10 +274,10 @@ function WatchlistSection({ state }: { state: WebState }) {
               ? 'loading tickers…'
               : 'search ticker (e.g. BTC, xyz:TSLA)'
           }
-          className="w-full border border-hive-border bg-hive-black px-2 py-1 font-mono text-xs text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
+          className="w-full border border-hive-border bg-hive-black px-2 py-1.5 font-mono text-xs text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
         />
         {open && !tickersQuery.isLoading && (
-          <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto border border-hive-border bg-hive-near-black font-mono text-xs shadow-lg">
+          <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto border border-hive-border bg-hive-near-black font-mono text-xs shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
             {tickersError ? (
               <div className="px-2 py-2 text-hive-bearish">{tickersError}</div>
             ) : suggestions.length === 0 ? (
@@ -290,7 +302,9 @@ function WatchlistSection({ state }: { state: WebState }) {
                   }`}
                 >
                   <span>{opt.value}</span>
-                  <span className="text-hive-text-dim">{opt.category}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-hive-text-dim">
+                    {opt.category}
+                  </span>
                 </button>
               ))
             )}
@@ -328,18 +342,18 @@ function ProfileSection({ state }: { state: WebState }) {
   const showPreview = trimmedUrl.length > 0 && !avatarBroken;
 
   return (
-    <SectionShell title="profile">
-      <label className="flex flex-col gap-1 font-mono text-xs">
-        <span className="uppercase tracking-wider text-hive-text-dim">bio</span>
+    <SectionShell title="profile" hint="config.json">
+      <label className="flex flex-col gap-1.5">
+        <FieldLabel>bio</FieldLabel>
         <textarea
           value={bio}
           onChange={(e) => setBio(e.target.value)}
           rows={3}
-          className="border border-hive-border bg-hive-black p-2 text-hive-text-primary focus:border-hive-honey focus:outline-none"
+          className="border border-hive-border bg-hive-black p-2 font-mono text-xs leading-relaxed text-hive-text-primary focus:border-hive-honey focus:outline-none"
         />
       </label>
 
-      <div className="flex items-start gap-3 font-mono text-xs">
+      <div className="flex items-start gap-3">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden border border-hive-border bg-hive-black">
           {showPreview ? (
             <img
@@ -349,11 +363,11 @@ function ProfileSection({ state }: { state: WebState }) {
               onError={() => setAvatarBroken(true)}
             />
           ) : (
-            <span className="text-hive-text-dim">—</span>
+            <span className="font-mono text-hive-text-dim">—</span>
           )}
         </div>
-        <label className="flex flex-1 flex-col gap-1">
-          <span className="uppercase tracking-wider text-hive-text-dim">avatar url</span>
+        <label className="flex flex-1 flex-col gap-1.5">
+          <FieldLabel>avatar url</FieldLabel>
           <input
             type="url"
             value={avatarUrl}
@@ -362,10 +376,10 @@ function ProfileSection({ state }: { state: WebState }) {
               setAvatarBroken(false);
             }}
             placeholder="https://example.com/avatar.png"
-            className="border border-hive-border bg-hive-black px-2 py-1 text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
+            className="border border-hive-border bg-hive-black px-2 py-1.5 font-mono text-xs text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
           />
           {trimmedUrl.length > 0 && avatarBroken && (
-            <span className="text-hive-bearish">couldn't load image</span>
+            <span className="font-mono text-xs text-hive-bearish">couldn't load image</span>
           )}
         </label>
       </div>
@@ -385,10 +399,12 @@ function ProfileSection({ state }: { state: WebState }) {
 
 function MarkdownSection({
   title,
+  hint,
   initialContent,
   onSave,
 }: {
   title: string;
+  hint?: React.ReactNode;
   initialContent: string;
   onSave: (content: string) => Promise<void>;
 }) {
@@ -402,7 +418,7 @@ function MarkdownSection({
   });
 
   return (
-    <SectionShell title={title}>
+    <SectionShell title={title} hint={hint}>
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -455,35 +471,35 @@ function CredentialsSection({ state }: { state: WebState }) {
   const hasChanges = apiKey.length > 0 || (providerEnvVar.length > 0 && providerKey.length > 0);
 
   return (
-    <SectionShell title="credentials (sensitive — values are never echoed back)">
-      <p className="font-mono text-xs text-hive-text-dim">
-        Current provider:{' '}
-        <span className="text-hive-text-primary">{state.providerEnvVar ?? '(shell-inherited)'}</span>
+    <SectionShell title="credentials · sensitive" hint=".env / config.json">
+      <p className="font-mono text-[11px] text-hive-text-dim">
+        values are never echoed back · current provider:{' '}
+        <span className="text-hive-text-primary">
+          {state.providerEnvVar ?? '(shell-inherited)'}
+        </span>
       </p>
 
-      <label className="flex flex-col gap-1 font-mono text-xs">
-        <span className="uppercase tracking-wider text-hive-text-dim">
-          zHive agent api key (rotate)
-        </span>
+      <label className="flex flex-col gap-1.5">
+        <FieldLabel>zhive agent api key (rotate)</FieldLabel>
         <input
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           placeholder="leave blank to keep current"
           autoComplete="off"
-          className="border border-hive-border bg-hive-black px-2 py-1 text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
+          className="border border-hive-border bg-hive-black px-2 py-1.5 font-mono text-xs text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
         />
       </label>
 
-      <div className="flex flex-col gap-1 font-mono text-xs">
-        <span className="uppercase tracking-wider text-hive-text-dim">ai provider key</span>
+      <div className="flex flex-col gap-1.5">
+        <FieldLabel>ai provider key</FieldLabel>
         <div className="flex gap-2">
           <input
             value={providerEnvVar}
             onChange={(e) => setProviderEnvVar(e.target.value.toUpperCase())}
             placeholder="ENV_VAR_NAME"
             autoComplete="off"
-            className="w-56 border border-hive-border bg-hive-black px-2 py-1 text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
+            className="w-56 border border-hive-border bg-hive-black px-2 py-1.5 font-mono text-xs text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
           />
           <input
             type="password"
@@ -491,7 +507,7 @@ function CredentialsSection({ state }: { state: WebState }) {
             onChange={(e) => setProviderKey(e.target.value)}
             placeholder="key value"
             autoComplete="off"
-            className="flex-1 border border-hive-border bg-hive-black px-2 py-1 text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
+            className="flex-1 border border-hive-border bg-hive-black px-2 py-1.5 font-mono text-xs text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
           />
         </div>
       </div>
@@ -515,7 +531,7 @@ function CredentialsSection({ state }: { state: WebState }) {
             type="button"
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending}
-            className="border border-hive-honey bg-hive-honey-dim px-3 py-1 font-mono text-xs uppercase tracking-wider text-hive-honey transition-colors hover:bg-hive-honey hover:text-hive-black disabled:cursor-not-allowed disabled:opacity-40"
+            className="border border-hive-honey bg-hive-honey-dim px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-hive-honey transition-colors hover:bg-hive-honey hover:text-hive-black disabled:cursor-not-allowed disabled:opacity-40"
           >
             {mutation.isPending ? 'rotating…' : 'yes, rotate'}
           </button>
@@ -523,7 +539,7 @@ function CredentialsSection({ state }: { state: WebState }) {
             type="button"
             onClick={() => setConfirming(false)}
             disabled={mutation.isPending}
-            className="border border-hive-border bg-transparent px-3 py-1 font-mono text-xs uppercase tracking-wider text-hive-text-secondary transition-colors hover:border-hive-text-secondary disabled:cursor-not-allowed disabled:opacity-40"
+            className="border border-hive-border bg-transparent px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-hive-text-secondary transition-colors hover:border-hive-text-secondary disabled:cursor-not-allowed disabled:opacity-40"
           >
             cancel
           </button>

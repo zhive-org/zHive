@@ -17,9 +17,13 @@ export function App() {
     queryKey: ['state'],
     queryFn: fetchApiState,
     // Picker → starting → ready: poll every second so the dashboard hops in
-    // as soon as the runtime is ready. Once 'ready', drop to 30s.
-    refetchInterval: (query) => (query.state.data?.phase === 'ready' ? 30_000 : 1_000),
-    staleTime: (query) => (query.state.data?.phase === 'ready' ? 30_000 : 0),
+    // as soon as the runtime is ready. Once 'ready', drop to 5s — that's the
+    // server-side POSITIONS_TTL_MS, so it's the fastest the data could
+    // possibly change. The terminal layout shows positions front-and-center,
+    // so a 30s cadence here meant a position could take half a minute to
+    // appear after opening.
+    refetchInterval: (query) => (query.state.data?.phase === 'ready' ? 5_000 : 1_000),
+    staleTime: (query) => (query.state.data?.phase === 'ready' ? 5_000 : 0),
     retry: true,
     retryDelay: 500,
   });

@@ -30,6 +30,7 @@
   --animate-hive-breathe: hive-breathe 1.8s ease-in-out infinite;
   --animate-hive-glow: hive-glow 2.2s ease-in-out infinite;
   --animate-hive-scan: hive-scan 1.6s ease-in-out infinite;
+  --animate-ticker: ticker 60s linear infinite;
 }
 
 @keyframes hive-shimmer {
@@ -74,6 +75,15 @@
   }
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
   }
 }
 
