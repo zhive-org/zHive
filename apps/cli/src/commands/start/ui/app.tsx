@@ -29,6 +29,7 @@ import type {
   AgentConfigUpdate,
   AgentProfileResponse,
   AgentTradingRank,
+  AvailableTickers,
   CredentialsUpdate,
   WebControl,
   WebState,
@@ -55,6 +56,10 @@ const AGENT_PORTFOLIO_TTL_MS = 60_000;
 const AGENT_POSITIONS_TTL_MS = 5_000;
 const AGENT_CLOSED_TRADES_TTL_MS = 30_000;
 const PICKER_STATS_REFRESH_MS = 60_000;
+/** Ticker universe rarely changes (new listings land weekly at most), so
+ * we cache the dual-DEX fetch for 10 min to keep the watchlist combobox
+ * snappy across edits. */
+const AVAILABLE_TICKERS_TTL_MS = 10 * 60_000;
 
 interface HiveAgentLookup {
   id: string;
@@ -172,6 +177,10 @@ export const App: React.FC<AppProps> = ({
   // Latest batched picker stats snapshot. The background loop fills this;
   // the server's /api/agents/stats reads from it synchronously.
   const agentsStatsRef = useRef<AgentsStatsMap>({});
+  // Ticker-universe cache shared across agent boundaries — the list doesn't
+  // depend on the active agent's API key.
+  const availableTickersCacheRef = useRef<{ ts: number; tickers: AvailableTickers } | null>(null);
+  const availableTickersInflightRef = useRef<Promise<AvailableTickers> | null>(null);
 
   const {
     connected,
@@ -377,6 +386,34 @@ export const App: React.FC<AppProps> = ({
         return closedTradesCacheRef.current!.getOrFetch(`${agentId}:${timeframe}`, () =>
           publicHiveClientRef.current!.trading.getAgentClosedTrades(agentId, timeframe),
         );
+      },
+      async getAvailableTickers(): Promise<AvailableTickers> {
+        const cache = availableTickersCacheRef.current;
+        if (cache && Date.now() - cache.ts < AVAILABLE_TICKERS_TTL_MS) {
+          return cache.tickers;
+        }
+        // Coalesce concurrent callers so a burst of settings opens doesn't
+        // fan out into N parallel Hyperliquid fetches.
+        if (availableTickersInflightRef.current) {
+          return availableTickersInflightRef.current;
+        }
+        const inflight = (async () => {
+          // Doesn't need an agent API key — the universe is a public read.
+          // We construct a fresh client so this works even before an agent
+          // is selected.
+          const exchange = await ZhiveExchange.create();
+          const [crypto, stockCommodity] = await Promise.all([
+            exchange.getAvailableTradingPairs('crypto'),
+            exchange.getAvailableTradingPairs('stock-commodity'),
+          ]);
+          const tickers: AvailableTickers = { crypto, stockCommodity };
+          availableTickersCacheRef.current = { ts: Date.now(), tickers };
+          return tickers;
+        })().finally(() => {
+          availableTickersInflightRef.current = null;
+        });
+        availableTickersInflightRef.current = inflight;
+        return inflight;
       },
     }),
     [runtime, eventBus, handleChatSubmit, clearChat, reloadRuntime, resolveActiveAgentId],

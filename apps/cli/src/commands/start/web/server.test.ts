@@ -51,6 +51,10 @@ function fakeControl(overrides: Partial<WebControl> = {}): WebControl {
     updateSoul: vi.fn().mockResolvedValue(undefined),
     updateStrategy: vi.fn().mockResolvedValue(undefined),
     updateCredentials: vi.fn().mockResolvedValue(undefined),
+    getAvailableTickers: vi.fn().mockResolvedValue({
+      crypto: ['BTC', 'ETH'],
+      stockCommodity: ['xyz:MSTR', 'xyz:TSLA'],
+    }),
     ...overrides,
   };
 }
@@ -241,6 +245,17 @@ describe('buildApp', () => {
       const body = await res.json();
       expect(body).toEqual({ entries: [], next_cursor: null });
       expect(control.getAgentPositions).toHaveBeenCalled();
+    });
+
+    it('GET /api/tickers returns the universe', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/tickers');
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        crypto: ['BTC', 'ETH'],
+        stockCommodity: ['xyz:MSTR', 'xyz:TSLA'],
+      });
     });
 
     it('GET /api/agent/closed-trades forwards timeframe and defaults to all', async () => {

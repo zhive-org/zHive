@@ -85,6 +85,11 @@ export interface CredentialsUpdate {
   providerKey?: string;
 }
 
+export interface AvailableTickers {
+  crypto: string[];
+  stockCommodity: string[];
+}
+
 export interface PickerAgentSummary {
   name: string;
   /** ISO 8601 timestamp. */

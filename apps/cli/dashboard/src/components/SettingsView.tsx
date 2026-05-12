@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  fetchAvailableTickers,
   updateAgentConfig,
   updateAgentSoul,
   updateAgentStrategy,
   updateAgentCredentials,
 } from '../lib/api';
-import type { WebState } from '../lib/types';
+import type { AvailableTickers, WebState } from '../lib/types';
 
 interface SettingsViewProps {
   state: WebState;
@@ -114,10 +115,74 @@ function SaveButton({
 
 // ─── Watchlist ────────────────────────────────────────
 
+interface TickerOption {
+  value: string;
+  category: 'crypto' | 'stock';
+}
+
+const MAX_SUGGESTIONS = 12;
+
+function flattenTickers(tickers: AvailableTickers | undefined): TickerOption[] {
+  if (!tickers) return [];
+  return [
+    ...tickers.crypto.map<TickerOption>((value) => ({ value, category: 'crypto' })),
+    ...tickers.stockCommodity.map<TickerOption>((value) => ({ value, category: 'stock' })),
+  ];
+}
+
+function filterTickers(
+  options: TickerOption[],
+  query: string,
+  exclude: ReadonlySet<string>,
+): TickerOption[] {
+  const q = query.trim().toLowerCase();
+  const matches: TickerOption[] = [];
+  for (const opt of options) {
+    if (exclude.has(opt.value)) continue;
+    if (q.length === 0 || opt.value.toLowerCase().includes(q)) {
+      matches.push(opt);
+      if (matches.length >= MAX_SUGGESTIONS) break;
+    }
+  }
+  return matches;
+}
+
 function WatchlistSection({ state }: { state: WebState }) {
   const queryClient = useQueryClient();
   const [coins, setCoins] = useState<string[]>(state.watchlist);
   const [draft, setDraft] = useState('');
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const tickersQuery = useQuery({
+    queryKey: ['tickers'],
+    queryFn: fetchAvailableTickers,
+    staleTime: 5 * 60_000,
+  });
+
+  const allOptions = useMemo(() => flattenTickers(tickersQuery.data), [tickersQuery.data]);
+  const selectedSet = useMemo(() => new Set(coins), [coins]);
+  const suggestions = useMemo(
+    () => filterTickers(allOptions, draft, selectedSet),
+    [allOptions, draft, selectedSet],
+  );
+
+  useEffect(() => {
+    if (highlight >= suggestions.length) setHighlight(0);
+  }, [suggestions.length, highlight]);
+
+  // Close the dropdown on outside click so it doesn't linger over other
+  // sections when the user moves on.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent): void => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [open]);
+
   const mutation = useMutation({
     mutationFn: (next: string[]) => updateAgentConfig({ watchList: next }),
     onSuccess: () => {
@@ -125,12 +190,38 @@ function WatchlistSection({ state }: { state: WebState }) {
     },
   });
 
-  const addCoin = (): void => {
-    const trimmed = draft.trim();
-    if (!trimmed || coins.includes(trimmed)) return;
+  const addCoin = (value: string): void => {
+    const trimmed = value.trim();
+    if (!trimmed || selectedSet.has(trimmed)) return;
     setCoins([...coins, trimmed]);
     setDraft('');
+    setOpen(false);
+    setHighlight(0);
   };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (!open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      setOpen(true);
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlight((h) => (suggestions.length === 0 ? 0 : (h + 1) % suggestions.length));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlight((h) =>
+        suggestions.length === 0 ? 0 : (h - 1 + suggestions.length) % suggestions.length,
+      );
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const pick = suggestions[highlight];
+      if (pick) addCoin(pick.value);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  };
+
+  const tickersError = tickersQuery.error instanceof Error ? tickersQuery.error.message : null;
 
   return (
     <SectionShell title="watchlist">
@@ -156,27 +247,56 @@ function WatchlistSection({ state }: { state: WebState }) {
           ))
         )}
       </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          addCoin();
-        }}
-        className="flex items-center gap-2"
-      >
+      <div ref={containerRef} className="relative">
         <input
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="add coin (e.g. BTC, xyz:TSLA)"
-          className="flex-1 border border-hive-border bg-hive-black px-2 py-1 font-mono text-xs text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setOpen(true);
+            setHighlight(0);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={
+            tickersQuery.isLoading
+              ? 'loading tickers…'
+              : 'search ticker (e.g. BTC, xyz:TSLA)'
+          }
+          className="w-full border border-hive-border bg-hive-black px-2 py-1 font-mono text-xs text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
         />
-        <button
-          type="submit"
-          disabled={!draft.trim()}
-          className="border border-hive-border bg-transparent px-2 py-1 font-mono text-xs text-hive-text-secondary transition-colors hover:border-hive-honey hover:text-hive-honey disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          add
-        </button>
-      </form>
+        {open && !tickersQuery.isLoading && (
+          <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto border border-hive-border bg-hive-near-black font-mono text-xs shadow-lg">
+            {tickersError ? (
+              <div className="px-2 py-2 text-hive-bearish">{tickersError}</div>
+            ) : suggestions.length === 0 ? (
+              <div className="px-2 py-2 text-hive-text-dim">no matching tickers</div>
+            ) : (
+              suggestions.map((opt, idx) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onMouseDown={(e) => {
+                    // Prevent the input blur from firing before our click
+                    // handler — otherwise the dropdown closes and the click
+                    // lands on whatever's behind it.
+                    e.preventDefault();
+                  }}
+                  onClick={() => addCoin(opt.value)}
+                  onMouseEnter={() => setHighlight(idx)}
+                  className={`flex w-full items-center justify-between px-2 py-1 text-left ${
+                    idx === highlight
+                      ? 'bg-hive-honey-dim text-hive-honey'
+                      : 'text-hive-text-primary hover:bg-hive-black'
+                  }`}
+                >
+                  <span>{opt.value}</span>
+                  <span className="text-hive-text-dim">{opt.category}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
       <SaveButton
         isPending={mutation.isPending}
         isError={mutation.isError}

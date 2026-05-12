@@ -300,6 +300,20 @@ export function buildApp(options: BuildAppOptions): Hono {
     }
   });
 
+  app.get('/api/tickers', async (c) => {
+    const { control } = resolveRuntime();
+    if (!control) {
+      return dynamic ? c.json({ ok: false, error: 'agent not selected' }, 503) : c.notFound();
+    }
+    try {
+      const tickers = await control.getAvailableTickers();
+      return c.json(tickers);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return c.json({ ok: false, error: message }, 503);
+    }
+  });
+
   app.get('/api/agent/closed-trades', async (c) => {
     const { control } = resolveRuntime();
     if (!control) {

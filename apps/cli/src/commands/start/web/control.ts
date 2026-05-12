@@ -74,6 +74,13 @@ export interface AgentConfigUpdate {
   timeframes?: AgentTimeframe[];
 }
 
+/** Tickers the backend knows about. Used to populate the watchlist combobox
+ * so the user can only add assets that will actually resolve. */
+export interface AvailableTickers {
+  crypto: string[];
+  stockCommodity: string[];
+}
+
 /** Credentials rotation. All fields optional — the caller can rotate just
  * the agent's apiKey, just the provider key, or both. */
 export interface CredentialsUpdate {
@@ -106,4 +113,7 @@ export interface WebControl {
   updateStrategy: (content: string) => Promise<void>;
   /** Rotate the agent's API key and/or AI provider key. */
   updateCredentials: (args: CredentialsUpdate) => Promise<void>;
+  /** Full ticker universe (crypto + xyz: stocks) the exchange currently
+   * supports. Cached upstream — safe to call from request handlers. */
+  getAvailableTickers: () => Promise<AvailableTickers>;
 }

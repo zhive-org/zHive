@@ -3,6 +3,7 @@ import type {
   AgentPortfolio,
   AgentProfile,
   ApiState,
+  AvailableTickers,
   ClosedTradesPage,
   ClosedTradesTimeframe,
   CredentialsUpdate,
@@ -54,6 +55,12 @@ export async function fetchAgentPositions(): Promise<PositionsPage> {
   const res = await fetch('/api/agent/positions', { credentials: 'same-origin' });
   if (!res.ok) await asJsonError(res);
   return readJson<PositionsPage>(res, '/api/agent/positions');
+}
+
+export async function fetchAvailableTickers(): Promise<AvailableTickers> {
+  const res = await fetch('/api/tickers', { credentials: 'same-origin' });
+  if (!res.ok) await asJsonError(res);
+  return readJson<AvailableTickers>(res, '/api/tickers');
 }
 
 export async function fetchAgentClosedTrades(
