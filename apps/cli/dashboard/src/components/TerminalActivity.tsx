@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { ActionBadge, type DecisionAction } from './primitives/ActionBadge';
+import { SymbolLink } from './primitives/SymbolLink';
+import { displaySymbol } from '../lib/coin';
 import { formatTime, formatUsd } from '../lib/format';
 import type { WebEvent } from '../lib/types';
 
@@ -51,28 +53,18 @@ export function TerminalActivity({ events }: TerminalActivityProps) {
       <div className="flex shrink-0 items-center justify-between border-b border-hive-border bg-hive-black px-4 py-2 text-[10px] uppercase tracking-[0.22em]">
         <span className="text-hive-text-secondary">agent.log</span>
         <span className="text-hive-text-dim">
-          tail -f ·{' '}
-          <span className="text-hive-honey">
-            {analyzing ? 'analyzing' : 'streaming'}
-          </span>
+          tail -f · <span className="text-hive-honey">{analyzing ? 'analyzing' : 'streaming'}</span>
         </span>
       </div>
 
-      {analyzing && (
-        <AnalyzingBanner
-          assetCount={analyzing.assetCount}
-          assets={analyzing.assets}
-        />
-      )}
+      {analyzing && <AnalyzingBanner assetCount={analyzing.assetCount} assets={analyzing.assets} />}
 
       <div
         ref={scrollRef}
         className="h-[480px] overflow-y-auto px-4 py-3 font-mono text-[13px] leading-[1.65]"
       >
         {visible.length === 0 && !analyzing && (
-          <p className="text-hive-text-dim">
-            Waiting for the agent to come online…
-          </p>
+          <p className="text-hive-text-dim">Waiting for the agent to come online…</p>
         )}
         {visible.map((e) => (
           <TerminalRow key={e.seq} event={e} />
@@ -82,13 +74,7 @@ export function TerminalActivity({ events }: TerminalActivityProps) {
   );
 }
 
-function AnalyzingBanner({
-  assetCount,
-  assets,
-}: {
-  assetCount: number;
-  assets: string[];
-}) {
+function AnalyzingBanner({ assetCount, assets }: { assetCount: number; assets: string[] }) {
   const visibleChips = assets.slice(0, 6);
   const hiddenCount = Math.max(0, assets.length - visibleChips.length);
 
@@ -100,9 +86,7 @@ function AnalyzingBanner({
     >
       <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-hive-honey/15 to-transparent animate-hive-shimmer" />
       <div className="relative flex items-center gap-3 text-[11px]">
-        <span className="font-semibold uppercase tracking-[0.24em] text-hive-honey">
-          analyzing
-        </span>
+        <span className="font-semibold uppercase tracking-[0.24em] text-hive-honey">analyzing</span>
         <span className="text-hive-text-dim">›</span>
         <span className="text-hive-text-secondary">
           scanning <span className="text-hive-text-primary">{assetCount}</span>{' '}
@@ -116,13 +100,11 @@ function AnalyzingBanner({
                 style={{ animationDelay: `${i * 0.18}s` }}
                 className="border border-hive-honey/30 bg-hive-black px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-hive-honey animate-hive-scan"
               >
-                {asset}
+                {displaySymbol(asset)}
               </span>
             ))}
             {hiddenCount > 0 && (
-              <span className="font-mono text-[10px] text-hive-text-dim">
-                +{hiddenCount}
-              </span>
+              <span className="font-mono text-[10px] text-hive-text-dim">+{hiddenCount}</span>
             )}
           </div>
         )}
@@ -142,9 +124,7 @@ function AnalyzingBanner({
 
 function TerminalRow({ event }: { event: WebEvent }) {
   const time = formatTime(event.timestamp);
-  const stamp = (
-    <span className="shrink-0 tabular-nums text-hive-text-dim">{time}</span>
-  );
+  const stamp = <span className="shrink-0 tabular-nums text-hive-text-dim">{time}</span>;
 
   switch (event.type) {
     case 'message':
@@ -176,11 +156,9 @@ function TerminalRow({ event }: { event: WebEvent }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
               <ActionBadge action={action} />
-              <span className="font-semibold text-hive-text-primary">{event.asset}</span>
+              <SymbolLink asset={event.asset} variant="inline" />
               {event.sizeUsd !== undefined && (
-                <span className="tabular-nums text-hive-text-dim">
-                  {formatUsd(event.sizeUsd)}
-                </span>
+                <span className="tabular-nums text-hive-text-dim">{formatUsd(event.sizeUsd)}</span>
               )}
             </div>
             {event.reasoning && (
