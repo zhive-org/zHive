@@ -30,17 +30,27 @@ import type {
   AgentProfileResponse,
   AgentTradingRank,
   AvailableTickers,
+  BacktestArtifactsResponse,
+  BacktestStartOptions,
   CredentialsUpdate,
   WebControl,
   WebState,
 } from '../web/control';
+import { BacktestRunner } from '../../../shared/backtest/runner';
+import { tryStartBacktestSession } from '../../../shared/backtest/state';
+import { setBacktestError, setBacktestResult } from '../../../shared/backtest/web-cache';
+import type { AccountSnapshot, FillRecord } from '../../../shared/backtest/types';
 import type { AgentsStatsMap, PickerAgentSummary } from '../web/server';
 import { executeSlashCommand, type SlashCommandCallbacks } from '../services/command-registry';
 import { ZhiveExchange } from '../../../shared/trading/exchange/zhive';
 import type { DetailedPosition } from '../../../shared/trading/types';
 import { TtlCache } from '../../../shared/cache/ttl-cache';
 import { AgentConfig, loadAgentConfig } from '../../../shared/config/agent';
-import { loadAgentEnv, getAgentProviderKeys, updateEnvVar } from '../../../shared/config/env-loader';
+import {
+  loadAgentEnv,
+  getAgentProviderKeys,
+  updateEnvVar,
+} from '../../../shared/config/env-loader';
 import { getModel } from '../../../shared/config/ai-providers';
 import { loadConfig as sdkLoadConfig, saveConfig as sdkSaveConfig } from '@zhive/sdk';
 import { promises as fsp } from 'fs';
@@ -108,12 +118,34 @@ async function fetchAgentTradingRank(name: string): Promise<AgentTradingRank | n
   }
 }
 
+/** Returns the file contents or an empty string if the file is missing.
+ * Anything else propagates so a malformed permissions setup still surfaces. */
+async function readFileSafe(
+  readFile: (path: string, encoding: BufferEncoding) => Promise<string>,
+  path: string,
+): Promise<string> {
+  try {
+    return await readFile(path, 'utf-8');
+  } catch {
+    return '';
+  }
+}
+
+function readJsonl<T>(raw: string): T[] {
+  if (!raw) return [];
+  return raw
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line) => JSON.parse(line) as T);
+}
+
 function toPickerSummary(agent: AgentConfig): PickerAgentSummary {
   return {
     name: agent.name,
     created: agent.created.toISOString(),
     bio: agent.bio,
     avatarUrl: agent.avatarUrl,
+    hasProviderKey: agent.hasProviderKey,
   };
 }
 
@@ -182,13 +214,9 @@ export const App: React.FC<AppProps> = ({
   const availableTickersCacheRef = useRef<{ ts: number; tickers: AvailableTickers } | null>(null);
   const availableTickersInflightRef = useRef<Promise<AvailableTickers> | null>(null);
 
-  const {
-    connected,
-    agentName,
-    modelInfo,
-    activePollActivities,
-    settledPollActivities,
-  } = useAgent({ runtime, eventBus });
+  const { connected, agentName, modelInfo, activePollActivities, settledPollActivities } = useAgent(
+    { runtime, eventBus },
+  );
 
   const {
     input,
@@ -386,6 +414,72 @@ export const App: React.FC<AppProps> = ({
         return closedTradesCacheRef.current!.getOrFetch(`${agentId}:${timeframe}`, () =>
           publicHiveClientRef.current!.trading.getAgentClosedTrades(agentId, timeframe),
         );
+      },
+      async runBacktest(opts: BacktestStartOptions): Promise<void> {
+        if (!runtime) throw new Error('Runtime not ready');
+        if (!Number.isFinite(opts.from) || !Number.isFinite(opts.to) || opts.to <= opts.from) {
+          throw new Error('"to" must be after "from"');
+        }
+        if (typeof opts.coin !== 'string' || opts.coin.trim() === '') {
+          throw new Error('"coin" must be a non-empty string');
+        }
+        if (!Number.isFinite(opts.intervalMs) || opts.intervalMs <= 0) {
+          throw new Error('"intervalMs" must be a positive number');
+        }
+        if (!Number.isFinite(opts.initialCashUsd) || opts.initialCashUsd <= 0) {
+          throw new Error('"initialCashUsd" must be a positive number');
+        }
+        const watchList = [opts.coin];
+        const session = tryStartBacktestSession({
+          from: opts.from,
+          to: opts.to,
+          intervalMs: opts.intervalMs,
+          initialCashUsd: opts.initialCashUsd,
+          watchList,
+          source: 'web',
+        });
+        if ('running' in session) {
+          throw new Error('A backtest is already running');
+        }
+        // Fire-and-forget so the POST returns 202 quickly. The run pushes
+        // progress into the session lock (read by `/api/backtest/status`)
+        // and parks its terminal result/error in the web-cache module.
+        const activeRuntime = runtime;
+        void (async () => {
+          try {
+            const summary = await BacktestRunner.run({
+              from: opts.from,
+              to: opts.to,
+              watchList,
+              runtime: activeRuntime,
+              intervalMs: opts.intervalMs,
+              initialCashUsd: opts.initialCashUsd,
+              outDir: './backtest-results',
+              onProgress: (p) => session.handle.tick(p),
+            });
+            setBacktestResult(summary);
+            setBacktestError(null);
+            session.handle.finish();
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            setBacktestResult(null);
+            setBacktestError(message);
+            session.handle.fail(err);
+          }
+        })();
+      },
+      async getBacktestArtifacts(): Promise<BacktestArtifactsResponse> {
+        const { readFile } = await import('node:fs/promises');
+        const { join } = await import('node:path');
+        const outDir = './backtest-results';
+        const [snapshotsRaw, fillsRaw] = await Promise.all([
+          readFileSafe(readFile, join(outDir, 'snapshots.jsonl')),
+          readFileSafe(readFile, join(outDir, 'fills.jsonl')),
+        ]);
+        return {
+          snapshots: readJsonl<AccountSnapshot>(snapshotsRaw),
+          fills: readJsonl<FillRecord>(fillsRaw),
+        };
       },
       async getAvailableTickers(): Promise<AvailableTickers> {
         const cache = availableTickersCacheRef.current;
@@ -623,6 +717,11 @@ export const App: React.FC<AppProps> = ({
   // attention. The --no-web path skips this and renders the rich TUI as
   // before.
   const webMode = webPort !== undefined && webServer.status === 'listening';
+  // When `--web` is enabled at all (default), suppress every rich-TUI
+  // element regardless of webServer status. The simplified server pane
+  // owns the terminal for the whole web-mode lifecycle — starting, ready,
+  // and error states — so we never flash the agent-centric layout.
+  const webModeEnabled = webPort !== undefined;
 
   const boxWidth = termWidth;
 
@@ -650,7 +749,7 @@ export const App: React.FC<AppProps> = ({
           conditionally unmounting it leaves the renderer reading stale Yoga
           dimensions (a uint64 sentinel converts to ~3.7e19), and Output.get()
           tries to allocate that many rows → OOM in seconds. */}
-      <Static items={webMode ? [] : settledPollActivities}>
+      <Static items={webModeEnabled ? [] : settledPollActivities}>
         {(item, i) => {
           const formatted = activityFormatter.format(item);
           if (formatted.length === 0) return <Box key={`settled-${item.id ?? i}`} />;
@@ -658,238 +757,291 @@ export const App: React.FC<AppProps> = ({
         }}
       </Static>
 
-      <Box flexDirection="column" width={boxWidth}>
-        {/* Header */}
-        <Box>
-          <Text
-            color={colors.honey}
-          >{`${border.topLeft}${border.horizontal} ${symbols.hive} `}</Text>
-          <Text color={colors.white} bold>
-            {nameDisplay}
-          </Text>
-          <Text color={colors.gray}> {`${border.horizontal.repeat(3)} `}</Text>
-          <Text color={hasAgent && connected ? colors.green : colors.honey}>
-            {connectedDisplay}
-          </Text>
-          <Text color={colors.gray}>
-            {' '}
-            {border.horizontal.repeat(Math.max(0, headerFill))}
-            {border.topRight}
-          </Text>
-        </Box>
-        {hasAgent && modelInfo && (
-          <Box paddingLeft={1}>
-            <Text color={colors.gray}>{symbols.hive} </Text>
-            <Text color={colors.cyan}>{modelInfo.modelId}</Text>
-            <Text color={colors.gray}> {'×'} </Text>
-            <Text color={colors.purple}>zData</Text>
-          </Box>
-        )}
-        {hasAgent && connected && (
-          <Box paddingLeft={1}>
-            <Text color={colors.gray}>
-              {symbols.hive} View all {agentName}'s activity at{' '}
+      {webModeEnabled && (
+        <Box flexDirection="column" paddingX={1} paddingY={1}>
+          <Box>
+            <Text color={colors.honey} bold>
+              {symbols.hive}{' '}
             </Text>
-            <Text color={colors.cyan}>
-              {HIVE_FRONTEND_URL}/agent/{agentName}
+            <Text color={colors.white} bold>
+              zHive
             </Text>
+            {webServer.status === 'starting' && (
+              <Text color={colors.gray}> starting web dashboard…</Text>
+            )}
+            {webServer.status === 'listening' && <Text color={colors.gray}> dashboard ready</Text>}
+            {webServer.status === 'error' && (
+              <Text color={colors.red}> dashboard failed to start</Text>
+            )}
           </Box>
-        )}
-        {webServer.status === 'listening' && (
-          <Box paddingLeft={1}>
-            <Text color={colors.gray}>{symbols.hive} Web dashboard: </Text>
-            <Text color={colors.cyan}>{webServer.url}</Text>
-          </Box>
-        )}
-        {webServer.status === 'error' && (
-          <Box paddingLeft={1}>
-            <Text color={colors.red}>
-              {symbols.cross} Web dashboard failed to start: {webServer.error}
-            </Text>
-          </Box>
-        )}
 
-        <Box flexDirection="column" paddingLeft={1} paddingRight={1} minHeight={2}>
-          {hasAgent && !connected && <Spinner label="Initiating neural link..." />}
-          {!hasAgent && !isStarting && (
-            <Text color={colors.gray}>
-              {symbols.hive} waiting for agent selection in the web dashboard...
-            </Text>
+          {webServer.status === 'listening' && (
+            <>
+              <Box marginTop={1}>
+                <Text color={colors.gray}> - </Text>
+                <Text color={colors.white}>Local:</Text>
+                <Text> </Text>
+                <Text color={colors.cyan}>{webServer.url}</Text>
+              </Box>
+              <Box marginTop={1}>
+                <Text color={colors.gray}>
+                  Open the URL above in your browser to use the dashboard.
+                </Text>
+              </Box>
+              <Box>
+                <Text color={colors.gray}>Keep this terminal running. Press </Text>
+                <Text color={colors.white} bold>
+                  Ctrl+C
+                </Text>
+                <Text color={colors.gray}> to stop.</Text>
+              </Box>
+            </>
           )}
-          {!hasAgent && isStarting && <Spinner label="Starting agent..." />}
-          {/* Active poll activities suppressed in web mode — the dashboard's
+
+          {webServer.status === 'error' && (
+            <Box marginTop={1}>
+              <Text color={colors.red}>
+                {symbols.cross} {webServer.error}
+              </Text>
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {!webModeEnabled && (
+        <Box flexDirection="column" width={boxWidth}>
+          {/* Header */}
+          <Box>
+            <Text
+              color={colors.honey}
+            >{`${border.topLeft}${border.horizontal} ${symbols.hive} `}</Text>
+            <Text color={colors.white} bold>
+              {nameDisplay}
+            </Text>
+            <Text color={colors.gray}> {`${border.horizontal.repeat(3)} `}</Text>
+            <Text color={hasAgent && connected ? colors.green : colors.honey}>
+              {connectedDisplay}
+            </Text>
+            <Text color={colors.gray}>
+              {' '}
+              {border.horizontal.repeat(Math.max(0, headerFill))}
+              {border.topRight}
+            </Text>
+          </Box>
+          {hasAgent && modelInfo && (
+            <Box paddingLeft={1}>
+              <Text color={colors.gray}>{symbols.hive} </Text>
+              <Text color={colors.cyan}>{modelInfo.modelId}</Text>
+              <Text color={colors.gray}> {'×'} </Text>
+              <Text color={colors.purple}>zData</Text>
+            </Box>
+          )}
+          {hasAgent && connected && (
+            <Box paddingLeft={1}>
+              <Text color={colors.gray}>
+                {symbols.hive} View all {agentName}'s activity at{' '}
+              </Text>
+              <Text color={colors.cyan}>
+                {HIVE_FRONTEND_URL}/agent/{agentName}
+              </Text>
+            </Box>
+          )}
+          {webServer.status === 'listening' && (
+            <Box paddingLeft={1}>
+              <Text color={colors.gray}>{symbols.hive} Web dashboard: </Text>
+              <Text color={colors.cyan}>{webServer.url}</Text>
+            </Box>
+          )}
+          {webServer.status === 'error' && (
+            <Box paddingLeft={1}>
+              <Text color={colors.red}>
+                {symbols.cross} Web dashboard failed to start: {webServer.error}
+              </Text>
+            </Box>
+          )}
+
+          <Box flexDirection="column" paddingLeft={1} paddingRight={1} minHeight={2}>
+            {hasAgent && !connected && <Spinner label="Initiating neural link..." />}
+            {!hasAgent && !isStarting && (
+              <Text color={colors.gray}>
+                {symbols.hive} waiting for agent selection in the web dashboard...
+              </Text>
+            )}
+            {!hasAgent && isStarting && <Spinner label="Starting agent..." />}
+            {/* Active poll activities suppressed in web mode — the dashboard's
               ActivityFeed renders the same events. */}
-          {!webMode &&
-            hasAgent &&
-            activePollActivities.map((item, i) => {
-              if (item.type !== 'megathread') {
-                const formatted = activityFormatter.format(item);
-                if (formatted.length === 0) return <Box key={`active-${item.id ?? i}`} />;
-                return <Text key={`active-${item.id ?? i}`}>{formatted.join('\n')}</Text>;
-              }
-              return (
-                <Box key={`active-${item.id ?? i}`} flexDirection="column">
-                  <Box>
-                    <Text color={colors.gray} dimColor>
-                      {formatTime(item.timestamp)}{' '}
-                    </Text>
-                    <Text color={colors.controversial}>{symbols.hive} </Text>
-                    <PollText
-                      color={colors.controversial}
-                      text={activityFormatter.getText(item)}
-                      animate={false}
-                    />
-                    <Text> </Text>
-                  </Box>
-                  {activityFormatter.getDetail(item) && (
-                    <Box marginLeft={13}>
+            {!webMode &&
+              hasAgent &&
+              activePollActivities.map((item, i) => {
+                if (item.type !== 'megathread') {
+                  const formatted = activityFormatter.format(item);
+                  if (formatted.length === 0) return <Box key={`active-${item.id ?? i}`} />;
+                  return <Text key={`active-${item.id ?? i}`}>{formatted.join('\n')}</Text>;
+                }
+                return (
+                  <Box key={`active-${item.id ?? i}`} flexDirection="column">
+                    <Box>
+                      <Text color={colors.gray} dimColor>
+                        {formatTime(item.timestamp)}{' '}
+                      </Text>
+                      <Text color={colors.controversial}>{symbols.hive} </Text>
                       <PollText
-                        color={colors.gray}
-                        text={`"${activityFormatter.getDetail(item)}"`}
+                        color={colors.controversial}
+                        text={activityFormatter.getText(item)}
                         animate={false}
                       />
+                      <Text> </Text>
                     </Box>
-                  )}
-                </Box>
-              );
-            })}
-        </Box>
+                    {activityFormatter.getDetail(item) && (
+                      <Box marginLeft={13}>
+                        <PollText
+                          color={colors.gray}
+                          text={`"${activityFormatter.getDetail(item)}"`}
+                          animate={false}
+                        />
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })}
+          </Box>
 
-        {/* Overlay (e.g. /positions) - takes over chat area & input when active.
+          {/* Overlay (e.g. /positions) - takes over chat area & input when active.
             Suppressed in web mode — overlays were terminal-only affordances
             for slash commands; the equivalent UI lives in the dashboard. */}
-        {!webMode && hasAgent && overlay?.type === 'positions' && (
-          <>
-            <Box>
-              <Text color={colors.gray}>
-                {border.teeLeft}
-                {`${border.horizontal.repeat(2)} positions `}
-                {border.horizontal.repeat(Math.max(0, boxWidth - 14))}
-                {border.teeRight}
-              </Text>
-            </Box>
-            <PositionsView positions={overlay.positions} onClose={closeOverlay} />
-          </>
-        )}
+          {!webMode && hasAgent && overlay?.type === 'positions' && (
+            <>
+              <Box>
+                <Text color={colors.gray}>
+                  {border.teeLeft}
+                  {`${border.horizontal.repeat(2)} positions `}
+                  {border.horizontal.repeat(Math.max(0, boxWidth - 14))}
+                  {border.teeRight}
+                </Text>
+              </Box>
+              <PositionsView positions={overlay.positions} onClose={closeOverlay} />
+            </>
+          )}
 
-        {!webMode && hasAgent && overlay?.type === 'watchlist' && (
-          <>
-            <Box>
-              <Text color={colors.gray}>
-                {border.teeLeft}
-                {`${border.horizontal.repeat(2)} watchlist `}
-                {border.horizontal.repeat(Math.max(0, boxWidth - 13))}
-                {border.teeRight}
-              </Text>
-            </Box>
-            <WatchlistView
-              currentWatchlist={overlay.currentWatchlist}
-              onClose={closeOverlay}
-              onSaved={async () => reloadRuntime()}
-            />
-          </>
-        )}
-
-        {/* Chat section - visible after first message.
-            Suppressed in web mode — the dashboard hosts chat. */}
-        {!webMode && hasAgent && !overlay && (chatActivity.length > 0 || chatStreaming) && (
-          <>
-            <Box>
-              <Text color={colors.gray}>
-                {border.teeLeft}
-                {`${border.horizontal.repeat(2)} chat with ${agentName} agent `}
-                {border.horizontal.repeat(Math.max(0, boxWidth - agentName.length - 22))}
-                {border.teeRight}
-              </Text>
-            </Box>
-            <Box
-              flexDirection="column"
-              paddingLeft={1}
-              paddingRight={1}
-              minHeight={2}
-              // @ts-expect-error maxHeight is supported by Ink at runtime but missing from types
-              maxHeight={8}
-            >
-              {visibleChatActivity.map((item, i) => (
-                <Box key={i}>
-                  {item.type === 'chat-user' && (
-                    <Box>
-                      <Text color={colors.white} bold>
-                        you:{' '}
-                      </Text>
-                      <Text color={colors.white}>{item.text}</Text>
-                    </Box>
-                  )}
-                  {item.type === 'chat-agent' && (
-                    <Box>
-                      <Text color={colors.honey} bold>
-                        {agentPrefix}
-                      </Text>
-                      <Text color={colors.white} wrap="wrap">
-                        {item.text}
-                      </Text>
-                    </Box>
-                  )}
-                  {item.type === 'chat-error' && (
-                    <Box>
-                      <Text color={colors.red}>
-                        {symbols.cross} {item.text}
-                      </Text>
-                    </Box>
-                  )}
-                  {(item.type === 'tool-summary' || item.type === 'tool-call') && (
-                    <Box>
-                      <Text>{item.text}</Text>
-                    </Box>
-                  )}
-                </Box>
-              ))}
-              {chatStreaming && chatBuffer && (
-                <Box>
-                  <Text color={colors.honey} bold>
-                    {agentPrefix}
-                  </Text>
-                  <Text color={colors.white} wrap="wrap">
-                    {chatBuffer}
-                  </Text>
-                </Box>
-              )}
-            </Box>
-          </>
-        )}
-
-        {/* Input Bar — only when stdin is a real TTY AND an agent is loaded.
-            Suppressed in web mode — chat input lives in the dashboard. */}
-        <Box>
-          <Text color={colors.gray}>
-            {!webMode && isInteractive && hasAgent ? border.teeLeft : border.bottomLeft}
-            {border.horizontal.repeat(boxWidth - 2)}
-            {!webMode && isInteractive && hasAgent ? border.teeRight : border.bottomRight}
-          </Text>
-        </Box>
-        {!webMode && isInteractive && hasAgent && !overlay && (
-          <>
-            <Box paddingLeft={1}>
-              <CommandInput
-                value={input}
-                onChange={setInput}
-                onSubmit={(val) => {
-                  setInput('');
-                  void handleChatSubmit(val);
-                }}
-                placeholder={chatStreaming ? 'thinking...' : `chat with ${agentName} agent...`}
+          {!webMode && hasAgent && overlay?.type === 'watchlist' && (
+            <>
+              <Box>
+                <Text color={colors.gray}>
+                  {border.teeLeft}
+                  {`${border.horizontal.repeat(2)} watchlist `}
+                  {border.horizontal.repeat(Math.max(0, boxWidth - 13))}
+                  {border.teeRight}
+                </Text>
+              </Box>
+              <WatchlistView
+                currentWatchlist={overlay.currentWatchlist}
+                onClose={closeOverlay}
+                onSaved={async () => reloadRuntime()}
               />
-            </Box>
-            <Box>
-              <Text color={colors.gray}>
-                {border.bottomLeft}
-                {border.horizontal.repeat(boxWidth - 2)}
-                {border.bottomRight}
-              </Text>
-            </Box>
-          </>
-        )}
-      </Box>
+            </>
+          )}
+
+          {/* Chat section - visible after first message.
+            Suppressed in web mode — the dashboard hosts chat. */}
+          {!webMode && hasAgent && !overlay && (chatActivity.length > 0 || chatStreaming) && (
+            <>
+              <Box>
+                <Text color={colors.gray}>
+                  {border.teeLeft}
+                  {`${border.horizontal.repeat(2)} chat with ${agentName} agent `}
+                  {border.horizontal.repeat(Math.max(0, boxWidth - agentName.length - 22))}
+                  {border.teeRight}
+                </Text>
+              </Box>
+              <Box
+                flexDirection="column"
+                paddingLeft={1}
+                paddingRight={1}
+                minHeight={2}
+                // @ts-expect-error maxHeight is supported by Ink at runtime but missing from types
+                maxHeight={8}
+              >
+                {visibleChatActivity.map((item, i) => (
+                  <Box key={i}>
+                    {item.type === 'chat-user' && (
+                      <Box>
+                        <Text color={colors.white} bold>
+                          you:{' '}
+                        </Text>
+                        <Text color={colors.white}>{item.text}</Text>
+                      </Box>
+                    )}
+                    {item.type === 'chat-agent' && (
+                      <Box>
+                        <Text color={colors.honey} bold>
+                          {agentPrefix}
+                        </Text>
+                        <Text color={colors.white} wrap="wrap">
+                          {item.text}
+                        </Text>
+                      </Box>
+                    )}
+                    {item.type === 'chat-error' && (
+                      <Box>
+                        <Text color={colors.red}>
+                          {symbols.cross} {item.text}
+                        </Text>
+                      </Box>
+                    )}
+                    {(item.type === 'tool-summary' || item.type === 'tool-call') && (
+                      <Box>
+                        <Text>{item.text}</Text>
+                      </Box>
+                    )}
+                  </Box>
+                ))}
+                {chatStreaming && chatBuffer && (
+                  <Box>
+                    <Text color={colors.honey} bold>
+                      {agentPrefix}
+                    </Text>
+                    <Text color={colors.white} wrap="wrap">
+                      {chatBuffer}
+                    </Text>
+                  </Box>
+                )}
+              </Box>
+            </>
+          )}
+
+          {/* Input Bar — only when stdin is a real TTY AND an agent is loaded.
+            Suppressed in web mode — chat input lives in the dashboard. */}
+          <Box>
+            <Text color={colors.gray}>
+              {!webMode && isInteractive && hasAgent ? border.teeLeft : border.bottomLeft}
+              {border.horizontal.repeat(boxWidth - 2)}
+              {!webMode && isInteractive && hasAgent ? border.teeRight : border.bottomRight}
+            </Text>
+          </Box>
+          {!webMode && isInteractive && hasAgent && !overlay && (
+            <>
+              <Box paddingLeft={1}>
+                <CommandInput
+                  value={input}
+                  onChange={setInput}
+                  onSubmit={(val) => {
+                    setInput('');
+                    void handleChatSubmit(val);
+                  }}
+                  placeholder={chatStreaming ? 'thinking...' : `chat with ${agentName} agent...`}
+                />
+              </Box>
+              <Box>
+                <Text color={colors.gray}>
+                  {border.bottomLeft}
+                  {border.horizontal.repeat(boxWidth - 2)}
+                  {border.bottomRight}
+                </Text>
+              </Box>
+            </>
+          )}
+        </Box>
+      )}
     </>
   );
 };

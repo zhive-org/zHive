@@ -1,6 +1,7 @@
 import { resetModelCache } from './config/ai-providers';
 import { resetHiveClient } from './config/hive-client';
 import { resetBacktestState } from './backtest/state';
+import { resetBacktestCache } from './backtest/web-cache';
 import { clearSubagentUsage } from './tools/execute-skill';
 import type { WebEventBus } from '../commands/start/web/events';
 
@@ -16,6 +17,7 @@ export function resetSharedCaches(): void {
   resetModelCache();
   resetHiveClient();
   resetBacktestState();
+  resetBacktestCache();
   clearSubagentUsage();
 }
 

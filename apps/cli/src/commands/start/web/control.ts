@@ -9,6 +9,9 @@ import type {
   Sentiment,
 } from '@zhive/sdk';
 import type { DetailedPosition } from '../../../shared/trading/types';
+import type { BacktestProgress } from '../../../shared/backtest/state';
+import type { BacktestSummary } from '../../../shared/backtest/runner';
+import type { AccountSnapshot, FillRecord } from '../../../shared/backtest/types';
 
 export type {
   AgentPortfolioRange,
@@ -17,7 +20,38 @@ export type {
   ClosedTradesPageDto,
   ClosedTradesTimeframe,
   PositionsPageDto,
+  BacktestProgress,
+  BacktestSummary,
+  AccountSnapshot,
+  FillRecord,
 };
+
+/** Backtest launch payload. Numeric `from`/`to` are Unix ms epochs.
+ * `intervalMs` is the tick spacing the engine advances by per step. */
+export interface BacktestStartOptions {
+  from: number;
+  to: number;
+  coin: string;
+  intervalMs: number;
+  initialCashUsd: number;
+}
+
+/** Parsed contents of the per-run JSONL artifacts the runner writes to
+ * `./backtest-results/`. Returned by `getBacktestArtifacts()` so the SPA
+ * can render the equity curve and fills table without re-reading disk
+ * on its own. */
+export interface BacktestArtifactsResponse {
+  snapshots: AccountSnapshot[];
+  fills: FillRecord[];
+}
+
+/** Tagged-union returned by `/api/backtest/status`. The SPA polls the
+ * route and switches view state on the `status` field. */
+export type BacktestStatus =
+  | { status: 'idle' }
+  | { status: 'running'; progress: BacktestProgress }
+  | { status: 'completed'; summary: BacktestSummary }
+  | { status: 'failed'; error: string };
 
 export interface WebState {
   agentName: string;
@@ -116,4 +150,14 @@ export interface WebControl {
   /** Full ticker universe (crypto + xyz: stocks) the exchange currently
    * supports. Cached upstream — safe to call from request handlers. */
   getAvailableTickers: () => Promise<AvailableTickers>;
+  /** Kick off a backtest run. Resolves once the session lock is acquired
+   * (before the engine completes) so the POST can return 202 quickly;
+   * the run itself continues asynchronously. Throws
+   * `A backtest is already running` if the singleton is busy — the route
+   * handler maps that to a 409 with the in-flight progress. */
+  runBacktest: (opts: BacktestStartOptions) => Promise<void>;
+  /** Read the last run's `snapshots.jsonl` and `fills.jsonl` from
+   * `./backtest-results/` and return them parsed. Missing files map to
+   * empty arrays so a never-run agent still gets a usable shape. */
+  getBacktestArtifacts: () => Promise<BacktestArtifactsResponse>;
 }

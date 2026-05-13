@@ -3,6 +3,8 @@ import type { WebEventBus } from './events';
 import type {
   AgentPortfolioRange,
   AgentTradingStatsV2BatchEntryDto,
+  BacktestStartOptions,
+  BacktestStatus,
   ClosedTradesTimeframe,
   WebControl,
 } from './control';
@@ -14,6 +16,8 @@ import {
   defaultDashboardRoot,
   listenLocalhost,
 } from './web-shared';
+import { getRunningBacktest } from '../../../shared/backtest/state';
+import { getBacktestError, getBacktestResult } from '../../../shared/backtest/web-cache';
 
 const VALID_PORTFOLIO_RANGES: ReadonlySet<AgentPortfolioRange> = new Set([
   '7d',
@@ -43,6 +47,8 @@ const MAX_MARKDOWN_BYTES = 64 * 1024;
 const MAX_CREDENTIALS_BYTES = 4 * 1024;
 /** Config body cap — bio + sector lists + watchlist are tiny in practice. */
 const MAX_CONFIG_BYTES = 16 * 1024;
+/** Backtest start payload cap — five small primitive fields. */
+const MAX_BACKTEST_START_BYTES = 4 * 1024;
 
 const ALLOWED_SENTIMENTS = new Set([
   'very-bullish',
@@ -59,6 +65,10 @@ export interface PickerAgentSummary {
   created: string;
   bio: string | null;
   avatarUrl?: string;
+  /** True when the agent's local `.env` declares a usable LLM provider key.
+   * False for fresh web-wizard bundles where the user hasn't pasted a key
+   * yet — the picker shows a "needs key" badge so they know what's left. */
+  hasProviderKey: boolean;
 }
 
 function pushError(eventBus: WebEventBus | null | undefined, errorMessage: string): void {
@@ -330,6 +340,119 @@ export function buildApp(options: BuildAppOptions): Hono {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return c.json({ ok: false, error: message }, 503);
+    }
+  });
+
+  // ─── Backtest endpoints ───────────────────────────────
+  // The runner is fire-and-forget — POST /start returns 202 once the
+  // session lock is acquired; the SPA polls /status until terminal.
+
+  app.post('/api/backtest/start', async (c) => {
+    const { control } = resolveRuntime();
+    if (!control) {
+      return dynamic ? c.json({ ok: false, error: 'agent not selected' }, 503) : c.notFound();
+    }
+    const raw = await c.req.text();
+    if (raw.length > MAX_BACKTEST_START_BYTES) {
+      return c.json({ ok: false, error: `body exceeds ${MAX_BACKTEST_START_BYTES} bytes` }, 413);
+    }
+    let body: unknown;
+    try {
+      body = JSON.parse(raw);
+    } catch {
+      return c.json({ ok: false, error: 'invalid JSON' }, 400);
+    }
+    if (!body || typeof body !== 'object') {
+      return c.json({ ok: false, error: 'body must be an object' }, 400);
+    }
+    const partial = body as Record<string, unknown>;
+    if (typeof partial.from !== 'number' || !Number.isFinite(partial.from)) {
+      return c.json({ ok: false, error: 'from must be a finite number (ms epoch)' }, 400);
+    }
+    if (typeof partial.to !== 'number' || !Number.isFinite(partial.to)) {
+      return c.json({ ok: false, error: 'to must be a finite number (ms epoch)' }, 400);
+    }
+    if (partial.to <= partial.from) {
+      return c.json({ ok: false, error: 'to must be after from' }, 400);
+    }
+    if (typeof partial.coin !== 'string' || partial.coin.trim() === '') {
+      return c.json({ ok: false, error: 'coin must be a non-empty string' }, 400);
+    }
+    if (
+      typeof partial.intervalMs !== 'number' ||
+      !Number.isFinite(partial.intervalMs) ||
+      partial.intervalMs <= 0
+    ) {
+      return c.json({ ok: false, error: 'intervalMs must be a positive number' }, 400);
+    }
+    if (
+      typeof partial.initialCashUsd !== 'number' ||
+      !Number.isFinite(partial.initialCashUsd) ||
+      partial.initialCashUsd <= 0
+    ) {
+      return c.json({ ok: false, error: 'initialCashUsd must be a positive number' }, 400);
+    }
+    const opts: BacktestStartOptions = {
+      from: partial.from,
+      to: partial.to,
+      coin: partial.coin,
+      intervalMs: partial.intervalMs,
+      initialCashUsd: partial.initialCashUsd,
+    };
+    try {
+      await control.runBacktest(opts);
+      return c.json({ ok: true }, 202);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.startsWith('A backtest is already running')) {
+        return c.json({ ok: false, running: getRunningBacktest() }, 409);
+      }
+      return c.json({ ok: false, error: message }, 400);
+    }
+  });
+
+  app.get('/api/backtest/status', (c) => {
+    const running = getRunningBacktest();
+    if (running) {
+      const status: BacktestStatus = { status: 'running', progress: running };
+      return c.json(status);
+    }
+    const error = getBacktestError();
+    if (error) {
+      const status: BacktestStatus = { status: 'failed', error };
+      return c.json(status);
+    }
+    const summary = getBacktestResult();
+    if (summary) {
+      const status: BacktestStatus = { status: 'completed', summary };
+      return c.json(status);
+    }
+    const status: BacktestStatus = { status: 'idle' };
+    return c.json(status);
+  });
+
+  app.get('/api/backtest/result', async (c) => {
+    const { readFile } = await import('node:fs/promises');
+    const { join } = await import('node:path');
+    try {
+      const raw = await readFile(join('./backtest-results', 'summary.json'), 'utf-8');
+      return c.json(JSON.parse(raw));
+    } catch {
+      return c.json({ ok: false, error: 'no summary.json on disk' }, 404);
+    }
+  });
+
+  app.get('/api/backtest/artifacts', async (c) => {
+    const { control } = resolveRuntime();
+    if (!control) {
+      return dynamic ? c.json({ ok: false, error: 'agent not selected' }, 503) : c.notFound();
+    }
+    try {
+      const artifacts = await control.getBacktestArtifacts();
+      return c.json(artifacts);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return c.json({ ok: false, error: message }, 500);
     }
   });
 

@@ -8,7 +8,7 @@
  * in the same Node process, so a module-level mutable handle is sufficient.
  */
 
-export type BacktestSource = 'cli' | 'chat';
+export type BacktestSource = 'cli' | 'chat' | 'web';
 
 export interface BacktestProgress {
   startedAt: number;

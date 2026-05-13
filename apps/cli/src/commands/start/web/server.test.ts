@@ -1,14 +1,31 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { buildApp, type PickerAgentSummary } from './server';
 import { WebEventBus } from './events';
 import type { WebControl, WebState } from './control';
+import { resetBacktestState, startBacktestSession } from '../../../shared/backtest/state';
+import {
+  resetBacktestCache,
+  setBacktestError,
+  setBacktestResult,
+} from '../../../shared/backtest/web-cache';
+import type { BacktestSummary } from '../../../shared/backtest/runner';
 
 const AGENTS: PickerAgentSummary[] = [
-  { name: 'sundae', created: '2026-01-01T00:00:00.000Z', bio: 'cone collector' },
-  { name: 'comet', created: '2026-02-01T00:00:00.000Z', bio: null },
+  {
+    name: 'sundae',
+    created: '2026-01-01T00:00:00.000Z',
+    bio: 'cone collector',
+    hasProviderKey: true,
+  },
+  {
+    name: 'comet',
+    created: '2026-02-01T00:00:00.000Z',
+    bio: null,
+    hasProviderKey: false,
+  },
 ];
 
 function fakeControl(overrides: Partial<WebControl> = {}): WebControl {
@@ -55,7 +72,28 @@ function fakeControl(overrides: Partial<WebControl> = {}): WebControl {
       crypto: ['BTC', 'ETH'],
       stockCommodity: ['xyz:MSTR', 'xyz:TSLA'],
     }),
+    runBacktest: vi.fn().mockResolvedValue(undefined),
+    getBacktestArtifacts: vi.fn().mockResolvedValue({ snapshots: [], fills: [] }),
     ...overrides,
+  };
+}
+
+function makeBacktestSummary(): BacktestSummary {
+  return {
+    from: 1_700_000_000_000,
+    to: 1_700_086_400_000,
+    ticks: 24,
+    initialCashUsd: 10_000,
+    finalEquity: 10_500,
+    totalReturnPct: 5,
+    realizedPnl: 500,
+    numFills: 4,
+    numClosedTrades: 2,
+    wins: 2,
+    losses: 0,
+    winRatePct: 100,
+    maxDrawdownPct: 1,
+    perAsset: { BTC: { realizedPnl: 500, numClosed: 2 } },
   };
 }
 
@@ -788,6 +826,170 @@ describe('buildApp', () => {
       await new Promise((r) => setTimeout(r, 0));
       const { events } = bus.since(0);
       expect(events.some((e) => e.type === 'error' && e.errorMessage === 'boom')).toBe(true);
+    });
+  });
+
+  describe('backtest routes', () => {
+    const START_BODY = {
+      from: 1_700_000_000_000,
+      to: 1_700_086_400_000,
+      coin: 'BTC',
+      intervalMs: 3_600_000,
+      initialCashUsd: 10_000,
+    };
+
+    afterEach(() => {
+      resetBacktestCache();
+      resetBacktestState();
+    });
+
+    it('POST /api/backtest/start returns 202 when idle', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+
+      const res = await fetch(app, '/api/backtest/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(START_BODY),
+      });
+      expect(res.status).toBe(202);
+      expect(await res.json()).toEqual({ ok: true });
+      expect(control.runBacktest).toHaveBeenCalledWith(START_BODY);
+    });
+
+    it('POST /api/backtest/start returns 409 when another run is in flight', async () => {
+      // Seed the singleton so the route handler can include progress in
+      // the 409 body. The mock control then throws the "already running"
+      // sentinel the route looks for.
+      startBacktestSession({
+        from: START_BODY.from,
+        to: START_BODY.to,
+        intervalMs: START_BODY.intervalMs,
+        initialCashUsd: START_BODY.initialCashUsd,
+        watchList: ['BTC'],
+        source: 'web',
+      });
+      const control = fakeControl({
+        runBacktest: vi.fn().mockRejectedValue(new Error('A backtest is already running')),
+      });
+      const app = buildApp({ control, dashboardRoot: null });
+
+      const res = await fetch(app, '/api/backtest/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(START_BODY),
+      });
+      expect(res.status).toBe(409);
+      const body = await res.json();
+      expect(body.ok).toBe(false);
+      expect(body.running).toBeDefined();
+      expect(body.running.from).toBe(START_BODY.from);
+    });
+
+    it('POST /api/backtest/start rejects from > to with 400', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/backtest/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...START_BODY, from: START_BODY.to, to: START_BODY.from }),
+      });
+      expect(res.status).toBe(400);
+      expect(control.runBacktest).not.toHaveBeenCalled();
+    });
+
+    it('POST /api/backtest/start rejects cash = 0 with 400', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/backtest/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...START_BODY, initialCashUsd: 0 }),
+      });
+      expect(res.status).toBe(400);
+      expect(control.runBacktest).not.toHaveBeenCalled();
+    });
+
+    it('POST /api/backtest/start rejects missing coin with 400', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const { coin: _omit, ...rest } = START_BODY;
+      const res = await fetch(app, '/api/backtest/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(rest),
+      });
+      expect(res.status).toBe(400);
+      expect(control.runBacktest).not.toHaveBeenCalled();
+    });
+
+    it('GET /api/backtest/status returns idle when nothing has run', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/backtest/status');
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ status: 'idle' });
+    });
+
+    it('GET /api/backtest/status returns running when the session is active', async () => {
+      startBacktestSession({
+        from: START_BODY.from,
+        to: START_BODY.to,
+        intervalMs: START_BODY.intervalMs,
+        initialCashUsd: START_BODY.initialCashUsd,
+        watchList: ['BTC'],
+        source: 'web',
+      });
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/backtest/status');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('running');
+      expect(body.progress.from).toBe(START_BODY.from);
+    });
+
+    it('GET /api/backtest/status returns completed when a summary is cached', async () => {
+      setBacktestResult(makeBacktestSummary());
+      setBacktestError(null);
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/backtest/status');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('completed');
+      expect(body.summary.finalEquity).toBe(10_500);
+    });
+
+    it('GET /api/backtest/status returns failed when an error is cached', async () => {
+      setBacktestError('boom');
+      setBacktestResult(null);
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/backtest/status');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('failed');
+      expect(body.error).toBe('boom');
+    });
+
+    it('GET /api/backtest/artifacts forwards control output', async () => {
+      const control = fakeControl();
+      const app = buildApp({ control, dashboardRoot: null });
+      const res = await fetch(app, '/api/backtest/artifacts');
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ snapshots: [], fills: [] });
+      expect(control.getBacktestArtifacts).toHaveBeenCalled();
+    });
+
+    it('GET /api/backtest/artifacts returns 503 in dynamic mode when no runtime', async () => {
+      const app = buildApp({
+        getRuntimeState: () => null,
+        getAgents: () => AGENTS,
+        dashboardRoot: null,
+      });
+      const res = await fetch(app, '/api/backtest/artifacts');
+      expect(res.status).toBe(503);
     });
   });
 });

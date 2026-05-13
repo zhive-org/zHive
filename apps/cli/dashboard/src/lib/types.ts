@@ -96,6 +96,10 @@ export interface PickerAgentSummary {
   created: string;
   bio: string | null;
   avatarUrl?: string;
+  /** False for agents whose local `.env` is still the wizard placeholder
+   * (no LLM provider key filled in). The picker renders a "needs key" badge
+   * so the user knows the agent can't actually run yet. */
+  hasProviderKey: boolean;
 }
 
 /** Per-agent trading stats for the picker UI. Mirrors the upstream
@@ -211,3 +215,91 @@ export type ApiState =
   | ({ phase: 'ready' } & WebState)
   | { phase: 'selecting'; agents: PickerAgentSummary[] }
   | { phase: 'starting'; agents: PickerAgentSummary[] };
+
+export type BacktestSource = 'cli' | 'chat' | 'web';
+
+export interface BacktestProgress {
+  startedAt: number;
+  from: number;
+  to: number;
+  currentTime: number;
+  intervalMs: number;
+  ticksCompleted: number;
+  totalTicks: number;
+  percent: number;
+  watchList: string[];
+  initialCashUsd: number;
+  currentEquity: number | null;
+  source: BacktestSource;
+}
+
+export interface BacktestSummary {
+  from: number;
+  to: number;
+  ticks: number;
+  initialCashUsd: number;
+  finalEquity: number;
+  totalReturnPct: number;
+  realizedPnl: number;
+  numFills: number;
+  numClosedTrades: number;
+  wins: number;
+  losses: number;
+  winRatePct: number;
+  maxDrawdownPct: number;
+  perAsset: Record<string, { realizedPnl: number; numClosed: number }>;
+}
+
+export type BacktestStatus =
+  | { status: 'idle' }
+  | { status: 'running'; progress: BacktestProgress }
+  | { status: 'completed'; summary: BacktestSummary }
+  | { status: 'failed'; error: string };
+
+export interface FillRecord {
+  ts: number;
+  asset: string;
+  side: 'long' | 'short';
+  action: 'OPEN' | 'CLOSE_MANUAL' | 'CLOSE_TP' | 'CLOSE_SL';
+  size: number;
+  price: number;
+  notionalUsd: number;
+  feeUsd: number;
+  realizedPnlUsd: number;
+  reasoning: string;
+}
+
+export interface AccountSnapshot {
+  ts: number;
+  cash: number;
+  equity: number;
+  marginUsed: number;
+  positions: Array<{
+    asset: string;
+    side: 'long' | 'short';
+    size: number;
+    entryPrice: number;
+    markPrice: number;
+    leverage: number;
+    unrealizedPnl: number;
+    slPrice: number | null;
+    tpPrice: number | null;
+  }>;
+}
+
+export interface BacktestArtifacts {
+  snapshots: AccountSnapshot[];
+  fills: FillRecord[];
+}
+
+export interface BacktestStartOptions {
+  from: number;
+  to: number;
+  coin: string;
+  intervalMs: number;
+  initialCashUsd: number;
+}
+
+export type BacktestStartResult =
+  | { ok: true }
+  | { ok: false; status: number; error?: string; running?: BacktestProgress };

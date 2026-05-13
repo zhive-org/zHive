@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AgentPicker } from './components/AgentPicker';
+import { BacktestView } from './components/BacktestView';
 import { Dashboard } from './components/Dashboard';
 import { SettingsView } from './components/SettingsView';
 import { fetchApiState } from './lib/api';
@@ -8,11 +9,11 @@ import { resetAgentScopedClientState } from './lib/resetAgentScopedClientState';
 
 export function App() {
   const queryClient = useQueryClient();
-  // 'dashboard' | 'settings'. Only meaningful when phase === 'ready' — the
-  // other phases force their own full-screen views (picker, splash). Reset
-  // to 'dashboard' on every agent boundary so settings doesn't leak across
-  // agents.
-  const [view, setView] = useState<'dashboard' | 'settings'>('dashboard');
+  // 'dashboard' | 'settings' | 'backtest'. Only meaningful when
+  // phase === 'ready' — the other phases force their own full-screen views
+  // (picker, splash). Reset to 'dashboard' on every agent boundary so
+  // settings/backtest don't leak across agents.
+  const [view, setView] = useState<'dashboard' | 'settings' | 'backtest'>('dashboard');
   const stateQuery = useQuery({
     queryKey: ['state'],
     queryFn: fetchApiState,
@@ -73,7 +74,15 @@ export function App() {
     return <SettingsView state={data} onClose={() => setView('dashboard')} />;
   }
 
+  if (view === 'backtest') {
+    return <BacktestView state={data} onClose={() => setView('dashboard')} />;
+  }
+
   return (
-    <Dashboard state={data} onOpenSettings={() => setView('settings')} />
+    <Dashboard
+      state={data}
+      onOpenSettings={() => setView('settings')}
+      onOpenBacktest={() => setView('backtest')}
+    />
   );
 }

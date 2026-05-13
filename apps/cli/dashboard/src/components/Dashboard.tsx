@@ -22,6 +22,7 @@ import type { WebEvent, WebState } from '../lib/types';
 interface DashboardProps {
   state: WebState;
   onOpenSettings: () => void;
+  onOpenBacktest: () => void;
 }
 
 const DEFAULT_INTERVAL_MS = 60 * 60 * 1000;
@@ -68,7 +69,7 @@ function deriveStatus(events: WebEvent[]): StatusState {
   return 'idle';
 }
 
-export function Dashboard({ state, onOpenSettings }: DashboardProps) {
+export function Dashboard({ state, onOpenSettings, onOpenBacktest }: DashboardProps) {
   const stream = useEventStream();
 
   // Shared queries — child components reuse the same cache keys, so
@@ -127,6 +128,7 @@ export function Dashboard({ state, onOpenSettings }: DashboardProps) {
         roePercent={pnl.roePercent}
         rank={tradingRank?.rank ?? null}
         onOpenSettings={onOpenSettings}
+        onOpenBacktest={onOpenBacktest}
       />
 
       <PriceTicker items={tickerItems} />

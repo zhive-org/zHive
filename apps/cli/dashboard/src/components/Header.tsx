@@ -11,6 +11,7 @@ interface HeaderProps {
   roePercent: number;
   rank: number | null;
   onOpenSettings: () => void;
+  onOpenBacktest: () => void;
 }
 
 export function Header({
@@ -21,6 +22,7 @@ export function Header({
   roePercent,
   rank,
   onOpenSettings,
+  onOpenBacktest,
 }: HeaderProps) {
   const queryClient = useQueryClient();
   const exit = useMutation({
@@ -48,22 +50,32 @@ export function Header({
         </button>
         <span className="font-mono font-bold tracking-tight text-hive-honey">zHive</span>
         <span className="font-mono text-hive-text-dim">/</span>
-        <span className="font-mono text-hive-text-primary">{agentName ?? 'agent'}</span>
+        {agentName ? (
+          <a
+            href={`https://www.zhive.ai/agent/${encodeURIComponent(agentName)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-hive-text-primary hover:text-hive-honey transition-colors"
+          >
+            {agentName}
+          </a>
+        ) : (
+          <span className="font-mono text-hive-text-primary">agent</span>
+        )}
         <StatusPill state={status} />
       </div>
       <div className="flex items-center gap-5 text-xs">
         <Stat label="EQUITY" value={formatUsd(currentEquityUsd)} />
-        <Stat
-          label="LIVE PnL"
-          value={formatUsd(totalPnlUsd, { signed: true })}
-          color={pnlColor}
-        />
+        <Stat label="LIVE PnL" value={formatUsd(totalPnlUsd, { signed: true })} color={pnlColor} />
         <Stat label="ROE" value={formatPercent(roePercent)} color={pnlColor} />
-        <Stat
-          label="RANK"
-          value={rank !== null ? `#${rank}` : '—'}
-          color="text-hive-honey"
-        />
+        <Stat label="RANK" value={rank !== null ? `#${rank}` : '—'} color="text-hive-honey" />
+        <button
+          type="button"
+          onClick={onOpenBacktest}
+          className="border border-hive-border px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-hive-text-secondary transition-colors hover:border-hive-honey hover:text-hive-honey"
+        >
+          ⏵ backtest
+        </button>
         <button
           type="button"
           onClick={onOpenSettings}

@@ -4,6 +4,12 @@ import type {
   AgentProfile,
   ApiState,
   AvailableTickers,
+  BacktestArtifacts,
+  BacktestProgress,
+  BacktestStartOptions,
+  BacktestStartResult,
+  BacktestStatus,
+  BacktestSummary,
   ClosedTradesPage,
   ClosedTradesTimeframe,
   CredentialsUpdate,
@@ -143,4 +149,44 @@ export async function postChat(text: string): Promise<void> {
     body: JSON.stringify({ text }),
   });
   if (!res.ok) await asJsonError(res);
+}
+
+// ---------- backtest ----------
+
+export async function startBacktest(opts: BacktestStartOptions): Promise<BacktestStartResult> {
+  const res = await fetch('/api/backtest/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(opts),
+  });
+  if (res.ok) return { ok: true };
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {}
+  const obj = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+  const error = typeof obj.error === 'string' ? obj.error : undefined;
+  const running =
+    obj.running && typeof obj.running === 'object' ? (obj.running as BacktestProgress) : undefined;
+  return { ok: false, status: res.status, error, running };
+}
+
+export async function fetchBacktestStatus(): Promise<BacktestStatus> {
+  const res = await fetch('/api/backtest/status', { credentials: 'same-origin' });
+  if (!res.ok) await asJsonError(res);
+  return readJson<BacktestStatus>(res, '/api/backtest/status');
+}
+
+export async function fetchBacktestResult(): Promise<BacktestSummary | null> {
+  const res = await fetch('/api/backtest/result', { credentials: 'same-origin' });
+  if (res.status === 404) return null;
+  if (!res.ok) await asJsonError(res);
+  return readJson<BacktestSummary>(res, '/api/backtest/result');
+}
+
+export async function fetchBacktestArtifacts(): Promise<BacktestArtifacts> {
+  const res = await fetch('/api/backtest/artifacts', { credentials: 'same-origin' });
+  if (!res.ok) await asJsonError(res);
+  return readJson<BacktestArtifacts>(res, '/api/backtest/artifacts');
 }
