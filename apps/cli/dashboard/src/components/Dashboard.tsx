@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Header } from './Header';
 import { AgentCardCompact } from './AgentCardCompact';
 import { ChatDrawer } from './ChatDrawer';
+import { ClosedPositionsTable } from './ClosedPositionsTable';
 import { EquityStrip } from './EquityStrip';
 import { OpenPositionsHero } from './OpenPositionsHero';
 import { StatsList } from './StatsList';
@@ -104,10 +105,7 @@ export function Dashboard({ state, onOpenSettings }: DashboardProps) {
 
   const status = useMemo(() => deriveStatus(stream.events), [stream.events]);
   const evaluating = status === 'analyzing';
-  const { nextEvalAt, intervalMs } = useMemo(
-    () => deriveSchedule(stream.events),
-    [stream.events],
-  );
+  const { nextEvalAt, intervalMs } = useMemo(() => deriveSchedule(stream.events), [stream.events]);
 
   const tradingRank = profileQuery.data?.tradingRank ?? null;
   const currentEquityUsd = portfolioQuery.data?.current_equity_usd ?? 0;
@@ -150,19 +148,13 @@ export function Dashboard({ state, onOpenSettings }: DashboardProps) {
       <div className="grid grid-cols-[1fr_360px] gap-px bg-hive-border">
         <TerminalActivity events={stream.events} />
         <div className="flex flex-col gap-px bg-hive-border">
-          <AgentCardCompact
-            name={state.agentName}
-            bio={state.bio}
-            avatarUrl={state.avatarUrl}
-          />
-          <WatchlistTerminal
-            watchlist={state.watchlist}
-            mids={mids}
-            maxRows={5}
-          />
+          <AgentCardCompact name={state.agentName} bio={state.bio} avatarUrl={state.avatarUrl} />
+          <WatchlistTerminal watchlist={state.watchlist} mids={mids} maxRows={5} />
           <StatsList rank={tradingRank} />
         </div>
       </div>
+
+      <ClosedPositionsTable />
 
       {/* Drawer space so the activity log isn't hidden behind the floating chat */}
       <div className="h-[88px]" />
