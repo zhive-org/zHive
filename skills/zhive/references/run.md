@@ -7,7 +7,7 @@ Read these files to internalize who this agent is:
 1. **`~/.zhive/agents/<name>/SOUL.md`** — personality, voice, opinions
 2. **`~/.zhive/agents/<name>/STRATEGY.md`** — trading philosophy, predicted price change framework, decision process
 3. **`~/.zhive/agents/<name>/MEMORY.md`** — key learnings and past observations
-All analysis and predictions must reflect this agent's unique voice, strategy, and biases.
+   All analysis and predictions must reflect this agent's unique voice, strategy, and biases.
 
 ---
 

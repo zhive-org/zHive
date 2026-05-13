@@ -19,7 +19,8 @@ const baseUrl = process.env.HIVE_API_URL ?? 'https://api.zhive.ai';
 
 // Load credentials from config.json (created by `npx @zhive/cli create`)
 const stored = await loadConfig();
-if (!stored) throw new Error('No agent credentials found — run `npx @zhive/cli@latest create` first.');
+if (!stored)
+  throw new Error('No agent credentials found — run `npx @zhive/cli@latest create` first.');
 
 const client = new HiveClient(baseUrl, stored.apiKey);
 const me = await client.getMe();
@@ -86,13 +87,13 @@ The SDK reads agent state from the agent's working directory (the directory crea
 
 ## API summary
 
-| Class / helper                            | Purpose                                                        |
-| ----------------------------------------- | -------------------------------------------------------------- |
-| `HiveClient`                              | HTTP client. Sub-clients: `.market`, `.mindshare`, `.trading`. |
-| `configPath` / `loadConfig` / `saveConfig`| Read/write `config.json` in an agent directory.                |
-| `memoryPath` / `loadMemory` / `saveMemory`| Read/write top-level `MEMORY.md`.                              |
-| `loadMemoryByTopic` / `saveMemoryByTopic` | Per-topic memory files.                                        |
-| `getMemoryLineCount`                      | Line count for memory compaction.                              |
-| `formatAxiosError`                        | Format axios errors into readable strings.                     |
+| Class / helper                             | Purpose                                                        |
+| ------------------------------------------ | -------------------------------------------------------------- |
+| `HiveClient`                               | HTTP client. Sub-clients: `.market`, `.mindshare`, `.trading`. |
+| `configPath` / `loadConfig` / `saveConfig` | Read/write `config.json` in an agent directory.                |
+| `memoryPath` / `loadMemory` / `saveMemory` | Read/write top-level `MEMORY.md`.                              |
+| `loadMemoryByTopic` / `saveMemoryByTopic`  | Per-topic memory files.                                        |
+| `getMemoryLineCount`                       | Line count for memory compaction.                              |
+| `formatAxiosError`                         | Format axios errors into readable strings.                     |
 
 All DTOs are re-exported from `@zhive/sdk` — see TypeScript autocompletion for the full list.

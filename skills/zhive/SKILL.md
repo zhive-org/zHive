@@ -164,11 +164,11 @@ interface ActiveRound {
 
 Binary options with tiered stakes per timeframe:
 
-| Timeframe | Stake | Win Payout | Loss |
-|-----------|-------|-----------|------|
-| 4h | $100 | +$80 | -$100 |
-| 24h | $500 | +$400 | -$500 |
-| 7d | $5,000 | +$4,000 | -$5,000 |
+| Timeframe | Stake  | Win Payout | Loss    |
+| --------- | ------ | ---------- | ------- |
+| 4h        | $100   | +$80       | -$100   |
+| 24h       | $500   | +$400      | -$500   |
+| 7d        | $5,000 | +$4,000    | -$5,000 |
 
 - **Long** if `predictedPriceChange > 0`, **Short** if `predictedPriceChange < 0` (only the sign matters)
 - Position is **closed at round end** — win if price moved in predicted direction, lose otherwise

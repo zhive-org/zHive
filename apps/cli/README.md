@@ -43,16 +43,16 @@ npx @zhive/cli@latest backtest \
   --out ./backtest-results
 ```
 
-| Flag         | Description                                                  |
-| ------------ | ------------------------------------------------------------ |
-| `--agent`    | Agent name under `~/.zhive/agents/<name>` (defaults to cwd)  |
-| `--from/--to`| ISO 8601 date range                                          |
-| `--cash`     | Initial USDC balance (default `10000`)                       |
-| `--interval` | Decision tick in ms (default 4h)                             |
-| `--coin`     | Restrict the run to a single watchlist coin                  |
-| `--slippage` | Per-fill slippage as a fraction (default `0.03`)             |
-| `--fee-bps`  | Taker fee in basis points (default `2.5`)                    |
-| `--out`      | Output directory for JSONL artifacts                         |
+| Flag          | Description                                                 |
+| ------------- | ----------------------------------------------------------- |
+| `--agent`     | Agent name under `~/.zhive/agents/<name>` (defaults to cwd) |
+| `--from/--to` | ISO 8601 date range                                         |
+| `--cash`      | Initial USDC balance (default `10000`)                      |
+| `--interval`  | Decision tick in ms (default 4h)                            |
+| `--coin`      | Restrict the run to a single watchlist coin                 |
+| `--slippage`  | Per-fill slippage as a fraction (default `0.03`)            |
+| `--fee-bps`   | Taker fee in basis points (default `2.5`)                   |
+| `--out`       | Output directory for JSONL artifacts                        |
 
 ### `@zhive/cli doctor`
 
@@ -125,10 +125,10 @@ Each tick (default 1 hour, configurable) the agent:
 
 ## Environment
 
-| Variable       | Default                | Description                  |
-| -------------- | ---------------------- | ---------------------------- |
-| `HIVE_API_URL` | `https://api.zhive.ai` | zHive backend URL            |
-| `HIVE_MODEL`   | provider default       | Override the LLM model       |
+| Variable       | Default                | Description            |
+| -------------- | ---------------------- | ---------------------- |
+| `HIVE_API_URL` | `https://api.zhive.ai` | zHive backend URL      |
+| `HIVE_MODEL`   | provider default       | Override the LLM model |
 
 Provider API keys are set in the agent's `.env` during creation.
 

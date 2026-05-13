@@ -16,12 +16,12 @@ Scope: `cli start` only. Not `cli run`, not `cli start-all`.
 
 ## Progress Tracker
 
-| # | Milestone | Route / Area | Status | Notes |
-|---|-----------|--------------|--------|-------|
-| 1 | HTTP server skeleton + `--web` flag | `apps/cli/src/commands/start/web/server.ts` | ✅ Done | Hono + @hono/node-server on 127.0.0.1; lifecycle gated on runtime |
-| 2 | Event mirror via polling | `apps/cli/src/commands/start/web/events.ts` | ✅ Done | Ring buffer (cap 200, monotonic seq); `GET /api/events?since=<seq>` |
-| 3 | Bidirectional command API | `apps/cli/src/commands/start/web/server.ts` + `control.ts` | ✅ Done | `POST /api/command`, `POST /api/chat`, `GET /api/state` via `WebControl` |
-| 4 | React + Vite dashboard UI | `apps/cli/dashboard/` | ✅ Done | scaffold + panels + Hyperliquid WS + uPlot ROE chart |
+| #   | Milestone                           | Route / Area                                               | Status  | Notes                                                                    |
+| --- | ----------------------------------- | ---------------------------------------------------------- | ------- | ------------------------------------------------------------------------ |
+| 1   | HTTP server skeleton + `--web` flag | `apps/cli/src/commands/start/web/server.ts`                | ✅ Done | Hono + @hono/node-server on 127.0.0.1; lifecycle gated on runtime        |
+| 2   | Event mirror via polling            | `apps/cli/src/commands/start/web/events.ts`                | ✅ Done | Ring buffer (cap 200, monotonic seq); `GET /api/events?since=<seq>`      |
+| 3   | Bidirectional command API           | `apps/cli/src/commands/start/web/server.ts` + `control.ts` | ✅ Done | `POST /api/command`, `POST /api/chat`, `GET /api/state` via `WebControl` |
+| 4   | React + Vite dashboard UI           | `apps/cli/dashboard/`                                      | ✅ Done | scaffold + panels + Hyperliquid WS + uPlot ROE chart                     |
 
 Status legend: ✅ Done · 🟡 In progress · ⬜ Queued · ❌ Blocked
 
@@ -60,10 +60,10 @@ Driven by code-reviewer findings (1 CRITICAL, 5 HIGH, 7 MEDIUM, 6 LOW, 5 test ga
 
 **Locked decisions confirmed during the hardening pass:**
 
-- **Token in URL on first load + cookie thereafter** — *why:* localhost-only environment, browser's URL-bar leakage risk is minimal, and the cookie is HttpOnly so JS can't exfiltrate it. Alternative (POST /auth + bootstrap page) added complexity with no real win for this threat model.
-- **`isLocalHost(c)` falls back to `new URL(c.req.url).hostname` when no Host header is present** — *why:* Hono's `app.fetch(new Request(...))` synthetic test path doesn't auto-populate Host. Falling back to URL hostname keeps the unit tests honest and the production path tight (real browsers always send Host).
-- **`executeCommand`/`submitChat` errors flow to the event bus, not back through HTTP** — *why:* same lock as M3 (output flows through the polling channel, not the response). Just extends to errors, which the user previously couldn't see.
-- **Cookie is session-scoped (no `Max-Age`)** — *why:* the token regenerates on every CLI restart, so persisting across browser restarts has no value (cookie would be invalid against the new token anyway). Session-only avoids a stale cookie outliving its purpose.
+- **Token in URL on first load + cookie thereafter** — _why:_ localhost-only environment, browser's URL-bar leakage risk is minimal, and the cookie is HttpOnly so JS can't exfiltrate it. Alternative (POST /auth + bootstrap page) added complexity with no real win for this threat model.
+- **`isLocalHost(c)` falls back to `new URL(c.req.url).hostname` when no Host header is present** — _why:_ Hono's `app.fetch(new Request(...))` synthetic test path doesn't auto-populate Host. Falling back to URL hostname keeps the unit tests honest and the production path tight (real browsers always send Host).
+- **`executeCommand`/`submitChat` errors flow to the event bus, not back through HTTP** — _why:_ same lock as M3 (output flows through the polling channel, not the response). Just extends to errors, which the user previously couldn't see.
+- **Cookie is session-scoped (no `Max-Age`)** — _why:_ the token regenerates on every CLI restart, so persisting across browser restarts has no value (cookie would be invalid against the new token anyway). Session-only avoids a stale cookie outliving its purpose.
 
 ### Milestone 4 — step 3: Hyperliquid WS + live PnL + uPlot ROE chart — shipped 2026-04-29
 
@@ -77,11 +77,11 @@ Driven by code-reviewer findings (1 CRITICAL, 5 HIGH, 7 MEDIUM, 6 LOW, 5 test ga
 - `apps/cli/dashboard/src/App.tsx` — composes everything. New top-row chart section above the activity feed (left column). Chart, activity, chat stack vertically; positions/watchlist remain on the right.
 - **Verification done:** `tsc --noEmit -p dashboard/tsconfig.json` clean. Bundle: 244 KB / **84 KB gzipped** (+25 KB gz from step 2 — uPlot ~17 KB gz, the rest is the new modules). 145/145 CLI tests still pass.
 - **Locked decisions confirmed during build:**
-  - **Single `Map<coin, number>` for mids, replaced wholesale on every WS push** — *why:* `usePnl` re-runs on a `tick` counter rather than diffing the Map. Cheap, correct, no stale-closure foot-guns.
-  - **`useRoeSeries` writes `Float64Array`s** rather than plain arrays — *why:* uPlot expects typed arrays for its hot path, and we churn one per push.
-  - **Chart re-init only on mount; `setData` on update.** *Why:* re-creating the uPlot instance on every render would tank perf and reset the cursor. Two `useEffect`s — one with empty deps for setup, one keyed on `series` for data — is the canonical uPlot+React shape.
-  - **Live PnL falls back to `markPrice ?? entryPrice` if a mid is missing** — *why:* prevents the whole row from showing "—" while the WS is still subscribing. As soon as mids arrive (~1s), the live values take over.
-  - **Stall detection is timer-based (1Hz check), not message-based.** *Why:* if the WS goes silent without closing, we still flip to `stalled` after 3s; the user sees the warning instead of stale data presented as live.
+  - **Single `Map<coin, number>` for mids, replaced wholesale on every WS push** — _why:_ `usePnl` re-runs on a `tick` counter rather than diffing the Map. Cheap, correct, no stale-closure foot-guns.
+  - **`useRoeSeries` writes `Float64Array`s** rather than plain arrays — _why:_ uPlot expects typed arrays for its hot path, and we churn one per push.
+  - **Chart re-init only on mount; `setData` on update.** _Why:_ re-creating the uPlot instance on every render would tank perf and reset the cursor. Two `useEffect`s — one with empty deps for setup, one keyed on `series` for data — is the canonical uPlot+React shape.
+  - **Live PnL falls back to `markPrice ?? entryPrice` if a mid is missing** — _why:_ prevents the whole row from showing "—" while the WS is still subscribing. As soon as mids arrive (~1s), the live values take over.
+  - **Stall detection is timer-based (1Hz check), not message-based.** _Why:_ if the WS goes silent without closing, we still flip to `stalled` after 3s; the user sees the warning instead of stale data presented as live.
 
 ### Milestone 4 — step 2: Panels + control plane — shipped 2026-04-29
 
@@ -98,14 +98,14 @@ Driven by code-reviewer findings (1 CRITICAL, 5 HIGH, 7 MEDIUM, 6 LOW, 5 test ga
 - `apps/cli/dashboard/src/App.tsx` — top-level layout: Header → 2-column grid (`lg:grid-cols-[1fr_320px]`, activity+chat left, positions+watchlist right) → CommandBar. `useQuery({ queryKey: ['state'], refetchInterval: 30_000 })` keeps state fresh; `useEventStream` drives the live feed.
 - **Verification done:** dashboard typechecks (`tsc --noEmit -p dashboard/tsconfig.json`). Build is clean: 187 KB / 59 KB gz JS, 12 KB / 3.3 KB gz CSS — +3 KB gz over step 1 for all the panels and Tailwind classes. End-to-end smoke via `tsx`: server with mock control returns 200 on every endpoint, bundled HTML loads, `/api/state` returns the demo positions, `/api/events` returns seeded events. CLI tests still 145/145.
 - **Locked decisions confirmed during build:**
-  - **Layout: side-by-side 2-column on lg+, single column on small screens.** *Why:* mirrors how the existing Ink layout splits agent feed (main) from positions/watchlist (sidebar). Resolves the M4 "tabs vs side-by-side" open question.
-  - **Single combined input for both chat and slash commands**, auto-routed by leading `/`. *Why:* matches the existing Ink CLI behavior (one prompt, slashes route to `executeSlashCommand`); avoids two boxes that share screen real estate. Inline autocomplete suggestions show only when typing a slash with no spaces — fewer false triggers.
-  - **`useEventStream` uses a `useRef` for `since`, not a `useQuery` key.** *Why:* keying the query on `since` would invalidate on every tick (cache miss every poll, lost retry semantics). The ref keeps the queryKey stable; the function reads the latest `since` lazily.
-  - **`applyClearChat` walks events backwards and filters chat events older than the most recent `system:clear-chat`.** *Why:* deterministic regardless of order, and the latest clear is what the user sees.
-  - **Types are hand-mirrored** in `dashboard/src/lib/types.ts` rather than imported from the CLI's `web/events.ts` and `web/control.ts`. *Why:* Vite project's tsconfig has different lib targets (DOM, browser-only); pulling server types would force `paths` mappings or a separate package, neither worth it for ~40 lines of types. Drift risk is low and caught by the API tests if shapes diverge.
-  - **State refetch every 30s + invalidation on command success.** *Why:* `/api/state` hits Hyperliquid (no cache server-side per M3 lock); 30s is rare enough not to hammer it but quick enough that positions don't go too stale. After a slash command (especially `/watchlist` or anything that may mutate state), invalidate to refetch immediately.
-  - **Activity feed auto-scrolls only when within 200px of the bottom.** *Why:* preserves user's scroll position when reading older events; matches Ink's "settled vs active" intuition.
-  - **Chat panel is fixed 16rem (h-64)** under the activity feed, both with internal scroll. *Why:* prevents one panel from starving the other; chat tends to grow taller, fixing it keeps activity visible.
+  - **Layout: side-by-side 2-column on lg+, single column on small screens.** _Why:_ mirrors how the existing Ink layout splits agent feed (main) from positions/watchlist (sidebar). Resolves the M4 "tabs vs side-by-side" open question.
+  - **Single combined input for both chat and slash commands**, auto-routed by leading `/`. _Why:_ matches the existing Ink CLI behavior (one prompt, slashes route to `executeSlashCommand`); avoids two boxes that share screen real estate. Inline autocomplete suggestions show only when typing a slash with no spaces — fewer false triggers.
+  - **`useEventStream` uses a `useRef` for `since`, not a `useQuery` key.** _Why:_ keying the query on `since` would invalidate on every tick (cache miss every poll, lost retry semantics). The ref keeps the queryKey stable; the function reads the latest `since` lazily.
+  - **`applyClearChat` walks events backwards and filters chat events older than the most recent `system:clear-chat`.** _Why:_ deterministic regardless of order, and the latest clear is what the user sees.
+  - **Types are hand-mirrored** in `dashboard/src/lib/types.ts` rather than imported from the CLI's `web/events.ts` and `web/control.ts`. _Why:_ Vite project's tsconfig has different lib targets (DOM, browser-only); pulling server types would force `paths` mappings or a separate package, neither worth it for ~40 lines of types. Drift risk is low and caught by the API tests if shapes diverge.
+  - **State refetch every 30s + invalidation on command success.** _Why:_ `/api/state` hits Hyperliquid (no cache server-side per M3 lock); 30s is rare enough not to hammer it but quick enough that positions don't go too stale. After a slash command (especially `/watchlist` or anything that may mutate state), invalidate to refetch immediately.
+  - **Activity feed auto-scrolls only when within 200px of the bottom.** _Why:_ preserves user's scroll position when reading older events; matches Ink's "settled vs active" intuition.
+  - **Chat panel is fixed 16rem (h-64)** under the activity feed, both with internal scroll. _Why:_ prevents one panel from starving the other; chat tends to grow taller, fixing it keeps activity visible.
 
 ### Milestone 4 — step 1: Vite scaffold + Hono static serving — shipped 2026-04-29
 
@@ -115,11 +115,11 @@ Driven by code-reviewer findings (1 CRITICAL, 5 HIGH, 7 MEDIUM, 6 LOW, 5 test ga
 - `apps/cli/src/commands/start/web/server.test.ts` — 7 new dashboard tests (15 total in this file): index serving, mime types, 404 for missing files, 503 with hint when bundle isn't built, `/api/*` not intercepted, path traversal blocked. Existing tests pass `dashboardRoot: null` to keep their assertions unambiguous.
 - **Verification done:** 145/145 tests pass. `pnpm --filter @zhive/cli build` chains tsup → vite cleanly (tsup's `clean: true` runs first, Vite's output survives). Bundle: `dist/dashboard/index.html` (0.4 KB), `index-XXX.css` (6.6 KB / 2.1 KB gz, Tailwind purged), `index-XXX.js` (175 KB / 56 KB gz — React + ReactDOM + TanStack Query + minimal app). Smoke via `tsx`: `GET /` serves built HTML, `GET /assets/index-XXX.js` returns the JS bundle, `/healthz` and `/missing.txt` behave correctly. Pre-existing typecheck error in `zhive.ts:257` unchanged.
 - **Locked decisions confirmed during build:**
-  - Build order **tsup → vite** (`build:cli && build:dashboard`) — *why:* tsup's `clean: true` wipes `dist/`, so Vite must run *after* tsup or its output dies. Cleanest fix; no need to flip tsup's clean flag.
-  - Vite outputs to `../dist/dashboard` via absolute `path.resolve(__dirname, ...)` in `vite.config.ts` — *why:* keeps Vite's cwd inside `dashboard/` (idiomatic) while merging output into the CLI's `dist/`.
-  - Hono catch-all `app.get('/*', ...)` with manual `fs.readFile` instead of `@hono/node-server`'s `serveStatic` — *why:* `serveStatic`'s `root` is cwd-relative; we need an absolute path resolved from `import.meta.url` so the static handler works whether the CLI is run from npx cache, the repo, or a global install. ~25 lines of code, full control over mime types and the path-traversal guard.
-  - Default `dashboardRoot` is `<binary dir>/dashboard` (resolved from `import.meta.url`); pass `null` to disable — *why:* tests need `null` to make the empty-options case unambiguous (otherwise the catch-all would intercept everything and only return 404 via its own logic, which is fine but harder to reason about).
-  - Pinned `react-dom` to `^18.3.1` to match Ink's `react@^18.3.1` — *why:* pnpm initially installed `react-dom@19` which mismatched. The dashboard bundle is independent of Ink's React, but matching versions avoids type-defs ambiguity in IDE tooling.
+  - Build order **tsup → vite** (`build:cli && build:dashboard`) — _why:_ tsup's `clean: true` wipes `dist/`, so Vite must run _after_ tsup or its output dies. Cleanest fix; no need to flip tsup's clean flag.
+  - Vite outputs to `../dist/dashboard` via absolute `path.resolve(__dirname, ...)` in `vite.config.ts` — _why:_ keeps Vite's cwd inside `dashboard/` (idiomatic) while merging output into the CLI's `dist/`.
+  - Hono catch-all `app.get('/*', ...)` with manual `fs.readFile` instead of `@hono/node-server`'s `serveStatic` — _why:_ `serveStatic`'s `root` is cwd-relative; we need an absolute path resolved from `import.meta.url` so the static handler works whether the CLI is run from npx cache, the repo, or a global install. ~25 lines of code, full control over mime types and the path-traversal guard.
+  - Default `dashboardRoot` is `<binary dir>/dashboard` (resolved from `import.meta.url`); pass `null` to disable — _why:_ tests need `null` to make the empty-options case unambiguous (otherwise the catch-all would intercept everything and only return 404 via its own logic, which is fine but harder to reason about).
+  - Pinned `react-dom` to `^18.3.1` to match Ink's `react@^18.3.1` — _why:_ pnpm initially installed `react-dom@19` which mismatched. The dashboard bundle is independent of Ink's React, but matching versions avoids type-defs ambiguity in IDE tooling.
 
 ### Milestone 3 — Bidirectional command API — shipped 2026-04-29
 
@@ -132,13 +132,13 @@ Driven by code-reviewer findings (1 CRITICAL, 5 HIGH, 7 MEDIUM, 6 LOW, 5 test ga
 - `apps/cli/src/commands/start/ui/app.tsx` — `useChat` now feeds the bus; `App` constructs `control` via `useMemo([runtime, eventBus, handleChatSubmit, clearChat])` with web-flavoured slash callbacks: `onMessage`/`onError`/`onClear` push to bus, and `onClear` ALSO calls `clearChat()` to wipe Ink chat (cross-surface). `getState` calls `ZhiveExchange.fetchPositions()` + `loadMemory()` live.
 - **Verification done:** 139/139 tests pass (incl. 16 in `web/`). `useChat` slash branch still works in Ink (`onClear: clearChat`). Pre-existing typecheck error in `src/shared/trading/exchange/zhive.ts:257` is on `HEAD`, unrelated.
 - **Locked decisions confirmed during build:**
-  - Split `buildApp` from `startWebServer` — *why:* unit-tests run against `app.fetch(Request)` with no port binding, no async lifecycle, much faster and more deterministic than the tsx smoke pattern. Future routes can be tested the same way.
-  - Routes register conditionally on their dependency (bus / control) — *why:* keeps `/api/events` available even if control isn't ready, and lets future tests build minimal apps. Also gives a clean 404 (instead of 500) when something isn't wired.
-  - POST `/api/command` and `/api/chat` are fire-and-forget (`void control.x(...)`) — *why:* slash command callbacks and chat streaming are async and fan-out arbitrary events; awaiting them would tie up the HTTP connection while the LLM tool-loops. Output flow is the bus, not the response body. Matches M2's polling design.
-  - `/api/chat` rejects leading `/` text — *why:* `useChat.handleChatSubmit` has its own slash-dispatch branch tied to Ink callbacks; routing slash from web through it would update Ink state instead of the web bus. Sending slashes to `/api/command` keeps surfaces clean.
-  - **Resolved open question — `/clear` clears both surfaces.** Web `/clear` calls `clearChat()` (Ink chat reset) AND emits `{type:'system', kind:'clear-chat'}` to the bus. *Why:* matches the plan's lean ("treat slash commands as global"), avoids split-brain, and the plumbing is one extra `clearChat` ref in `useChat`'s return.
-  - Chat activity granularity in the bus is one event per completed message (mirrors `addChatActivity`), not per-delta — *why:* simpler client; per-delta streaming would need SSE. Revisit in M4 if the dashboard feels laggy.
-  - `getState()` fetches positions live from Hyperliquid every call (no cache) — *why:* called once on dashboard load; not hot. Add TTL only if M4 polls it.
+  - Split `buildApp` from `startWebServer` — _why:_ unit-tests run against `app.fetch(Request)` with no port binding, no async lifecycle, much faster and more deterministic than the tsx smoke pattern. Future routes can be tested the same way.
+  - Routes register conditionally on their dependency (bus / control) — _why:_ keeps `/api/events` available even if control isn't ready, and lets future tests build minimal apps. Also gives a clean 404 (instead of 500) when something isn't wired.
+  - POST `/api/command` and `/api/chat` are fire-and-forget (`void control.x(...)`) — _why:_ slash command callbacks and chat streaming are async and fan-out arbitrary events; awaiting them would tie up the HTTP connection while the LLM tool-loops. Output flow is the bus, not the response body. Matches M2's polling design.
+  - `/api/chat` rejects leading `/` text — _why:_ `useChat.handleChatSubmit` has its own slash-dispatch branch tied to Ink callbacks; routing slash from web through it would update Ink state instead of the web bus. Sending slashes to `/api/command` keeps surfaces clean.
+  - **Resolved open question — `/clear` clears both surfaces.** Web `/clear` calls `clearChat()` (Ink chat reset) AND emits `{type:'system', kind:'clear-chat'}` to the bus. _Why:_ matches the plan's lean ("treat slash commands as global"), avoids split-brain, and the plumbing is one extra `clearChat` ref in `useChat`'s return.
+  - Chat activity granularity in the bus is one event per completed message (mirrors `addChatActivity`), not per-delta — _why:_ simpler client; per-delta streaming would need SSE. Revisit in M4 if the dashboard feels laggy.
+  - `getState()` fetches positions live from Hyperliquid every call (no cache) — _why:_ called once on dashboard load; not hot. Add TTL only if M4 polls it.
 
 ### Milestone 2 — Event mirror via polling — shipped 2026-04-29
 
@@ -150,10 +150,10 @@ Driven by code-reviewer findings (1 CRITICAL, 5 HIGH, 7 MEDIUM, 6 LOW, 5 test ga
 - `apps/cli/src/commands/start/ui/app.tsx` — creates the bus once with `useMemo(() => new WebEventBus(), [])` and threads the same instance into both `useWebServer` and `useAgent`.
 - **Verification done:** `pnpm --filter @zhive/cli test` → 130/130 (incl. 7 new). End-to-end smoke via `tsx`: `since=0` returns full buffer, `since=N` skips already-seen events, `since>latest` returns `{ events: [], latest }`, `/healthz` still serves. Pre-existing typecheck error in `src/shared/trading/exchange/zhive.ts:257` (`AccountSummary.withdrawable`) is on `HEAD`, unrelated.
 - **Locked decisions confirmed during build:**
-  - Bus is created unconditionally in `App` (not gated on `--web`) — *why:* trivial memory cost; lets `useAgent` push without null checks at every callsite, and the bus is only externally observable when the server is up.
-  - Event payload is flat (`{ seq, timestamp, type, …fields }`) rather than nested (`{ seq, timestamp, payload }`) — *why:* simpler client-side discriminant matching; matches how the dashboard JS will switch on `type`.
-  - Reused the existing `TradingAgentCallbacks` interface as planned — *why:* single source of truth for event shape; new event types added to the agent will surface in both Ink and the web feed without a second wire-up. **Caveat:** `usePollActivity` also tracks `megathread`-typed activity that doesn't flow through `useAgent`'s callbacks; M2 does not mirror those. Revisit in M3 if the dashboard needs them.
-  - Timestamps stored as ISO strings on the bus (Date converted at `push`) — *why:* JSON-serializable straight to `c.json(...)` without a transform; clients can `new Date(iso)` when needed.
+  - Bus is created unconditionally in `App` (not gated on `--web`) — _why:_ trivial memory cost; lets `useAgent` push without null checks at every callsite, and the bus is only externally observable when the server is up.
+  - Event payload is flat (`{ seq, timestamp, type, …fields }`) rather than nested (`{ seq, timestamp, payload }`) — _why:_ simpler client-side discriminant matching; matches how the dashboard JS will switch on `type`.
+  - Reused the existing `TradingAgentCallbacks` interface as planned — _why:_ single source of truth for event shape; new event types added to the agent will surface in both Ink and the web feed without a second wire-up. **Caveat:** `usePollActivity` also tracks `megathread`-typed activity that doesn't flow through `useAgent`'s callbacks; M2 does not mirror those. Revisit in M3 if the dashboard needs them.
+  - Timestamps stored as ISO strings on the bus (Date converted at `push`) — _why:_ JSON-serializable straight to `c.json(...)` without a transform; clients can `new Date(iso)` when needed.
 
 ### Milestone 1 — HTTP server skeleton + `--web` flag — shipped 2026-04-28
 
@@ -196,12 +196,12 @@ Driven by code-reviewer findings (1 CRITICAL, 5 HIGH, 7 MEDIUM, 6 LOW, 5 test ga
   - Real-time PnL/ROE derivation hook — `(markPx − entryPx) × signedSize` per position, aggregated; recomputes on every WS tick.
 
 - **Locked decisions:**
-  - **React 18 + Vite + TypeScript + Tailwind + TanStack Query + uPlot** — *why:* React opens the ecosystem we'd reach for as the dashboard grows; Vite is the standard React bundler with minimal config; Tailwind removes CSS bikeshedding; TanStack Query gives clean cache+retry semantics for the polling endpoints; uPlot is built for the rolling-window per-tick chart pattern (~40kb).
-  - **Build step accepted; Vite added as a devDependency of `@zhive/cli`.** *Why:* user confirmed (npx-based distribution makes the bundle size delta ~tens to hundreds of ms one-time download per version — in the noise vs the existing multi-MB tarball). Walks back the M4 prep "no build step" lock; replacement: `pnpm --filter @zhive/cli build` orchestrates both tsup (CLI) and vite (dashboard).
-  - **Dashboard source lives at `apps/cli/dashboard/`** (sibling of `src/`), output to `apps/cli/dist/dashboard/`. *Why:* keeps Vite's roots, configs, and tsconfig disjoint from tsup's. Browser code never touches Node-only `src/` paths.
-  - **Browser opens WS directly to Hyperliquid; the local server does NOT proxy market data** — *why (kept from prior lock):* Hyperliquid's public WS allows any origin, has no auth, and would only add load + complexity to our server. Clean split: server owns private agent state, browser owns public market data.
-  - **Realtime PnL is computed in the browser, not the server** — *why (kept):* prices arrive over the WS the browser already holds; sending them through our server first would add a hop for no gain.
-  - **Chart axis: ROE % delta from window start, rolling 30s window** — *why (locked from M4 prep):* mirrors the landing page exactly — same visual language users already know.
+  - **React 18 + Vite + TypeScript + Tailwind + TanStack Query + uPlot** — _why:_ React opens the ecosystem we'd reach for as the dashboard grows; Vite is the standard React bundler with minimal config; Tailwind removes CSS bikeshedding; TanStack Query gives clean cache+retry semantics for the polling endpoints; uPlot is built for the rolling-window per-tick chart pattern (~40kb).
+  - **Build step accepted; Vite added as a devDependency of `@zhive/cli`.** _Why:_ user confirmed (npx-based distribution makes the bundle size delta ~tens to hundreds of ms one-time download per version — in the noise vs the existing multi-MB tarball). Walks back the M4 prep "no build step" lock; replacement: `pnpm --filter @zhive/cli build` orchestrates both tsup (CLI) and vite (dashboard).
+  - **Dashboard source lives at `apps/cli/dashboard/`** (sibling of `src/`), output to `apps/cli/dist/dashboard/`. _Why:_ keeps Vite's roots, configs, and tsconfig disjoint from tsup's. Browser code never touches Node-only `src/` paths.
+  - **Browser opens WS directly to Hyperliquid; the local server does NOT proxy market data** — _why (kept from prior lock):_ Hyperliquid's public WS allows any origin, has no auth, and would only add load + complexity to our server. Clean split: server owns private agent state, browser owns public market data.
+  - **Realtime PnL is computed in the browser, not the server** — _why (kept):_ prices arrive over the WS the browser already holds; sending them through our server first would add a hop for no gain.
+  - **Chart axis: ROE % delta from window start, rolling 30s window** — _why (locked from M4 prep):_ mirrors the landing page exactly — same visual language users already know.
 
 - **Open questions:**
   - Layout: tabs vs side-by-side panels? — **leaning:** side-by-side desktop grid (chart top row, activity + positions split below). Decide during commit #2.
@@ -221,18 +221,18 @@ Driven by code-reviewer findings (1 CRITICAL, 5 HIGH, 7 MEDIUM, 6 LOW, 5 test ga
 
 ## Open Follow-ups
 
-- Once Milestone 1 lands, decide whether the server's port should appear in the Ink header (e.g. *"Web dashboard: http://127.0.0.1:7878"*) so the user sees where to click.
+- Once Milestone 1 lands, decide whether the server's port should appear in the Ink header (e.g. _"Web dashboard: http://127.0.0.1:7878"_) so the user sees where to click.
 - After Milestone 2, evaluate whether the ring buffer size (200) is right — too small and a tab left open for hours misses events; too large and we hold memory unnecessarily.
 - After Milestone 4, consider auto-opening the browser on `--web` start (`open` package). Quality-of-life only.
 - **M4 prep — landing page Hyperliquid WS + chart code located** (research done 2026-04-28, ahead of M4):
   - **Hyperliquid WS client:** `zhive-app/apps/frontend/src/lib/hyperliquid-ws.ts`. URL `wss://api.hyperliquid.xyz/ws`. Subscription shape `{ method: "subscribe", subscription: { type: "allMids" } }`. Server pushes `{ channel: "allMids", data: { mids: { "<assetId>": "<priceString>" } } }` ~1×/s for ~539 tokens. Per-asset alternative: `activeAssetCtx` for mark price + funding + OI + volume. Singleton client, ref-counted listeners, exponential reconnect (1s → 30s cap), four states `connecting | live | stalled | reconnecting`. Stall thresholds: 3s for `allMids`, 15s for `activeAssetCtx`. **For our dashboard:** subscribe to `allMids` and just read out the asset IDs we have positions in — simpler than the per-asset feed and one connection covers everything.
-  - **Comparison chart on the landing page is a *race chart*, not equity vs. HODL:**
+  - **Comparison chart on the landing page is a _race chart_, not equity vs. HODL:**
     - Top-level: `zhive-app/apps/frontend/src/features/trading/components/AcademyLandingHero.tsx` (around line 145).
     - Component: `AgentPnlCompareChart.tsx` (same dir).
     - Data hook: `zhive-app/apps/frontend/src/features/trading/hooks/useAgentPnlSeries.ts`.
     - Chart primitive: `zhive-app/apps/frontend/src/shared/components/MultiSeriesChart.tsx` (D3-based).
     - Library: **Liveline** (real-time chart lib).
-    - Y axis: ROE % (`(unrealizedPnlUsd / costBasisUsd) × 100`), each agent anchored to 0 at the window start so the chart shows ROE *delta* over the window.
+    - Y axis: ROE % (`(unrealizedPnlUsd / costBasisUsd) × 100`), each agent anchored to 0 at the window start so the chart shows ROE _delta_ over the window.
     - X axis: time, rolling 30s window (configurable), max 720 points/agent buffer.
     - Per-agent computation: signed PnL = `signedSize × (markPx - entryPx)`; cost basis = `Σ |size| × entryPx`; pulled live off Hyperliquid `allMids`.
     - Series: top 10 agents by current ROE, one line each.

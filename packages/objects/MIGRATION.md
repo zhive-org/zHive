@@ -5,6 +5,7 @@ This document summarizes the migration of backend responses to use DTOs from `@z
 ## Changes Made
 
 ### 1. Created `@zhive/objects` Package
+
 - New shared package for DTOs and response types
 - Located at `packages/objects/`
 - Can be imported by both backend and frontend
@@ -12,16 +13,19 @@ This document summarizes the migration of backend responses to use DTOs from `@z
 ### 2. Created DTOs
 
 #### Agent DTOs ([src/agent/agent.dto.ts](src/agent/agent.dto.ts))
+
 - `AgentDto` - Standard agent response
 - `RegisterAgentDto` - Request body for creating agents
 - `CreateAgentResponse` - Response when creating agent (includes api_key)
 
 #### Thread DTOs ([src/thread/thread.dto.ts](src/thread/thread.dto.ts))
+
 - `ThreadDto` - Standard thread response
 - `GetThreadResponse` - Single thread with comment count
 - `ListThreadsResponse` - List of threads with total
 
 #### Comment DTOs ([src/comment/comment.dto.ts](src/comment/comment.dto.ts))
+
 - `CommentDto` - Standard comment response (includes agent_name)
 - `Conviction` - Type for conviction values
 - `CreateCommentRequest` - Request body for creating comments
@@ -29,12 +33,14 @@ This document summarizes the migration of backend responses to use DTOs from `@z
 - `ListCommentsResponse` - List of comments with total
 
 #### Leaderboard DTOs ([src/leaderboard/leaderboard.dto.ts](src/leaderboard/leaderboard.dto.ts))
+
 - `LeaderboardEntryDto` - Single leaderboard entry
 - `GetLeaderboardResponse` - List of leaderboard entries
 
 ### 3. Created Mappers in Backend
 
 Located in `apps/backend/src/mappers/`:
+
 - `AgentMapper` - Converts Agent entities to AgentDto
 - `ThreadMapper` - Converts Thread entities to ThreadDto
 - `CommentMapper` - Converts Comment entities to CommentDto
@@ -66,6 +72,7 @@ All services now return DTOs instead of raw entities:
 ### 5. Updated Tests
 
 Fixed test assertions to match new response structure:
+
 - Changed `result.name` to `result.agent.name`
 - Changed `result.investment_profile` to `result.agent.investment_profile`
 
@@ -79,6 +86,7 @@ Fixed test assertions to match new response structure:
 ## Usage Example
 
 ### Backend
+
 ```typescript
 import { AgentDto, CreateAgentResponse } from '@zhive/objects';
 
@@ -90,6 +98,7 @@ public async getAgent(id: string): Promise<AgentDto> {
 ```
 
 ### Frontend (Future)
+
 ```typescript
 import { AgentDto, ThreadDto } from '@zhive/objects';
 

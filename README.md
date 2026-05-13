@@ -38,15 +38,15 @@ create → configure → start → tick → fetch account → evaluate watchlist
 
 ### Core Commands
 
-| Command           | Description                                                |
-| ----------------- | ---------------------------------------------------------- |
-| `create`          | Interactive wizard to scaffold a new agent                 |
-| `start`           | Start an agent with the full-screen TUI dashboard          |
-| `doctor`          | Health-check all local agents                              |
-| `list`            | List existing agents                                       |
-| `agent profile`   | Display an agent's profile information                     |
-| `backtest`        | Replay the trading agent against historical Hyperliquid candles |
-| `platform`        | Detect what platform the CLI is running on                 |
+| Command         | Description                                                     |
+| --------------- | --------------------------------------------------------------- |
+| `create`        | Interactive wizard to scaffold a new agent                      |
+| `start`         | Start an agent with the full-screen TUI dashboard               |
+| `doctor`        | Health-check all local agents                                   |
+| `list`          | List existing agents                                            |
+| `agent profile` | Display an agent's profile information                          |
+| `backtest`      | Replay the trading agent against historical Hyperliquid candles |
+| `platform`      | Detect what platform the CLI is running on                      |
 
 ### Backtest
 
@@ -58,16 +58,16 @@ zhive backtest --agent my-agent \
   --out ./backtest-results
 ```
 
-| Flag           | Description                                                  |
-| -------------- | ------------------------------------------------------------ |
-| `--agent`      | Agent name under `~/.zhive/agents/<name>` (defaults to cwd)  |
-| `--from/--to`  | ISO 8601 date range                                          |
-| `--cash`       | Initial USDC balance (default `10000`)                       |
-| `--interval`   | Decision tick in ms (default 4h)                             |
-| `--coin`       | Restrict the run to a single watchlist coin                  |
-| `--slippage`   | Per-fill slippage as a fraction (default `0.03`)             |
-| `--fee-bps`    | Taker fee in basis points (default `2.5`)                    |
-| `--out`        | Output directory for JSONL artifacts                         |
+| Flag          | Description                                                 |
+| ------------- | ----------------------------------------------------------- |
+| `--agent`     | Agent name under `~/.zhive/agents/<name>` (defaults to cwd) |
+| `--from/--to` | ISO 8601 date range                                         |
+| `--cash`      | Initial USDC balance (default `10000`)                      |
+| `--interval`  | Decision tick in ms (default 4h)                            |
+| `--coin`      | Restrict the run to a single watchlist coin                 |
+| `--slippage`  | Per-fill slippage as a fraction (default `0.03`)            |
+| `--fee-bps`   | Taker fee in basis points (default `2.5`)                   |
+| `--out`       | Output directory for JSONL artifacts                        |
 
 ### Market & Indicator Commands
 
@@ -122,13 +122,13 @@ Stored in `config.json`. The agent evaluates every asset on the watchlist plus a
 
 Set one API key in your agent's `.env` file:
 
-| Provider    | Environment Variable           | Default Runtime Model     |
-| ----------- | ------------------------------ | ------------------------- |
-| OpenAI      | `OPENAI_API_KEY`               | `gpt-5-mini`              |
-| Anthropic   | `ANTHROPIC_API_KEY`            | `claude-haiku-4-5`        |
-| Google      | `GOOGLE_GENERATIVE_AI_API_KEY` | `gemini-3-flash-preview`  |
-| xAI         | `XAI_API_KEY`                  | `grok-4-1-fast-reasoning` |
-| OpenRouter  | `OPENROUTER_API_KEY`           | `openai/gpt-5.1-mini`     |
+| Provider   | Environment Variable           | Default Runtime Model     |
+| ---------- | ------------------------------ | ------------------------- |
+| OpenAI     | `OPENAI_API_KEY`               | `gpt-5-mini`              |
+| Anthropic  | `ANTHROPIC_API_KEY`            | `claude-haiku-4-5`        |
+| Google     | `GOOGLE_GENERATIVE_AI_API_KEY` | `gemini-3-flash-preview`  |
+| xAI        | `XAI_API_KEY`                  | `grok-4-1-fast-reasoning` |
+| OpenRouter | `OPENROUTER_API_KEY`           | `openai/gpt-5.1-mini`     |
 
 You can override the runtime model with the `HIVE_MODEL` environment variable.
 
@@ -163,11 +163,11 @@ The evaluator emits one `TradeDecision` per asset:
 interface TradeDecision {
   asset: string;
   action: 'LONG' | 'SHORT' | 'CLOSE' | 'HOLD';
-  sizeUsd: number;       // ignored for CLOSE
-  leverage: number;      // ignored for CLOSE
+  sizeUsd: number; // ignored for CLOSE
+  leverage: number; // ignored for CLOSE
   reasoning: string;
-  tp?: number | null;    // take-profit as % PnL on margin
-  sl?: number | null;    // stop-loss as % PnL on margin (must be < 100)
+  tp?: number | null; // take-profit as % PnL on margin
+  sl?: number | null; // stop-loss as % PnL on margin (must be < 100)
 }
 ```
 
