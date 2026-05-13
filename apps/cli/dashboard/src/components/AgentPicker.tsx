@@ -95,6 +95,18 @@ function EmptyAgentsCta() {
   );
 }
 
+function NeedsKeyBadge() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 border border-hive-bearish/60 bg-hive-bearish/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-hive-bearish"
+      title="No LLM provider key in .env — agent can't run until you paste one"
+    >
+      <span aria-hidden className="inline-block h-1.5 w-1.5 bg-hive-bearish" />
+      needs key
+    </span>
+  );
+}
+
 function StatCell({
   label,
   value,
@@ -107,7 +119,9 @@ function StatCell({
   size?: 'sm' | 'md';
 }) {
   const valueClass =
-    size === 'md' ? 'font-mono text-sm font-bold tabular-nums' : 'font-mono text-xs font-semibold tabular-nums';
+    size === 'md'
+      ? 'font-mono text-sm font-bold tabular-nums'
+      : 'font-mono text-xs font-semibold tabular-nums';
   return (
     <div className="flex min-w-0 flex-col items-end">
       <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-hive-text-dim">
@@ -138,20 +152,16 @@ function defaultStats(): {
   };
 }
 
-function StatsRow({
-  stats,
-  loading,
-}: {
-  stats: PickerAgentStats | null;
-  loading: boolean;
-}) {
-  const view = stats ? {
-    pnl: stats.total_pnl_usd,
-    roi: stats.roi_pct,
-    trades: stats.total_trades,
-    winRatePct: stats.win_rate_pct * 100,
-    equity: deriveEquity(stats),
-  } : defaultStats();
+function StatsRow({ stats, loading }: { stats: PickerAgentStats | null; loading: boolean }) {
+  const view = stats
+    ? {
+        pnl: stats.total_pnl_usd,
+        roi: stats.roi_pct,
+        trades: stats.total_trades,
+        winRatePct: stats.win_rate_pct * 100,
+        equity: deriveEquity(stats),
+      }
+    : defaultStats();
 
   const pnlColor =
     view.pnl > 0
@@ -172,20 +182,12 @@ function StatsRow({
         ? 'text-hive-bullish'
         : 'text-hive-bearish';
 
-  const indicator = loading
-    ? 'loading…'
-    : stats === null
-      ? 'no trades yet'
-      : null;
+  const indicator = loading ? 'loading…' : stats === null ? 'no trades yet' : null;
 
   return (
     <div className="flex shrink-0 items-center gap-5">
       <StatCell label="equity" value={formatUsd(view.equity)} size="md" />
-      <StatCell
-        label="PnL"
-        value={formatUsd(view.pnl, { signed: true })}
-        color={pnlColor}
-      />
+      <StatCell label="PnL" value={formatUsd(view.pnl, { signed: true })} color={pnlColor} />
       <StatCell label="ROI" value={formatPercent(view.roi)} color={roiColor} />
       <StatCell
         label="win"
@@ -329,9 +331,7 @@ export function AgentPicker({ agents }: AgentPickerProps) {
                   const isFocused = focusedName === agent.name;
                   const isDimmed = mutation.isPending && !isPending;
                   const loadingStats = statsQuery.data === undefined;
-                  const stats = loadingStats
-                    ? null
-                    : (statsQuery.data?.[agent.name] ?? null);
+                  const stats = loadingStats ? null : (statsQuery.data?.[agent.name] ?? null);
 
                   const rowClass = isPending
                     ? 'bg-hive-honey-dim animate-hive-glow'
@@ -390,6 +390,7 @@ export function AgentPicker({ agents }: AgentPickerProps) {
                             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-hive-text-dim">
                               · created {formatCreated(agent.created)}
                             </span>
+                            {!agent.hasProviderKey && <NeedsKeyBadge />}
                           </div>
                           {agent.bio && (
                             <span className="mt-0.5 truncate font-mono text-[11px] text-hive-text-secondary">
