@@ -57,7 +57,9 @@ export function useAgent({
           eventBus?.push({ type: 'message', text }, timestamp);
         },
         onEvalStarted(assets) {
-          const text = `Start analyzing ${assets.length} assets`;
+          const noun = assets.length === 1 ? 'asset' : 'assets';
+          const names = assets.map((a) => a.replace(/^[a-z]+:/, '')).join(', ');
+          const text = `Start analyzing ${assets.length} ${noun}: ${names}`;
           const timestamp = new Date();
           addLog({ type: 'message', text, timestamp });
           eventBus?.push({ type: 'message', text }, timestamp);
@@ -78,7 +80,12 @@ export function useAgent({
           eventBus?.push({ type: 'analyzing', state: 'completed' }, timestamp);
         },
         onEvalCompleted(decision) {
-          const sizeUsd = decision.action === 'HOLD' ? undefined : decision.sizeUsd;
+          // CLOSE doesn't carry a meaningful sizeUsd (decision schema has it
+          // at 0 per the type doc); rendering "$0.00" misreads as no-op.
+          const sizeUsd =
+            decision.action === 'HOLD' || decision.action === 'CLOSE'
+              ? undefined
+              : decision.sizeUsd;
           const timestamp = new Date();
           addLog({
             type: 'decision',
