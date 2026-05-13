@@ -15,6 +15,9 @@ import { resetHyperliquidClients } from './hyperliquid';
 export function resetAgentScopedClientState(queryClient: QueryClient): void {
   priceBufferStore.clearAll();
   resetHyperliquidClients();
-  queryClient.invalidateQueries({ queryKey: ['events'] });
+  // removeQueries (not invalidate) so the next mount of useEventStream gets a
+  // fresh poll instead of synchronously replaying the previous agent's cached
+  // events with generationRef=0, which bypasses the generation-bump guard.
+  queryClient.removeQueries({ queryKey: ['events'] });
   queryClient.invalidateQueries({ queryKey: ['agent-profile'] });
 }
