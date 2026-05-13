@@ -94,17 +94,9 @@ export const createStartCommand = (): Command => {
       // Web mode (default): hand off to App immediately. The unified server
       // hosts the picker until the user selects (or `--agent` pre-selects).
       // No more separate picker server — same port, same auth token, same
-      // browser tab survives the entire session.
-      if (allAgents.length === 0 && !selectedAgent) {
-        console.error(
-          styled.red(`${symbols.cross} no agents found.`) +
-            ' ' +
-            styled.gray('create one with ') +
-            styled.white('npx @zhive/cli@latest create'),
-        );
-        return;
-      }
-
+      // browser tab survives the entire session. Boots even with zero local
+      // agents — the dashboard's empty-state CTA links users to the web
+      // creation wizard at zhive.ai/create.
       setupProcessLifecycle();
       const props: AppProps = {
         ...baseAppProps,
