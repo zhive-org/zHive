@@ -10,6 +10,8 @@ interface AgentPickerProps {
   agents: PickerAgentSummary[];
 }
 
+const CREATE_AGENT_URL = 'https://www.zhive.ai/create';
+
 type SortKey = 'created' | 'equity' | 'pnl';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
@@ -65,6 +67,32 @@ function deriveEquity(stats: PickerAgentStats): number {
   // live mids without N×WS subscriptions. The dashboard's equity strip folds
   // it back in for the active agent's headline number.
   return STARTING_EQUITY_USD + stats.total_pnl_usd;
+}
+
+function EmptyAgentsCta() {
+  return (
+    <div className="flex flex-col items-center gap-4 px-6 py-12 text-center">
+      <div className="flex flex-col gap-1.5">
+        <p className="font-mono text-sm text-hive-text-primary">
+          No agents found in <code className="text-hive-honey">~/.zhive/agents</code>
+        </p>
+        <p className="font-mono text-[11px] text-hive-text-secondary">
+          Draft one for free on zhive.ai, download the bundle, then drop it in.
+        </p>
+      </div>
+      <a
+        href={CREATE_AGENT_URL}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="inline-flex items-center gap-2 border border-hive-honey bg-hive-honey/15 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.24em] text-hive-honey transition-colors hover:bg-hive-honey/30"
+      >
+        create an agent on zhive.ai →
+      </a>
+      <p className="max-w-md font-mono text-[10px] uppercase tracking-[0.18em] text-hive-text-dim">
+        After unzipping the bundle into ~/.zhive/agents, restart this CLI to pick it up.
+      </p>
+    </div>
+  );
 }
 
 function StatCell({
@@ -257,34 +285,43 @@ export function AgentPicker({ agents }: AgentPickerProps) {
             <SectionHeader
               title={`agents.list · ${agents.length}`}
               right={
-                <span className="flex items-center gap-3">
-                  <span className="text-hive-text-dim">sort</span>
-                  {SORT_OPTIONS.map((opt) => {
-                    const active = sortKey === opt.key;
-                    return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        onClick={() => setSortKey(opt.key)}
-                        className={`uppercase tracking-[0.22em] transition-colors ${
-                          active
-                            ? 'text-hive-honey'
-                            : 'text-hive-text-dim hover:text-hive-text-secondary'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
+                <span className="flex items-center gap-4">
+                  {agents.length > 0 && (
+                    <span className="flex items-center gap-3">
+                      <span className="text-hive-text-dim">sort</span>
+                      {SORT_OPTIONS.map((opt) => {
+                        const active = sortKey === opt.key;
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => setSortKey(opt.key)}
+                            className={`uppercase tracking-[0.22em] transition-colors ${
+                              active
+                                ? 'text-hive-honey'
+                                : 'text-hive-text-dim hover:text-hive-text-secondary'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </span>
+                  )}
+                  <a
+                    href={CREATE_AGENT_URL}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-1.5 border border-hive-honey/60 bg-hive-honey/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-hive-honey transition-colors hover:bg-hive-honey/20"
+                  >
+                    + create on zhive.ai
+                  </a>
                 </span>
               }
             />
 
             {agents.length === 0 ? (
-              <div className="px-6 py-10 text-center font-mono text-sm text-hive-text-secondary">
-                No agents found. Create one with{' '}
-                <code className="text-hive-honey">npx @zhive/cli@latest create</code>
-              </div>
+              <EmptyAgentsCta />
             ) : (
               <ul className="divide-y divide-hive-border">
                 {sorted.map((agent) => {
