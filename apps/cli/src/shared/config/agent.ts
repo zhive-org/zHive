@@ -2,7 +2,7 @@ import { AgentProfile, loadConfig } from '@zhive/sdk';
 import fsExtra from 'fs-extra';
 import * as fs from 'fs/promises';
 import path, { join } from 'path';
-import { AI_PROVIDERS } from './ai-providers';
+import { AI_PROVIDER_ENV_VARS, AI_PROVIDERS } from './ai-providers';
 import { getHiveDir } from './constant';
 
 export interface AgentConfig {
@@ -17,6 +17,11 @@ export interface AgentConfig {
   strategyContent: string;
   agentProfile: AgentProfile;
   watchList: string[];
+  /** True when the agent's `.env` declares any LLM provider key with a
+   * non-empty value (e.g. `ANTHROPIC_API_KEY="sk-..."`). False for agents
+   * just unzipped from the web wizard where every provider line is still
+   * commented out. The picker uses this to flag "needs key" rows. */
+  hasProviderKey: boolean;
 }
 
 export interface AgentStats {
@@ -80,6 +85,7 @@ export async function loadAgentConfig(_agentDir?: string): Promise<AgentConfig> 
 
   const stat = await fs.stat(soulPath);
   const provider = await detectProvider(agentDir);
+  const hasProviderKey = await detectProviderKey(agentDir);
 
   const agentProfile: AgentProfile = {
     sentiment: config.sentiment,
@@ -99,7 +105,25 @@ export async function loadAgentConfig(_agentDir?: string): Promise<AgentConfig> 
     agentProfile,
     watchList: config.watchList ?? [],
     created: stat.birthtime,
+    hasProviderKey,
   };
+}
+
+async function detectProviderKey(agentDir: string): Promise<boolean> {
+  const envPath = path.join(agentDir, '.env');
+  const envExists = await fsExtra.pathExists(envPath);
+  if (!envExists) return false;
+  const content = await fs.readFile(envPath, 'utf-8');
+  for (const envVar of AI_PROVIDER_ENV_VARS) {
+    // Match a non-commented line `KEY=...` with at least one non-quote
+    // char after the `=`. Tolerates surrounding double quotes — the
+    // wizard's bundle writes `KEY="value"`, hand-edited files may use
+    // bare values. Commented placeholder lines start with `#` and are
+    // skipped by the start-of-line anchor.
+    const pattern = new RegExp(`^${envVar}=("?)[^"\\s].*$`, 'm');
+    if (pattern.test(content)) return true;
+  }
+  return false;
 }
 
 export async function scanAgents(): Promise<AgentConfig[]> {
