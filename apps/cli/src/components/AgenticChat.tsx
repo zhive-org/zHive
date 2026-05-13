@@ -103,7 +103,10 @@ export function AgenticChat({
           Strategy interview
         </Text>
         {hiddenAbove > 0 && (
-          <Text color={colors.grayDim}> {`(${hiddenAbove} earlier line${hiddenAbove === 1 ? '' : 's'} hidden — pgup)`}</Text>
+          <Text color={colors.grayDim}>
+            {' '}
+            {`(${hiddenAbove} earlier line${hiddenAbove === 1 ? '' : 's'} hidden — pgup)`}
+          </Text>
         )}
       </Box>
 

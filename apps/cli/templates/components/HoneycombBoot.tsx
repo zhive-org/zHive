@@ -94,7 +94,7 @@ export function showHoneycombBoot(agentName: string): Promise<void> {
     const msgRightEdge = msgLeftEdge + longestMsg;
     const quietLeft = Math.min(nameStart, msgLeftEdge) - PADDING_H;
     const quietRight = Math.max(nameStart + nameText.length, msgRightEdge) + PADDING_H;
-    const quietTop = (centerR - 1) - PADDING_V;
+    const quietTop = centerR - 1 - PADDING_V;
     const quietBottom = msgStartRow + BOOT_MESSAGES.length + PADDING_V;
 
     // Hide cursor
@@ -149,8 +149,7 @@ export function showHoneycombBoot(agentName: string): Promise<void> {
 
         for (let c = 0; c < cols; c++) {
           // Skip animation in quiet zone around text
-          const inQuietZone =
-            r >= quietTop && r <= quietBottom && c >= quietLeft && c < quietRight;
+          const inQuietZone = r >= quietTop && r <= quietBottom && c >= quietLeft && c < quietRight;
           if (inQuietZone) {
             chars.push(' ');
             clrs.push(colors.grayDim);

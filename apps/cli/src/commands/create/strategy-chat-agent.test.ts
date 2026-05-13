@@ -77,7 +77,7 @@ describe('agentTurnSchema (flat → normalized)', () => {
         inputType: 'choice',
         choices: [{ label: 'A', value: 'a', description: null }],
         allowCustom: false,
-      allowDefer: false,
+        allowDefer: false,
         placeholder: null,
       }),
     ).toThrow();
@@ -93,7 +93,7 @@ describe('agentTurnSchema (flat → normalized)', () => {
         inputType: null,
         choices: [],
         allowCustom: false,
-      allowDefer: false,
+        allowDefer: false,
         placeholder: null,
       }),
     ).toThrow();
@@ -102,7 +102,10 @@ describe('agentTurnSchema (flat → normalized)', () => {
 
 describe('mergeCoveredTopics', () => {
   it('dedupes and preserves canonical topic order', () => {
-    const merged = mergeCoveredTopics(['exitSignal', 'tradingStyle'], ['entrySignal', 'tradingStyle']);
+    const merged = mergeCoveredTopics(
+      ['exitSignal', 'tradingStyle'],
+      ['entrySignal', 'tradingStyle'],
+    );
     expect(merged).toEqual(['tradingStyle', 'entrySignal', 'exitSignal']);
   });
 });

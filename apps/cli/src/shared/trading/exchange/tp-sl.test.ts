@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  pnlPctToPriceMovePct,
-  stopLossTriggerPrice,
-  takeProfitTriggerPrice,
-} from './tp-sl';
+import { pnlPctToPriceMovePct, stopLossTriggerPrice, takeProfitTriggerPrice } from './tp-sl';
 
 describe('tp-sl', () => {
   it('converts PnL% on margin to underlying price-move %', () => {

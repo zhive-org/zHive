@@ -158,9 +158,8 @@ export function SearchSelect({
 
       <Box marginLeft={2} marginTop={1}>
         <Text color={colors.grayDim}>
-          <Text color={colors.honey}>↑↓</Text> navigate{' '}
-          <Text color={colors.honey}>space</Text> toggle{' '}
-          <Text color={colors.honey}>enter</Text> confirm
+          <Text color={colors.honey}>↑↓</Text> navigate <Text color={colors.honey}>space</Text>{' '}
+          toggle <Text color={colors.honey}>enter</Text> confirm
           {onBack && (
             <Text>
               {' '}

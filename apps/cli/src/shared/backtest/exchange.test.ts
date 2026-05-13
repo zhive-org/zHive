@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PositionFlipNotSupported, PositionNotFound, UnknownError } from '../trading/exchange/error';
+import {
+  PositionFlipNotSupported,
+  PositionNotFound,
+  UnknownError,
+} from '../trading/exchange/error';
 import { TradeDecision } from '../trading/types';
 import { CandleStore } from './candle-store';
 import { BacktestClock } from './clock';

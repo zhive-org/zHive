@@ -10,8 +10,7 @@ export interface MegathreadHoneyDistribution {
   readonly eventTime: Date;
 }
 
-export interface MegathreadHoneyDistributedEvent
-  extends BaseEvent<'megathread-honey-distributed'> {
+export interface MegathreadHoneyDistributedEvent extends BaseEvent<'megathread-honey-distributed'> {
   readonly type: 'megathread-honey-distributed';
   readonly distributions: MegathreadHoneyDistribution[];
 }

@@ -15,7 +15,7 @@ export type StrategyTopic = (typeof STRATEGY_TOPICS)[number];
 
 const TOPIC_DESCRIPTIONS: Record<StrategyTopic, string> = {
   tradingStyle:
-    "Trading style/archetype (e.g. trend-following, mean-reversion, momentum, breakout, grid, DCA). Feeds Philosophy.",
+    'Trading style/archetype (e.g. trend-following, mean-reversion, momentum, breakout, grid, DCA). Feeds Philosophy.',
   candleTimeframe:
     'Which candlestick bar timeframe (e.g. 15m, 1h, 4h, 1d) the analysis should read indicators from. Note: the agent runs on a fixed polling interval — this question is about chart bar size, NOT how often the agent acts. The assets to trade are ALREADY chosen in an earlier wizard step — do NOT ask which assets to trade. Feeds Philosophy + Decision Framework.',
   marketRegimeView:
@@ -62,7 +62,9 @@ const flatAgentTurnSchema = z.object({
     ),
   allowCustom: z
     .boolean()
-    .describe('Whether user can also type their own answer. Only meaningful for inputType="choice".'),
+    .describe(
+      'Whether user can also type their own answer. Only meaningful for inputType="choice".',
+    ),
   allowDefer: z
     .boolean()
     .describe(

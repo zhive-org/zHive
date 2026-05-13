@@ -6,10 +6,7 @@ const MAX_BYTES = 64 * 1024;
 
 const ENV_RE = /^\.env(\..+)?$/i;
 
-export async function resolveAgentPath(
-  agentDir: string,
-  requestedPath: string,
-): Promise<string> {
+export async function resolveAgentPath(agentDir: string, requestedPath: string): Promise<string> {
   const agentReal = await fs.realpath(agentDir);
   const joined = path.resolve(agentDir, requestedPath);
   // realpath may fail if the file doesn't exist yet; fall back to the

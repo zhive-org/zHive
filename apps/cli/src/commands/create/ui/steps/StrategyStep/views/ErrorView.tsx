@@ -6,11 +6,7 @@ import type { ErrorViewProps } from '../useStrategyController';
 
 const TITLE = 'STRATEGY.md';
 
-export function ErrorView({
-  message,
-  onRetry,
-  onBack,
-}: ErrorViewProps): React.ReactElement {
+export function ErrorView({ message, onRetry, onBack }: ErrorViewProps): React.ReactElement {
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
@@ -30,12 +26,7 @@ export function ErrorView({
         </Text>
       </Box>
       <Box marginTop={1}>
-        <TextPrompt
-          label=""
-          placeholder="Enter to retry..."
-          onSubmit={onRetry}
-          onBack={onBack}
-        />
+        <TextPrompt label="" placeholder="Enter to retry..." onSubmit={onRetry} onBack={onBack} />
       </Box>
     </Box>
   );

@@ -30,9 +30,7 @@ export function WatchlistSelector({
     crypto: [],
   });
   const [activeCat, setActiveCat] = useState<TradingCategory>('stock-commodity');
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(defaultSelected ?? []),
-  );
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(defaultSelected ?? []));
   const [fetchError, setFetchError] = useState('');
   const [validationError, setValidationError] = useState('');
 
@@ -153,9 +151,7 @@ export function WatchlistSelector({
                 </Box>
               ))}
               {allSelectedItems.length > SIDEBAR_MAX && (
-                <Text color={colors.grayDim}>
-                  +{allSelectedItems.length - SIDEBAR_MAX} more
-                </Text>
+                <Text color={colors.grayDim}>+{allSelectedItems.length - SIDEBAR_MAX} more</Text>
               )}
             </Box>
           </Box>

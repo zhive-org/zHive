@@ -65,7 +65,9 @@ export class CandleStore {
   }
 
   /** Test helper: build a store from in-memory candles. */
-  static fromSeed(seed: Array<{ coin: string; interval: Interval; candles: RawCandle[] }>): CandleStore {
+  static fromSeed(
+    seed: Array<{ coin: string; interval: Interval; candles: RawCandle[] }>,
+  ): CandleStore {
     const s = new CandleStore(null);
     for (const { coin, interval, candles } of seed) {
       const key = CandleStore.keyFor(coin, interval);
@@ -114,7 +116,12 @@ export class CandleStore {
   }
 
   /** Returns candles in the [from, to) window, fetching lazily as needed. */
-  async getCandles(coin: string, interval: Interval, from: number, to: number): Promise<RawCandle[]> {
+  async getCandles(
+    coin: string,
+    interval: Interval,
+    from: number,
+    to: number,
+  ): Promise<RawCandle[]> {
     if (to <= from) return [];
     await this.ensureWindow(coin, interval, from, to);
     const arr = this.series.get(CandleStore.keyFor(coin, interval));
@@ -211,7 +218,11 @@ export class CandleStore {
     await writeFundingJsonl(file, merged);
   }
 
-  private async _fetchFundingRange(coin: string, from: number, to: number): Promise<FundingEntry[]> {
+  private async _fetchFundingRange(
+    coin: string,
+    from: number,
+    to: number,
+  ): Promise<FundingEntry[]> {
     if (!this.info) {
       throw new Error('CandleStore was constructed without a network client');
     }

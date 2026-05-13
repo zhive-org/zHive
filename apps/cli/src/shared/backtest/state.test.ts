@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  getRunningBacktest,
-  startBacktestSession,
-  tryStartBacktestSession,
-} from './state';
+import { getRunningBacktest, startBacktestSession, tryStartBacktestSession } from './state';
 
 const baseInit = {
   from: 1_700_000_000_000,

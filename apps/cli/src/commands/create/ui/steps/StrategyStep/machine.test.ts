@@ -45,7 +45,12 @@ describe('StrategyStep machine', () => {
   });
 
   it('streaming → review on STREAM_COMPLETED', () => {
-    const s: State = { kind: 'streaming', chatPath: 'custom', feedbackCount: 2, stream: fakeStream };
+    const s: State = {
+      kind: 'streaming',
+      chatPath: 'custom',
+      feedbackCount: 2,
+      stream: fakeStream,
+    };
     expect(reduce(s, { type: 'STREAM_COMPLETED' })).toEqual({
       kind: 'review',
       chatPath: 'custom',
@@ -54,7 +59,12 @@ describe('StrategyStep machine', () => {
   });
 
   it('streaming → error on STREAM_FAILED', () => {
-    const s: State = { kind: 'streaming', chatPath: 'preset', feedbackCount: 0, stream: fakeStream };
+    const s: State = {
+      kind: 'streaming',
+      chatPath: 'preset',
+      feedbackCount: 0,
+      stream: fakeStream,
+    };
     expect(reduce(s, { type: 'STREAM_FAILED', message: 'boom' })).toEqual({
       kind: 'error',
       chatPath: 'preset',

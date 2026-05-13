@@ -147,7 +147,13 @@ export function useStrategyController(): ViewState {
         inFlight.current = false;
       }
     },
-    [apiConfig.apiKey, apiConfig.providerId, buildCustomStream, strategyChat.seed, watchlist.assets],
+    [
+      apiConfig.apiKey,
+      apiConfig.providerId,
+      buildCustomStream,
+      strategyChat.seed,
+      watchlist.assets,
+    ],
   );
 
   // Kick off agent on (re-)entering the 'custom' state.

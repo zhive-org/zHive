@@ -103,9 +103,7 @@ export function PositionsView({
             return (
               <Box key={`${p.coin}-${offset + i}`}>
                 <Text>{pad(p.coin, COLS[0].width, 'left')} </Text>
-                <Text color={sideColor}>
-                  {pad(p.side.toUpperCase(), COLS[1].width, 'left')}
-                </Text>
+                <Text color={sideColor}>{pad(p.side.toUpperCase(), COLS[1].width, 'left')}</Text>
                 <Text> {pad(fmtNum(p.size, 4), COLS[2].width, 'right')} </Text>
                 <Text>{pad(fmtPrice(p.entryPrice), COLS[3].width, 'right')} </Text>
                 <Text>{pad(fmtPrice(p.markPrice), COLS[4].width, 'right')} </Text>
@@ -123,9 +121,7 @@ export function PositionsView({
             <Text color={colors.gray}>
               {`${offset + 1}-${Math.min(offset + pageSize, total)} / ${total}`}
               {'  '}
-              <Text color={colors.grayDim}>
-                {'↑↓/jk scroll · PgUp/PgDn page · esc/q close'}
-              </Text>
+              <Text color={colors.grayDim}>{'↑↓/jk scroll · PgUp/PgDn page · esc/q close'}</Text>
             </Text>
           </Box>
         </>

@@ -18,12 +18,7 @@ export function StreamingView({
       <Box marginBottom={1}>
         <Spinner label={label} />
       </Box>
-      <StreamingText
-        stream={stream}
-        title={TITLE}
-        onComplete={onComplete}
-        onError={onError}
-      />
+      <StreamingText stream={stream} title={TITLE} onComplete={onComplete} onError={onError} />
     </Box>
   );
 }

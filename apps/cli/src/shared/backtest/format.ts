@@ -72,7 +72,8 @@ export function formatFillsForAgent(fills: readonly FillRecord[]): string {
     opens.delete(f.asset);
     const entry = open ? open.price : null;
     const side = f.side.toUpperCase();
-    const why = f.action === 'CLOSE_MANUAL' ? 'manual' : f.action.replace('CLOSE_', '').toLowerCase();
+    const why =
+      f.action === 'CLOSE_MANUAL' ? 'manual' : f.action.replace('CLOSE_', '').toLowerCase();
     const pnl = `${f.realizedPnlUsd >= 0 ? '+' : ''}$${f.realizedPnlUsd.toFixed(2)}`;
     if (entry !== null) {
       lines.push(
