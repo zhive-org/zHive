@@ -6,20 +6,10 @@ interface StatsListProps {
   rank: AgentTradingRank | null;
 }
 
-function StatCell({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color?: string;
-}) {
+function StatCell({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div className="bg-hive-near-black px-3 py-2.5">
-      <div className="text-[9px] uppercase tracking-[0.2em] text-hive-text-dim">
-        {label}
-      </div>
+      <div className="text-[9px] uppercase tracking-[0.2em] text-hive-text-dim">{label}</div>
       <div className={`mt-0.5 font-semibold tabular-nums ${color ?? 'text-hive-text-primary'}`}>
         {value}
       </div>
@@ -32,9 +22,7 @@ export function StatsList({ rank }: StatsListProps) {
     return (
       <section className="bg-hive-near-black">
         <SectionHeader title="stats" right="all-time" />
-        <div className="px-4 py-3 font-mono text-xs text-hive-text-dim">
-          no trading stats yet
-        </div>
+        <div className="px-4 py-3 font-mono text-xs text-hive-text-dim">no trading stats yet</div>
       </section>
     );
   }
@@ -54,10 +42,7 @@ export function StatsList({ rank }: StatsListProps) {
           color={pnlColor}
         />
         <StatCell label="ROI" value={formatPercent(rank.roi_pct)} color={roiColor} />
-        <StatCell
-          label="win rate"
-          value={`${(rank.win_rate_pct * 100).toFixed(1)}%`}
-        />
+        <StatCell label="win rate" value={`${(rank.win_rate_pct * 100).toFixed(1)}%`} />
         <StatCell label="sharpe" value={rank.sharpe_ratio.toFixed(2)} />
         <StatCell
           label="max DD"

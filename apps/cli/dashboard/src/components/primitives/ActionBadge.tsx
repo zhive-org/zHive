@@ -13,8 +13,7 @@ const ACTION_CLASS: Record<DecisionAction, string> = {
 };
 
 export function ActionBadge({ action, size = 'md' }: ActionBadgeProps) {
-  const padding =
-    size === 'lg' ? 'px-3 py-1.5 text-sm' : 'px-2 py-0.5 text-[11px]';
+  const padding = size === 'lg' ? 'px-3 py-1.5 text-sm' : 'px-2 py-0.5 text-[11px]';
   const cls = ACTION_CLASS[action] ?? ACTION_CLASS.HOLD;
   return (
     <span

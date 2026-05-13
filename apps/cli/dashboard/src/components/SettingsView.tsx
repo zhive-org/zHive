@@ -109,9 +109,7 @@ function SaveButton({
         </span>
       )}
       {isError && (
-        <span className="font-mono text-xs text-hive-bearish">
-          {errorMessage ?? 'save failed'}
-        </span>
+        <span className="font-mono text-xs text-hive-bearish">{errorMessage ?? 'save failed'}</span>
       )}
     </div>
   );
@@ -270,9 +268,7 @@ function WatchlistSection({ state }: { state: WebState }) {
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={
-            tickersQuery.isLoading
-              ? 'loading tickers…'
-              : 'search ticker (e.g. BTC, xyz:TSLA)'
+            tickersQuery.isLoading ? 'loading tickers…' : 'search ticker (e.g. BTC, xyz:TSLA)'
           }
           className="w-full border border-hive-border bg-hive-black px-2 py-1.5 font-mono text-xs text-hive-text-primary placeholder:text-hive-text-dim focus:border-hive-honey focus:outline-none"
         />

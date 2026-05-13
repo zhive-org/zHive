@@ -38,8 +38,7 @@ export function EquityStrip({ liveUnrealizedUsd, tradingRank }: EquityStripProps
   const currentEquity = portfolio?.current_equity_usd ?? 0;
   const startingEquity = portfolio?.starting_equity_usd ?? 0;
   const realizedToday = useMemo(() => todaysRealized(portfolio), [portfolio]);
-  const realizedAllTime =
-    tradingRank?.total_pnl_usd ?? portfolio?.all_time_pnl_usd ?? 0;
+  const realizedAllTime = tradingRank?.total_pnl_usd ?? portfolio?.all_time_pnl_usd ?? 0;
   const roiPct = tradingRank?.roi_pct ?? 0;
 
   const unrealizedPos = liveUnrealizedUsd >= 0;
@@ -61,9 +60,7 @@ export function EquityStrip({ liveUnrealizedUsd, tradingRank }: EquityStripProps
         </div>
         <div className="mt-2 font-mono text-[10px] text-hive-text-dim">
           start{' '}
-          <span className="tabular-nums text-hive-text-secondary">
-            {formatUsd(startingEquity)}
-          </span>
+          <span className="tabular-nums text-hive-text-secondary">{formatUsd(startingEquity)}</span>
         </div>
       </div>
 
@@ -82,9 +79,7 @@ export function EquityStrip({ liveUnrealizedUsd, tradingRank }: EquityStripProps
         <div className="mt-2 font-mono text-[10px] text-hive-text-dim">
           unrealized{' '}
           <span
-            className={`tabular-nums ${
-              unrealizedPos ? 'text-hive-bullish' : 'text-hive-bearish'
-            }`}
+            className={`tabular-nums ${unrealizedPos ? 'text-hive-bullish' : 'text-hive-bearish'}`}
           >
             {formatUsd(liveUnrealizedUsd, { signed: true })}
           </span>
@@ -105,11 +100,7 @@ export function EquityStrip({ liveUnrealizedUsd, tradingRank }: EquityStripProps
         </div>
         <div className="mt-2 font-mono text-[10px] text-hive-text-dim">
           ROI{' '}
-          <span
-            className={`tabular-nums ${
-              roiPos ? 'text-hive-bullish' : 'text-hive-bearish'
-            }`}
-          >
+          <span className={`tabular-nums ${roiPos ? 'text-hive-bullish' : 'text-hive-bearish'}`}>
             {formatPercent(roiPct)}
           </span>
         </div>

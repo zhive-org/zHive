@@ -32,28 +32,21 @@ export function CountdownClock({
   }, []);
 
   const totalSeconds = Math.max(0, Math.floor(intervalMs / 1000));
-  const remainingSec = nextEvalAt
-    ? Math.max(0, Math.floor((nextEvalAt - now) / 1000))
-    : 0;
+  const remainingSec = nextEvalAt ? Math.max(0, Math.floor((nextEvalAt - now) / 1000)) : 0;
 
   const hh = String(Math.floor(remainingSec / 3600)).padStart(2, '0');
   const mm = String(Math.floor((remainingSec % 3600) / 60)).padStart(2, '0');
   const ss = String(remainingSec % 60).padStart(2, '0');
 
   const fontSize = size === 'xl' ? 96 : 72;
-  const pct =
-    totalSeconds > 0 ? Math.min(100, (remainingSec / totalSeconds) * 100) : 0;
+  const pct = totalSeconds > 0 ? Math.min(100, (remainingSec / totalSeconds) * 100) : 0;
 
   const cycleLabel =
     intervalMs >= 60 * 60 * 1000
       ? `${Math.round(intervalMs / (60 * 60 * 1000))}h cycle`
       : `${Math.round(intervalMs / (60 * 1000))}m cycle`;
 
-  const headerLabel = evaluating
-    ? 'EVALUATING'
-    : nextEvalAt
-      ? 'NEXT EVAL IN'
-      : 'NEXT EVAL';
+  const headerLabel = evaluating ? 'EVALUATING' : nextEvalAt ? 'NEXT EVAL IN' : 'NEXT EVAL';
 
   return (
     <div className="flex flex-col gap-2">
@@ -91,9 +84,7 @@ export function CountdownClock({
         )}
       </div>
       <div
-        className={`relative h-[3px] w-full bg-hive-border/40 ${
-          evaluating ? 'animate-pulse' : ''
-        }`}
+        className={`relative h-[3px] w-full bg-hive-border/40 ${evaluating ? 'animate-pulse' : ''}`}
       >
         <div
           className="absolute inset-y-0 left-0 bg-hive-honey transition-all"

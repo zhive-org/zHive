@@ -4,10 +4,7 @@ interface StatusPillProps {
   state: StatusState;
 }
 
-const STATE_MAP: Record<
-  StatusState,
-  { dot: string; label: string; color: string }
-> = {
+const STATE_MAP: Record<StatusState, { dot: string; label: string; color: string }> = {
   online: { dot: 'bg-hive-bullish', label: 'ONLINE', color: 'text-hive-bullish' },
   analyzing: {
     dot: 'bg-hive-honey animate-pulse',
