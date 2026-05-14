@@ -111,18 +111,19 @@ h6 {
   width: 6px;
   height: 6px;
 }
-::-webkit-scrollbar-track {
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(204, 204, 204, 0.25);
+  background: rgba(245, 166, 35, 0.7);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(204, 204, 204, 0.45);
+  background: rgba(245, 166, 35, 1);
 }
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(204, 204, 204, 0.25) transparent;
+  scrollbar-color: rgba(245, 166, 35, 0.7) transparent;
 }
 
 .animate-ticker {
