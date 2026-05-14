@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { fetchAgentsStats, selectAgent } from '../lib/api';
 import { formatPercent, formatUsd } from '../lib/format';
@@ -31,34 +31,49 @@ function formatCreated(iso: string): string {
 
 const STARTING_EQUITY_USD = 10_000;
 
-function sortAgents(
+function sortActive(
   agents: PickerAgentSummary[],
   key: SortKey,
-  stats: PickerAgentsStats | undefined,
+  stats: PickerAgentsStats,
 ): PickerAgentSummary[] {
   const copy = [...agents];
   if (key === 'created') {
-    copy.sort((a, b) => new Date(a.created).getTime() - new Date(b.created).getTime());
+    // Newest first inside the active zone — matches the idle zone's order
+    // so the sort feels consistent across the page.
+    copy.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
     return copy;
   }
-  // Stats-based sorts: highest first. Agents without a leaderboard entry
-  // (null/undefined stats) fall to the bottom, then are ordered by created.
-  const valueFor = (name: string): number | null => {
-    const s = stats?.[name];
-    if (!s) return null;
-    return key === 'equity' ? STARTING_EQUITY_USD + s.total_pnl_usd : s.total_pnl_usd;
+  const valueFor = (name: string): number => {
+    const s = stats[name];
+    return key === 'equity' ? STARTING_EQUITY_USD + (s?.total_pnl_usd ?? 0) : (s?.total_pnl_usd ?? 0);
   };
-  copy.sort((a, b) => {
-    const va = valueFor(a.name);
-    const vb = valueFor(b.name);
-    if (va === null && vb === null) {
-      return new Date(a.created).getTime() - new Date(b.created).getTime();
-    }
-    if (va === null) return 1;
-    if (vb === null) return -1;
-    return vb - va;
-  });
+  copy.sort((a, b) => valueFor(b.name) - valueFor(a.name));
   return copy;
+}
+
+function sortIdleByNewest(agents: PickerAgentSummary[]): PickerAgentSummary[] {
+  return [...agents].sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+}
+
+function partitionAgents(
+  agents: PickerAgentSummary[],
+  stats: PickerAgentsStats | undefined,
+  sortKey: SortKey,
+): { active: PickerAgentSummary[]; idle: PickerAgentSummary[] } {
+  // Stats haven't loaded yet — we don't know who has traded. Render
+  // everything as a single block (idle) sorted by newest so the order is
+  // stable, and don't show the zone divider until classification is real.
+  if (stats === undefined) {
+    return { active: [], idle: sortIdleByNewest(agents) };
+  }
+  const active: PickerAgentSummary[] = [];
+  const idle: PickerAgentSummary[] = [];
+  for (const a of agents) {
+    const s = stats[a.name];
+    if (s && s.total_trades > 0) active.push(a);
+    else idle.push(a);
+  }
+  return { active: sortActive(active, sortKey, stats), idle: sortIdleByNewest(idle) };
 }
 
 function deriveEquity(stats: PickerAgentStats): number {
@@ -84,9 +99,10 @@ function EmptyAgentsCta() {
         href={CREATE_AGENT_URL}
         target="_blank"
         rel="noreferrer noopener"
-        className="inline-flex items-center gap-2 border border-hive-honey bg-hive-honey/15 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.24em] text-hive-honey transition-colors hover:bg-hive-honey/30"
+        className="inline-flex items-center gap-3 bg-white px-6 py-3 font-mono text-xs font-bold uppercase tracking-[0.3em] text-hive-black transition-colors hover:bg-hive-text-secondary"
       >
-        create an agent on zhive.ai →
+        <span>create agent</span>
+        <span aria-hidden>→</span>
       </a>
       <p className="max-w-md font-mono text-[10px] uppercase tracking-[0.18em] text-hive-text-dim">
         After unzipping the bundle into ~/.zhive/agents, restart this CLI to pick it up.
@@ -204,6 +220,104 @@ function StatsRow({ stats, loading }: { stats: PickerAgentStats | null; loading:
   );
 }
 
+interface AgentRowProps {
+  agent: PickerAgentSummary;
+  isPending: boolean;
+  isFocused: boolean;
+  isDimmed: boolean;
+  loadingStats: boolean;
+  stats: PickerAgentStats | null;
+  disabled: boolean;
+  onFocus: (name: string) => void;
+  onSelect: (name: string) => void;
+  rowRefs: MutableRefObject<Map<string, HTMLLIElement>>;
+}
+
+function renderAgentRow({
+  agent,
+  isPending,
+  isFocused,
+  isDimmed,
+  loadingStats,
+  stats,
+  disabled,
+  onFocus,
+  onSelect,
+  rowRefs,
+}: AgentRowProps) {
+  const rowClass = isPending
+    ? 'bg-hive-honey-dim animate-hive-glow'
+    : isFocused
+      ? 'bg-hive-honey-dim/60'
+      : 'bg-hive-near-black hover:bg-hive-honey-dim/30';
+  const dimClass = isDimmed ? 'opacity-30 blur-[1px]' : 'opacity-100';
+
+  return (
+    <li
+      key={agent.name}
+      ref={(el) => {
+        if (el) rowRefs.current.set(agent.name, el);
+        else rowRefs.current.delete(agent.name);
+      }}
+    >
+      <button
+        type="button"
+        disabled={disabled}
+        onMouseEnter={() => onFocus(agent.name)}
+        onFocus={() => onFocus(agent.name)}
+        onClick={() => onSelect(agent.name)}
+        className={`group relative flex w-full items-center gap-4 px-4 py-3.5 text-left transition-all duration-150 disabled:cursor-not-allowed ${rowClass} ${dimClass}`}
+      >
+        <span
+          aria-hidden
+          className={`absolute inset-y-0 left-0 w-0.5 transition-colors ${
+            isFocused || isPending ? 'bg-hive-honey' : 'bg-transparent group-hover:bg-hive-honey/40'
+          }`}
+        />
+        {agent.avatarUrl ? (
+          <img
+            src={agent.avatarUrl}
+            alt=""
+            className="h-14 w-14 shrink-0 border border-hive-border bg-hive-black object-cover"
+          />
+        ) : (
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center border border-hive-border bg-hive-black font-mono text-xl font-bold text-hive-honey">
+            {agent.name.slice(0, 1).toLowerCase()}
+          </div>
+        )}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-baseline gap-2">
+            <span
+              className={`truncate font-mono text-sm font-bold tracking-tight transition-colors ${
+                isFocused || isPending
+                  ? 'text-hive-honey'
+                  : 'text-hive-text-primary group-hover:text-hive-honey'
+              }`}
+            >
+              {agent.name}
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-hive-text-dim">
+              · created {formatCreated(agent.created)}
+            </span>
+            {!agent.hasProviderKey && <NeedsKeyBadge />}
+          </div>
+          {agent.bio && (
+            <span className="mt-0.5 truncate font-mono text-[11px] text-hive-text-secondary">
+              {agent.bio}
+            </span>
+          )}
+        </div>
+        <StatsRow stats={stats} loading={loadingStats} />
+        {isPending && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-end pr-6 font-mono text-[10px] uppercase tracking-[0.32em] text-hive-honey">
+            <span className="animate-hive-breathe">starting…</span>
+          </div>
+        )}
+      </button>
+    </li>
+  );
+}
+
 export function AgentPicker({ agents }: AgentPickerProps) {
   const [pendingName, setPendingName] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('equity');
@@ -225,10 +339,12 @@ export function AgentPicker({ agents }: AgentPickerProps) {
     refetchInterval: 60_000,
   });
 
-  const sorted = useMemo(
-    () => sortAgents(agents, sortKey, statsQuery.data),
+  const { active, idle } = useMemo(
+    () => partitionAgents(agents, statsQuery.data, sortKey),
     [agents, sortKey, statsQuery.data],
   );
+  const sorted = useMemo(() => [...active, ...idle], [active, idle]);
+  const showZones = statsQuery.data !== undefined && active.length > 0 && idle.length > 0;
 
   // Default keyboard focus to the first row, and recover gracefully if a
   // sort change drops the previously-focused name off the list.
@@ -314,9 +430,9 @@ export function AgentPicker({ agents }: AgentPickerProps) {
                     href={CREATE_AGENT_URL}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="inline-flex items-center gap-1.5 border border-hive-honey/60 bg-hive-honey/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-hive-honey transition-colors hover:bg-hive-honey/20"
+                    className="inline-flex items-center gap-1.5 bg-white px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-hive-black transition-colors hover:bg-hive-text-secondary"
                   >
-                    + create on zhive.ai
+                    create agent →
                   </a>
                 </span>
               }
@@ -326,88 +442,48 @@ export function AgentPicker({ agents }: AgentPickerProps) {
               <EmptyAgentsCta />
             ) : (
               <ul className="divide-y divide-hive-border">
-                {sorted.map((agent) => {
-                  const isPending = pendingName === agent.name;
-                  const isFocused = focusedName === agent.name;
-                  const isDimmed = mutation.isPending && !isPending;
-                  const loadingStats = statsQuery.data === undefined;
-                  const stats = loadingStats ? null : (statsQuery.data?.[agent.name] ?? null);
-
-                  const rowClass = isPending
-                    ? 'bg-hive-honey-dim animate-hive-glow'
-                    : isFocused
-                      ? 'bg-hive-honey-dim/60'
-                      : 'bg-hive-near-black hover:bg-hive-honey-dim/30';
-                  const dimClass = isDimmed ? 'opacity-30 blur-[1px]' : 'opacity-100';
-
-                  return (
-                    <li
-                      key={agent.name}
-                      ref={(el) => {
-                        if (el) rowRefs.current.set(agent.name, el);
-                        else rowRefs.current.delete(agent.name);
-                      }}
-                    >
-                      <button
-                        type="button"
-                        disabled={mutation.isPending}
-                        onMouseEnter={() => setFocusedName(agent.name)}
-                        onFocus={() => setFocusedName(agent.name)}
-                        onClick={() => handleSelect(agent.name)}
-                        className={`group relative flex w-full items-center gap-4 px-4 py-3.5 text-left transition-all duration-150 disabled:cursor-not-allowed ${rowClass} ${dimClass}`}
-                      >
-                        {/* Honey marker rail on focused/pending state. */}
-                        <span
-                          aria-hidden
-                          className={`absolute inset-y-0 left-0 w-0.5 transition-colors ${
-                            isFocused || isPending
-                              ? 'bg-hive-honey'
-                              : 'bg-transparent group-hover:bg-hive-honey/40'
-                          }`}
-                        />
-                        {agent.avatarUrl ? (
-                          <img
-                            src={agent.avatarUrl}
-                            alt=""
-                            className="h-14 w-14 shrink-0 border border-hive-border bg-hive-black object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-14 w-14 shrink-0 items-center justify-center border border-hive-border bg-hive-black font-mono text-xl font-bold text-hive-honey">
-                            {agent.name.slice(0, 1).toLowerCase()}
-                          </div>
-                        )}
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <div className="flex items-baseline gap-2">
-                            <span
-                              className={`truncate font-mono text-sm font-bold tracking-tight transition-colors ${
-                                isFocused || isPending
-                                  ? 'text-hive-honey'
-                                  : 'text-hive-text-primary group-hover:text-hive-honey'
-                              }`}
-                            >
-                              {agent.name}
-                            </span>
-                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-hive-text-dim">
-                              · created {formatCreated(agent.created)}
-                            </span>
-                            {!agent.hasProviderKey && <NeedsKeyBadge />}
-                          </div>
-                          {agent.bio && (
-                            <span className="mt-0.5 truncate font-mono text-[11px] text-hive-text-secondary">
-                              {agent.bio}
-                            </span>
-                          )}
-                        </div>
-                        <StatsRow stats={stats} loading={loadingStats} />
-                        {isPending && (
-                          <div className="pointer-events-none absolute inset-0 flex items-center justify-end pr-6 font-mono text-[10px] uppercase tracking-[0.32em] text-hive-honey">
-                            <span className="animate-hive-breathe">starting…</span>
-                          </div>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
+                {active.map((agent) =>
+                  renderAgentRow({
+                    agent,
+                    isPending: pendingName === agent.name,
+                    isFocused: focusedName === agent.name,
+                    isDimmed: mutation.isPending && pendingName !== agent.name,
+                    loadingStats: statsQuery.data === undefined,
+                    stats:
+                      statsQuery.data === undefined
+                        ? null
+                        : (statsQuery.data?.[agent.name] ?? null),
+                    disabled: mutation.isPending,
+                    onFocus: setFocusedName,
+                    onSelect: handleSelect,
+                    rowRefs,
+                  }),
+                )}
+                {showZones && (
+                  <li
+                    aria-hidden
+                    className="border-t-2 border-hive-honey/40 px-4 pt-2 pb-1 font-mono text-[10px] uppercase tracking-[0.24em] text-hive-honey/80"
+                  >
+                    no trades yet · {idle.length}
+                  </li>
+                )}
+                {idle.map((agent) =>
+                  renderAgentRow({
+                    agent,
+                    isPending: pendingName === agent.name,
+                    isFocused: focusedName === agent.name,
+                    isDimmed: mutation.isPending && pendingName !== agent.name,
+                    loadingStats: statsQuery.data === undefined,
+                    stats:
+                      statsQuery.data === undefined
+                        ? null
+                        : (statsQuery.data?.[agent.name] ?? null),
+                    disabled: mutation.isPending,
+                    onFocus: setFocusedName,
+                    onSelect: handleSelect,
+                    rowRefs,
+                  }),
+                )}
               </ul>
             )}
           </section>
