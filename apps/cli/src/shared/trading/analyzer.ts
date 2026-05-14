@@ -7,6 +7,7 @@ import { IExchange } from './exchange/types';
 import { AccountSummary, PairInfo } from './types';
 import { cacheableSystem } from '../agent';
 import { HyperliquidProvider } from '../tools/pinescript/providers/hyperliquid/provider';
+import { getAvailableCash } from './exchange/utils';
 
 export type ProviderFactory = (coin: string) => Promise<IProvider>;
 
@@ -491,7 +492,7 @@ leverage=${currentPosition.leverage}x`
       : `## Position
 No open position`;
 
-    const availableUsdc = account.spotBalances.find((b) => b.coin === 'USDC')?.hold ?? '0';
+    const availableUsdc = getAvailableCash(account);
 
     const prompt = `## Asset
 Asset: ${coin}

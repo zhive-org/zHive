@@ -8,6 +8,7 @@ import { AssetAnalyzer, ProviderFactory } from './analyzer.js';
 import { IExchange } from './exchange/types';
 import type { AccountSummary, PairInfo, TradeDecision } from './types.js';
 import { loadMemoryByTopic } from '@zhive/sdk';
+import { getAvailableCash } from './exchange/utils';
 
 const { Output, generateText } = wrapAISDK(ai);
 
@@ -201,7 +202,7 @@ Rules
 
     const memory = await loadMemoryByTopic('trade-decisions.md');
 
-    const availableUsdc = account.spotBalances.find((b) => b.coin === 'USDC')?.hold ?? '0';
+    const availableUsdc = getAvailableCash(account);
     const prompt = `Analyze the following ${assetEntries.length} assets and provide a trading decision for each.
 
 Account: value=$${account.accountValue.toFixed(2)}, marginUsed=$${account.marginUsed.toFixed(2)}

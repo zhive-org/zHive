@@ -188,8 +188,8 @@ export class ZhiveExchange implements IExchange {
           coin: 'USDC',
           token: 0,
           entryNtl: '0.0',
-          hold: data.cash_balance.toFixed(5),
-          total: data.cash_balance.toFixed(5),
+          hold: marginUsed.toFixed(5),
+          total: (data.cash_balance + marginUsed).toFixed(5),
         },
       ],
       positions: data.positions.map((position) => ({
