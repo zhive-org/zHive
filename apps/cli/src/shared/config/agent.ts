@@ -115,15 +115,34 @@ async function detectProviderKey(agentDir: string): Promise<boolean> {
   if (!envExists) return false;
   const content = await fs.readFile(envPath, 'utf-8');
   for (const envVar of AI_PROVIDER_ENV_VARS) {
-    // Match a non-commented line `KEY=...` with at least one non-quote
-    // char after the `=`. Tolerates surrounding double quotes — the
-    // wizard's bundle writes `KEY="value"`, hand-edited files may use
-    // bare values. Commented placeholder lines start with `#` and are
-    // skipped by the start-of-line anchor.
-    const pattern = new RegExp(`^${envVar}=("?)[^"\\s].*$`, 'm');
-    if (pattern.test(content)) return true;
+    // Capture the value of an uncommented `KEY=...` line. Multiline `^`
+    // anchors at start-of-line, so commented lines (`# KEY=...`) never
+    // match.
+    const pattern = new RegExp(`^${envVar}=(.*)$`, 'm');
+    const match = pattern.exec(content);
+    if (!match) continue;
+    const value = unquote(match[1].trim());
+    // Empty value (`KEY=` or `KEY=""`) → still needs a key.
+    if (value === '') continue;
+    // The web wizard's `.env` ships example lines like
+    // `# ANTHROPIC_API_KEY="sk-ant-..."`. If a user uncomments without
+    // replacing the placeholder, the literal `...` stays in the value.
+    // Real API keys never contain `...`, so treat any value with it as
+    // still-unset.
+    if (value.includes('...')) continue;
+    return true;
   }
   return false;
+}
+
+function unquote(value: string): string {
+  if (value.length < 2) return value;
+  const first = value[0];
+  const last = value[value.length - 1];
+  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+    return value.slice(1, -1);
+  }
+  return value;
 }
 
 export async function scanAgents(): Promise<AgentConfig[]> {
