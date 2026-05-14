@@ -38,13 +38,17 @@ export function EquityStrip({ liveUnrealizedUsd, tradingRank }: EquityStripProps
   const currentEquity = portfolio?.current_equity_usd ?? 0;
   const startingEquity = portfolio?.starting_equity_usd ?? 0;
   const realizedToday = useMemo(() => todaysRealized(portfolio), [portfolio]);
-  const realizedAllTime = tradingRank?.total_pnl_usd ?? portfolio?.all_time_pnl_usd ?? 0;
-  const roiPct = tradingRank?.roi_pct ?? 0;
+  // Realized all-time + ROI come from the leaderboard rank only.
+  // `portfolio.all_time_pnl_usd` is NOT used as a fallback — it folds in
+  // unrealized PnL (see AgentPortfolio type comment), which would make the
+  // "realized" sub-line lie whenever the agent isn't yet on the leaderboard.
+  const realizedAllTime = tradingRank?.total_pnl_usd ?? null;
+  const roiPct = tradingRank?.roi_pct ?? null;
 
   const unrealizedPos = liveUnrealizedUsd >= 0;
   const todayPos = realizedToday >= 0;
-  const allTimePos = realizedAllTime >= 0;
-  const roiPos = roiPct >= 0;
+  const allTimePos = (realizedAllTime ?? 0) >= 0;
+  const roiPos = (roiPct ?? 0) >= 0;
 
   return (
     <div className="flex items-stretch gap-px bg-hive-border">
@@ -88,21 +92,35 @@ export function EquityStrip({ liveUnrealizedUsd, tradingRank }: EquityStripProps
 
       <div className="flex-1 bg-hive-near-black px-6 py-4">
         <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-hive-text-dim">
-          Realized · all-time
+          Unrealized
         </div>
         <div
           className={`mt-1 font-mono font-bold leading-none tabular-nums ${
-            allTimePos ? 'text-hive-bullish' : 'text-hive-bearish'
+            unrealizedPos ? 'text-hive-bullish' : 'text-hive-bearish'
           }`}
           style={{ fontSize: 36 }}
         >
-          {formatUsd(realizedAllTime, { signed: true })}
+          {formatUsd(liveUnrealizedUsd, { signed: true })}
         </div>
         <div className="mt-2 font-mono text-[10px] text-hive-text-dim">
-          ROI{' '}
-          <span className={`tabular-nums ${roiPos ? 'text-hive-bullish' : 'text-hive-bearish'}`}>
-            {formatPercent(roiPct)}
-          </span>
+          realized all-time{' '}
+          {realizedAllTime === null ? (
+            <span className="tabular-nums text-hive-text-dim">—</span>
+          ) : (
+            <span
+              className={`tabular-nums ${allTimePos ? 'text-hive-bullish' : 'text-hive-bearish'}`}
+            >
+              {formatUsd(realizedAllTime, { signed: true })}
+            </span>
+          )}{' '}
+          · ROI{' '}
+          {roiPct === null ? (
+            <span className="tabular-nums text-hive-text-dim">—</span>
+          ) : (
+            <span className={`tabular-nums ${roiPos ? 'text-hive-bullish' : 'text-hive-bearish'}`}>
+              {formatPercent(roiPct)}
+            </span>
+          )}
         </div>
       </div>
     </div>
