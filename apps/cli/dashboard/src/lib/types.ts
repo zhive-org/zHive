@@ -10,6 +10,11 @@ export type WebEventPayload =
       /** Mid/mark the runtime fed into the evaluator. May be undefined for
        * synthesized HOLDs (no LLM call) or pre-feature events. */
       priceUsed?: number;
+      /** Whether the agent already had an open position for this asset when
+       * the decision was emitted. HOLD without a position renders as
+       * "NO ACTION" — a HOLD on an empty slot is a no-op, not a hold.
+       * Undefined for pre-feature events. */
+      hasOpenPosition?: boolean;
     }
   | { type: 'online'; name: string; bio: string }
   | { type: 'chat'; role: 'user' | 'agent' | 'error' | 'tool'; text: string }

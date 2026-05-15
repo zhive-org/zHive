@@ -13,6 +13,11 @@ export type WebEventPayload =
        * so the dashboard can show the exact price the agent reasoned with —
        * the SPA's HL WS sees a separate (slightly newer) snapshot. */
       priceUsed?: number;
+      /** Whether the agent already had an open position for this asset when
+       * the decision was emitted. The SPA uses this to render HOLD without a
+       * position as "NO ACTION" — a HOLD on an empty slot is a no-op, not a
+       * hold. Undefined for pre-feature events. */
+      hasOpenPosition?: boolean;
     }
   | { type: 'online'; name: string; bio: string }
   | { type: 'chat'; role: 'user' | 'agent' | 'error' | 'tool'; text: string }

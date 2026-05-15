@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { ActionBadge, type DecisionAction } from './primitives/ActionBadge';
+import { ActionBadge, type ActionBadgeVariant } from './primitives/ActionBadge';
 import { SymbolLink } from './primitives/SymbolLink';
 import { displaySymbol } from '../lib/coin';
 import { formatTime, formatUsd } from '../lib/format';
@@ -149,13 +149,17 @@ function TerminalRow({ event }: { event: WebEvent }) {
         </div>
       );
     case 'decision': {
-      const action = event.action as DecisionAction;
+      // HOLD on an asset with no open position is a no-op, not a hold. The
+      // producer carries `hasOpenPosition` for this exact distinction; treat
+      // missing flag (pre-feature events) as HOLD to preserve old behavior.
+      const displayedAction: ActionBadgeVariant =
+        event.action === 'HOLD' && event.hasOpenPosition === false ? 'NO_ACTION' : event.action;
       return (
         <div className="flex gap-3">
           {stamp}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
-              <ActionBadge action={action} />
+              <ActionBadge action={displayedAction} />
               <SymbolLink asset={event.asset} variant="inline" />
               {event.sizeUsd !== undefined && (
                 <span className="tabular-nums text-hive-text-dim">{formatUsd(event.sizeUsd)}</span>

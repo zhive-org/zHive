@@ -84,7 +84,7 @@ export function useAgent({
           // errored out before onEvalReturned fired.
           eventBus?.push({ type: 'analyzing', state: 'completed' }, timestamp);
         },
-        onEvalCompleted(decision) {
+        onEvalCompleted(decision, { hasOpenPosition }) {
           // CLOSE doesn't carry a meaningful sizeUsd (decision schema has it
           // at 0 per the type doc); rendering "$0.00" misreads as no-op.
           const sizeUsd =
@@ -108,6 +108,7 @@ export function useAgent({
               reasoning: decision.reasoning,
               sizeUsd,
               priceUsed: decision.priceUsed,
+              hasOpenPosition,
             },
             timestamp,
           );

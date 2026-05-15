@@ -17,7 +17,7 @@ export type TradingAgentCallbacks = {
    * animation — `onEvalCompleted` fires per-decision and would race the
    * thinking indicator against the first decision row. */
   onEvalReturned?: (decisions: TradeDecision[]) => void;
-  onEvalCompleted?: (decision: TradeDecision) => void;
+  onEvalCompleted?: (decision: TradeDecision, context: { hasOpenPosition: boolean }) => void;
   /** Fires when the evaluator's scale-down guard triggered because the LLM's
    * combined sizeUsd exceeded available cash. `msg` is human-readable. */
   onBudgetAdjusted?: (msg: string) => void;
@@ -124,9 +124,13 @@ export class TradingAgent {
       this.callbacks.onBudgetAdjusted?.(msg);
     }
 
+    const openPositionAssets = new Set(account.positions.map((p) => p.coin));
+
     for (let i = 0; i < decisions.length; i++) {
       const decision = decisions[i];
-      this.callbacks?.onEvalCompleted?.(decision);
+      this.callbacks?.onEvalCompleted?.(decision, {
+        hasOpenPosition: openPositionAssets.has(decision.asset),
+      });
       if (decision.action !== 'HOLD') {
         try {
           await this.exchange.placeOrder(decision);
