@@ -71,6 +71,11 @@ export function useAgent({
         onEvalReturned() {
           eventBus?.push({ type: 'analyzing', state: 'completed' }, new Date());
         },
+        onBudgetAdjusted(msg) {
+          const timestamp = new Date();
+          addLog({ type: 'message', text: msg, timestamp });
+          eventBus?.push({ type: 'message', text: msg }, timestamp);
+        },
         onError(message) {
           const timestamp = new Date();
           addLog({ type: 'error', errorMessage: message, timestamp });

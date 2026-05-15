@@ -1,7 +1,7 @@
 import { getMemoryLineCount, loadMemoryByTopic, saveMemoryByTopic } from '@zhive/sdk';
 import { generateText } from 'ai';
 import { AgentRuntime } from '../agent/runtime';
-import { AssetEvaluator } from './evaluator';
+import { PortfolioAllocator } from './portfolio-allocator';
 import { ProviderFactory } from './analyzer';
 import { IExchange } from './exchange/types';
 import { TradeDecision } from './types';
@@ -18,6 +18,9 @@ export type TradingAgentCallbacks = {
    * thinking indicator against the first decision row. */
   onEvalReturned?: (decisions: TradeDecision[]) => void;
   onEvalCompleted?: (decision: TradeDecision) => void;
+  /** Fires when the evaluator's scale-down guard triggered because the LLM's
+   * combined sizeUsd exceeded available cash. `msg` is human-readable. */
+  onBudgetAdjusted?: (msg: string) => void;
 };
 
 const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // 1 hr
@@ -30,7 +33,7 @@ export class TradingAgent {
   private constructor(
     private runtime: AgentRuntime,
     private watchList: string[],
-    private evaluator: AssetEvaluator,
+    private evaluator: PortfolioAllocator,
     private exchange: IExchange,
     private callbacks: TradingAgentCallbacks,
     private intervalMs: number = DEFAULT_INTERVAL_MS,
@@ -52,7 +55,7 @@ export class TradingAgent {
       (await ZhiveExchange.create({
         apiKey: runtime.config.apiKey,
       }));
-    const evaluator = new AssetEvaluator(exchange, runtime, injects?.providerFactory);
+    const evaluator = new PortfolioAllocator(exchange, runtime, injects?.providerFactory);
 
     return new TradingAgent(
       runtime,
@@ -110,8 +113,16 @@ export class TradingAgent {
     this.callbacks.onEvalStarted?.(assets);
     const ctx = { abortSignal: this.abortController.signal };
 
-    const decisions = await this.evaluator.evaluate(ctx, assets, account);
+    const { decisions, budgetAdjustment } = await this.evaluator.evaluate(ctx, assets, account);
     this.callbacks.onEvalReturned?.(decisions);
+
+    if (budgetAdjustment) {
+      const msg =
+        `Budget exceeded: LLM requested $${budgetAdjustment.originalTotal.toFixed(2)}, ` +
+        `scaled down to $${budgetAdjustment.scaledTo.toFixed(2)} ` +
+        `(factor: ${budgetAdjustment.factor.toFixed(3)})`;
+      this.callbacks.onBudgetAdjusted?.(msg);
+    }
 
     for (let i = 0; i < decisions.length; i++) {
       const decision = decisions[i];

@@ -36,7 +36,7 @@ const TradeDecisionArraySchema = z.object({
   decisions: z.array(TradeDecisionSchema),
 });
 
-export class AssetEvaluator {
+export class PortfolioAllocator {
   private analyzer: AssetAnalyzer;
 
   constructor(
@@ -51,7 +51,10 @@ export class AssetEvaluator {
     ctx: { abortSignal?: AbortSignal },
     coins: string[],
     account: AccountSummary,
-  ): Promise<TradeDecision[]> {
+  ): Promise<{
+    decisions: TradeDecision[];
+    budgetAdjustment?: { originalTotal: number; scaledTo: number; factor: number };
+  }> {
     return traceable(
       async () => {
         const assetEntries: Array<{
@@ -92,7 +95,10 @@ export class AssetEvaluator {
 
         // If no coins have asset context, return HOLD for all
         if (assetEntries.length === 0) {
-          return coins.map((c) => holdDecision(c, 'No asset context available'));
+          return {
+            decisions: coins.map((c) => holdDecision(c, 'No asset context available')),
+            budgetAdjustment: undefined,
+          };
         }
 
         const systemPrompt = this.buildSystemPrompt();
@@ -127,15 +133,48 @@ export class AssetEvaluator {
             decisionMap.set(d.asset, { ...d, priceUsed: priceByCoin.get(d.asset) });
           }
 
+          // Scale-down guard: if the LLM over-allocated against available
+          // cash, proportionally reduce sizeUsd on LONG/SHORT decisions so
+          // the executor never submits orders that exceed the budget.
+          const availableCash = getAvailableCash(account);
+          let totalActive = 0;
+          for (const d of decisionMap.values()) {
+            if (d.action === 'LONG' || d.action === 'SHORT') totalActive += d.sizeUsd;
+          }
+
+          let budgetAdjustment:
+            | { originalTotal: number; scaledTo: number; factor: number }
+            | undefined;
+
+          if (totalActive > availableCash && availableCash > 0) {
+            const factor = availableCash / totalActive;
+            budgetAdjustment = { originalTotal: totalActive, scaledTo: availableCash, factor };
+            for (const [coin, d] of decisionMap.entries()) {
+              if (d.action === 'LONG' || d.action === 'SHORT') {
+                decisionMap.set(coin, {
+                  ...d,
+                  sizeUsd: d.sizeUsd * factor,
+                  reasoning: `[Budget scaled ×${factor.toFixed(3)}] ${d.reasoning}`,
+                });
+              }
+            }
+          }
+
           // Return decisions for all requested coins, defaulting to HOLD if missing
-          return coins.map(
-            (coin) =>
-              decisionMap.get(coin) ??
-              holdDecision(coin, 'No decision returned by LLM — defaulting to HOLD'),
-          );
+          return {
+            decisions: coins.map(
+              (coin) =>
+                decisionMap.get(coin) ??
+                holdDecision(coin, 'No decision returned by LLM — defaulting to HOLD'),
+            ),
+            budgetAdjustment,
+          };
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          return coins.map((c) => holdDecision(c, `Analysis failed ${msg}`));
+          return {
+            decisions: coins.map((c) => holdDecision(c, `Analysis failed ${msg}`)),
+            budgetAdjustment: undefined,
+          };
         }
       },
       { name: 'trading-loop', tracingEnabled: process.env.LANGSMITH_TRACING === 'true' },
@@ -159,7 +198,9 @@ Consider cross-asset correlations and portfolio-level risk when making decisions
 
 Rules
 - Make decision based on given analysis.
-- If more than one asset is given and you don't have enough fund to long/short all attractive assets, prioritize the ones with strongest analysis and best risk/reward profile.
+- You are a portfolio allocator with a fixed cash budget shown in the prompt as "Available Trading Balance".
+- The sum of sizeUsd across ALL LONG and SHORT decisions MUST NOT exceed the Available Trading Balance. This is a hard constraint, not a guideline.
+- Rank candidates by conviction and risk/reward. Allocate to higher-conviction trades first. Give zero or reduced allocation to lower-conviction trades if the budget would be exceeded.
 - Don't open leveraged position more than 1x.
 - Treat trading like a probability game with positive expectancy over many trades`;
   }
@@ -206,7 +247,8 @@ Rules
     const prompt = `Analyze the following ${assetEntries.length} assets and provide a trading decision for each.
 
 Account: value=$${account.accountValue.toFixed(2)}, marginUsed=$${account.marginUsed.toFixed(2)}
-Available Trading Balance: value=${availableUsdc}
+Available Trading Balance (hard budget): $${availableUsdc.toFixed(2)}
+CONSTRAINT: Sum of sizeUsd for all LONG + SHORT decisions must not exceed $${availableUsdc.toFixed(2)}.
 Current Time: ${new Date().toISOString()}
 
 ## Asset
